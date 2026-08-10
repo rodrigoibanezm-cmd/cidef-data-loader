@@ -1,0 +1,73 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Cidef Data Router",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://cidef-data-loader.vercel.app"
+    }
+  ],
+  "paths": {
+    "/api/router": {
+      "post": {
+        "operationId": "cidefRouter",
+        "summary": "Ejecuta un motor determinista de Cidef",
+        "parameters": [
+          {
+            "name": "x-import-secret",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["motor", "input"],
+                "properties": {
+                  "motor": {
+                    "type": "string",
+                    "enum": [
+                      "profile_table",
+                      "query_table",
+                      "import_inventario",
+                      "import_notas_venta",
+                      "import_estadisticas_venta",
+                      "import_lista_precios"
+                    ]
+                  },
+                  "input": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado del motor"
+          },
+          "400": {
+            "description": "Request inválido"
+          },
+          "401": {
+            "description": "No autorizado"
+          },
+          "500": {
+            "description": "Error interno"
+          }
+        }
+      }
+    }
+  }
+}
