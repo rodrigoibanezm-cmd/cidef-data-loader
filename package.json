@@ -10,6 +10,8 @@
     "@neondatabase/serverless": "^1.0.1",
     "exceljs": "^4.4.0",
     "googleapis": "^156.0.0",
+    "sax": "^1.4.1",
+    "unzipper": "^0.12.3",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
