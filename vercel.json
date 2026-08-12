@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/rvm-cron",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
