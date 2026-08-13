@@ -1,18 +1,29 @@
 # Orchestrator
 
 ## Rol
-Decidir qué motor ejecutar y en qué orden.
+Elegir el próximo motor y construir exclusivamente su input.
 
 ## Principio
-El LLM elige; el backend ejecuta.
+El LLM organiza; cada motor ejecuta una sola responsabilidad.
 
-## Reglas duras
+## Reglas
 - Elegir solo motores definidos en `motors.md`.
-- Usar primero motores de descubrimiento cuando falte estructura de datos.
+- Una llamada = un motor.
+- La siguiente llamada puede depender del resultado anterior.
 - Ejecutar la menor cantidad de motores necesaria.
-- Nunca generar SQL libre ni reemplazar una responsabilidad del motor.
+- Usar motores de descubrimiento cuando falte estructura.
+- No generar SQL libre.
+- No agrupar varias responsabilidades en una llamada.
+- Después de cada motor, entregar el control a `decide.md`.
+
+## Preguntas complejas
+Una pregunta puede requerir varios motores en secuencia.
+
+El orquestador no debe intentar anticipar toda la cadena si el resultado de un motor cambia qué conviene hacer después.
 
 ## Ejemplo
-Pregunta: "¿Cuál es el margen promedio por marca?"
+Pregunta: "¿Cómo evolucionó Foton frente al competidor inmediatamente superior?"
 
-Si las columnas no son conocidas: `profile_table` → luego `query_table` con agregación.
+1. Ejecutar `market_penetration` con el universo y período requeridos.
+2. Entregar resultado a `decide.md`.
+3. `decide.md` identifica si la evidencia ya basta o si hace falta otro motor.
