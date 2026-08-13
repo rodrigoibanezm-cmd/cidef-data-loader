@@ -1,58 +1,69 @@
 # Motors
 
 ## Rol
-Definir el catálogo de motores que el agente puede invocar.
+Definir el catálogo de capacidades que el agente puede invocar.
 
 ## Principio
 Si un motor no aparece aquí, no existe para el agente.
 
-## Motores
+Cada motor tiene una sola responsabilidad y una llamada ejecuta un solo motor.
 
-### profile_table
-Responsabilidad: descubrir estructura básica de una tabla.
-Input: `table`.
-Devuelve: filas, columnas, nulos y cardinalidad.
+## Descubrimiento
+- `profile_table`: perfila estructura, nulos y cardinalidad.
+- `table_schema`: devuelve schema de una tabla.
+- `query_table`: consulta controlada.
+- `join_tables`: cruce controlado entre tablas.
 
-### query_table
-Responsabilidad: consultar datos con operaciones controladas.
-Input: `table`, `operation` y parámetros de consulta.
-Operaciones actuales: `select`, `aggregate`.
+## Ingesta y actualización
+- `import_inventario`
+- `import_notas_venta`
+- `import_estadisticas_venta`
+- `import_lista_precios`
+- `import_rvm`
+- `normalize_rvm`
 
-### import_inventario
-Responsabilidad: recargar `inventario_vehiculos_global_raw` desde Drive.
+## Materializaciones
+- `refresh_market_penetration_monthly`: actualiza penetración mensual total y china.
+- `refresh_active_vehicle_models`: actualiza snapshot actual e histórico de modelos activos.
 
-### import_notas_venta
-Responsabilidad: recargar `notas_venta_raw` desde Drive.
+## Mercado
+### `market_penetration`
+Responsabilidad: evolución, ranking y comparación de penetración mensual.
 
-### import_estadisticas_venta
-Responsabilidad: recargar `estadisticas_venta_raw` desde Drive.
+Inputs principales:
+- `universe`: `ALL` o `CHINA`
+- `brands`: marcas de foco opcionales; no restringen el payload global
+- `segment`: default `TOTAL`
+- `months`: 1–24
+- `comparison`: `none`, `rolling`, `same_period_last_year`
+- `end_month`: opcional
 
-### import_lista_precios
-Responsabilidad: consolidar las listas de precios XLSB en `lista_precios_raw`.
+Devuelve todas las marcas del universo consultado, ranking, penetración, comparación y serie mensual.
 
-### available_inventory
-Responsabilidad: determinar el universo de vehículos nuevos disponibles para venta, a nivel VIN único.
-Fuente: `inventario_vehiculos_global_raw`.
+## Inventario
+### `available_inventory`
+Responsabilidad: determinar vehículos nuevos disponibles a nivel VIN único.
 
-Reglas determinísticas del universo:
-- `tipo = 'Vehiculo Nuevo'`
-- `factura` nula o vacía
-- `vigente = '1'`
-- excluir `etapa IN ('VH', 'TL')`
-- `fecha_eta` informada
-- grano final: `vin_chasis` único
-- antigüedad: `CURRENT_DATE - MIN(fecha_eta)` por VIN
+### `inventory_aging`
+Responsabilidad: analizar antigüedad del inventario.
 
-Input opcional:
-- `min_age_days`: antigüedad mínima; default `0`.
-- `group_by`: actualmente acepta `bodega`.
+## Enriquecimiento de modelos
+### `detect_pending_model_enrichment`
+Responsabilidad: detectar modelos activos sin atributos estructurales completos.
 
-Ejemplos:
-- universo disponible: `{ "motor": "available_inventory" }`
-- stock sobre 90 días: `{ "motor": "available_inventory", "min_age_days": 91 }`
-- stock sobre 90 días agrupado por bodega: `{ "motor": "available_inventory", "min_age_days": 91, "group_by": "bodega" }`
+### `upsert_model_enrichment`
+Responsabilidad: escribir de forma controlada `largo_mm`, `cilindrada_cc` y derivar `rango_motor`.
 
-Nota: `fecha_eta` está almacenada como texto con formato `MM/DD/YY HH24:MI`.
+## Analítica genérica existente
+- `sales_consolidation`
+- `time_analysis`
+- `distribution_analysis`
+- `group_analysis`
+- `trend_analysis`
+- `correlation_analysis`
+- `outlier_analysis`
+- `cohort_analysis`
+- `margin_analysis`
 
-## Ejemplo
-Para conocer columnas antes de consultar una tabla: usar `profile_table` y luego `query_table`.
+## Regla de gap
+Si la pregunta requiere una capacidad no representada por estos motores, `decide.md` debe devolver `MISSING_CAPABILITY` y describir la responsabilidad mínima del motor faltante.
