@@ -67,6 +67,17 @@ test('grouped output exposes explicit pagination and TOTAL does not truncate', a
   assert.equal((await monthly({ scope: 'MARKET' }, mockDb())).pagination, null);
 });
 
+test('MARKET TOTAL without optional filters has contiguous typed parameters', async () => {
+  for (const execute of [monthly, weekly]) {
+    const calls = [];
+    await execute({ scope: 'MARKET', group_by: 'TOTAL' }, mockDb(calls));
+    assert.deepEqual(calls[0].params, [null, null, null, null]);
+    assert.deepEqual(calls[1].params, [null, null, null, null, 1, 0]);
+    assert.match(calls[1].query, /LIMIT \$5::integer OFFSET \$6::integer/);
+    assert.doesNotMatch(calls[1].query, /\$7|\$8/);
+  }
+});
+
 test('both motors are registered under their exact public names', () => {
   assert.equal(typeof getMotor('monthly_seasonality_analysis'), 'function');
   assert.equal(typeof getMotor('intramonth_week_curve'), 'function');

@@ -77,7 +77,10 @@ test('intramonth weeks use day buckets and last seven calendar days', () => {
 
 test('group pagination selects whole values before monthly aggregation', () => {
   for (const sql of [monthlySeasonalitySql(market), intramonthWeekSql(market)]) {
-    assert.match(sql, /selected_groups AS .*LIMIT \$7 OFFSET \$8/s);
+    assert.match(sql, /selected_groups AS .*LIMIT \$5::integer OFFSET \$6::integer/s);
     assert.match(sql, /JOIN selected_groups g USING\(group_value\)/);
+  }
+  for (const sql of [monthlySeasonalitySql(cidef), intramonthWeekSql(cidef)]) {
+    assert.match(sql, /LIMIT \$7::integer OFFSET \$8::integer/);
   }
 });
