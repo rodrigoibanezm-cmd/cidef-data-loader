@@ -1,0 +1,64 @@
+# `estadisticas_venta_raw`
+
+Schema fijo de `estadisticas_venta_raw` en Neon.
+
+| Columna | Tipo |
+|---|---|
+| `id` | `text` |
+| `empresa` | `text` |
+| `nro_operacion` | `text` |
+| `razon_social` | `text` |
+| `cliente` | `text` |
+| `categoria_cliente` | `text` |
+| `direccion` | `text` |
+| `ciudad` | `text` |
+| `region` | `text` |
+| `articulo` | `text` |
+| `desc_articulo` | `text` |
+| `nro_vin_chasis` | `text` |
+| `fecha_compra` | `text` |
+| `nro_serie` | `text` |
+| `fecha_patente` | `text` |
+| `nombre_usuario` | `text` |
+| `fecha_factura` | `text` |
+| `precio_vta` | `text` |
+| `precio_vta_pesos_con_iva` | `text` |
+| `precio_vta_pesos` | `text` |
+| `precio_vta_dolares` | `text` |
+| `precio_costo` | `text` |
+| `precio_costo_dolares` | `text` |
+| `costo_preentrega` | `text` |
+| `descuentos` | `text` |
+| `margen_bruto` | `text` |
+| `porc_margen_bruto` | `text` |
+| `id_unidad_stk` | `text` |
+| `id_region` | `text` |
+| `desc_region` | `text` |
+| `id_sucursal_vta` | `text` |
+| `desc_sucursal_vta` | `text` |
+| `id_mae_marca` | `text` |
+| `desc_mae_marca` | `text` |
+| `id_tipo_operacion` | `text` |
+| `desc_tipo_oper` | `text` |
+| `id_articulo` | `text` |
+| `nro_propuesta` | `text` |
+| `fecha_propuesta` | `text` |
+| `es_especial` | `text` |
+| `precio_flete` | `text` |
+| `otros_gastos` | `text` |
+| `costo_flete` | `text` |
+| `otros_costos` | `text` |
+| `recupero_imp` | `text` |
+| `comprobante` | `text` |
+| `nro_unidad` | `text` |
+| `factura` | `text` |
+| `nro_factura` | `text` |
+| `id_tipo_comp` | `text` |
+| `fecha` | `text` |
+| `telefono` | `text` |
+| `telefono_2` | `text` |
+| `telefono_3` | `text` |
+| `email` | `text` |
+| `fecha_eta` | `text` |
+| `entidad_financiera` | `text` |
+| `comision_entidad_finan` | `text` |
