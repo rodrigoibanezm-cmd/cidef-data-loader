@@ -16,11 +16,13 @@ Definir el vocabulario estable del dominio y las tablas canónicas que los motor
 - `largo_mm`: largo del modelo.
 - `cilindrada_cc`: cilindrada del motor térmico.
 - `rango_motor`: `LT_1_5`, `1_5_TO_2_5`, `GT_2_5`, `NA_BEV` o `PENDIENTE`.
+- `electrificacion`: `ICE`, `HEV`, `PHEV`, `BEV` o `PENDIENTE`.
 
 ## Tablas principales
 - `rvm_raw`: registros normalizados provenientes del RVM.
 - `brands_master`: maestro de marcas y origen.
 - `vehicle_models_master`: catálogo histórico de modelos y atributos estructurales.
+- `vehicle_versions_master`: versiones históricas por modelo y su electrificación.
 - `active_vehicle_models`: foto de modelos activos del último mes disponible.
 - `active_vehicle_models_history`: historial mensual de modelos activos.
 - `market_penetration_monthly_all`: penetración mensual contra mercado total.

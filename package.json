@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "test": "node --test",
+    "validate:rvm": "node scripts/validate-rvm-motors.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",

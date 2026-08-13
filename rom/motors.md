@@ -20,13 +20,15 @@ Cada motor tiene una sola responsabilidad y una llamada ejecuta un solo motor.
 - `import_estadisticas_venta`
 - `import_lista_precios`
 - `import_rvm`
-- `normalize_rvm`
+
+`normalize_rvm` es legacy/deprecated y no pertenece al flujo operativo.
 
 ## Materializaciones
 - `refresh_market_penetration_monthly`: actualiza penetración mensual total y china.
 - `refresh_active_vehicle_models`: actualiza snapshot actual e histórico de modelos activos.
 
 ## Mercado
+Los contratos RVM de preparación y Pareto están en `rvm-motors.md`.
 ### `market_penetration`
 Responsabilidad: evolución, ranking y comparación de penetración mensual.
 

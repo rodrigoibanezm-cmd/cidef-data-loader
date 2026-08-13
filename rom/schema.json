@@ -37,7 +37,6 @@
                       "import_estadisticas_venta",
                       "import_lista_precios",
                       "import_rvm",
-                      "normalize_rvm",
                       "profile_table",
                       "query_table",
                       "table_schema",
@@ -57,7 +56,12 @@
                       "refresh_market_penetration_monthly",
                       "refresh_active_vehicle_models",
                       "detect_pending_model_enrichment",
-                      "upsert_model_enrichment"
+                      "upsert_model_enrichment",
+                      "refresh_vehicle_models_master",
+                      "refresh_vehicle_versions_master",
+                      "classify_electrification",
+                      "rvm_market_pareto",
+                      "rvm_quality_audit"
                     ]
                   },
                   "input": {
