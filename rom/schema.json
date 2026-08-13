@@ -61,7 +61,10 @@
                       "refresh_vehicle_versions_master",
                       "classify_electrification",
                       "rvm_market_pareto",
-                      "rvm_quality_audit"
+                      "rvm_quality_audit",
+                      "geographic_market_analysis",
+                      "monthly_seasonality_analysis",
+                      "intramonth_week_curve"
                     ]
                   },
                   "input": {

@@ -42,6 +42,25 @@ Inputs principales:
 
 Devuelve todas las marcas del universo consultado, ranking, penetración, comparación y serie mensual.
 
+### `geographic_market_analysis`
+Responsabilidad: participación, ranking y evolución mensual por región o comuna.
+
+Inputs:
+- Obligatorios: `level` (`REGION|COMUNA`) y `universe` (`ALL|CHINA`).
+- Opcionales: `brand`, `segment`, `months`, `comparison`, `end_month`, `page`, `page_size`.
+
+`brand` nunca modifica el denominador ni el cálculo previo del ranking. `ALL` y `CHINA`
+son universos explícitos e independientes. La paginación opera sobre geografías completas;
+nunca corta marcas dentro de una geografía.
+
+Contrato detallado: `geographic-market-analysis.md`.
+
+### Estacionalidad de ventas
+- `monthly_seasonality_analysis`: estacionalidad mensual MARKET o CIDEF.
+- `intramonth_week_curve`: distribución W1-W5 y últimos 7 días del mes.
+
+Contratos: `monthly-seasonality-analysis.md` e `intramonth-week-curve.md`.
+
 ## Inventario
 ### `available_inventory`
 Responsabilidad: determinar vehículos nuevos disponibles a nivel VIN único.

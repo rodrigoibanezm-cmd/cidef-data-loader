@@ -9,6 +9,7 @@ import { getMotor } from '../lib/motors/index.js';
 const NAMES = [
   'refresh_vehicle_models_master', 'refresh_vehicle_versions_master',
   'classify_electrification', 'rvm_market_pareto', 'rvm_quality_audit',
+  'geographic_market_analysis',
 ];
 const source = name => readFileSync(new URL(`../lib/motors/${name}`, import.meta.url), 'utf8');
 
