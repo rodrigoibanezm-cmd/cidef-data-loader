@@ -17,6 +17,12 @@ El aging se calcula desde `fecha_ingreso_stk`, no desde `fecha_eta`:
 
 Por defecto, el motor reporta unidades con `aging_dias > 60`.
 
+## Identidad de dealer
+
+`dealers_master` es la fuente canónica de identidad. El motor hace `LEFT JOIN` por `dealer_venta = dealers_master.dealer` y devuelve `dealer_id` cuando existe resolución canónica.
+
+El `LEFT JOIN` es deliberado mientras queden dealers históricos todavía no incorporados a `dealers_master`: evita perder stock ya clasificado. Ver `docs/ventas/dealers-master.md`.
+
 ## Por qué no usar factura
 Una unidad financiada por Forum puede tener factura emitida a `FÓRUM DISTRIBUIDORA S.A.` y seguir vigente comercialmente en el dealer. Por eso `factura IS NULL` no define stock dealer.
 
@@ -32,4 +38,4 @@ Inputs opcionales:
 - `dealer`: nombre exacto de `dealer_venta`.
 - `as_of`: fecha `YYYY-MM-DD`; default `CURRENT_DATE`.
 
-Output: una fila por dealer con `vins`, `aging_min`, `aging_max` y `aging_promedio`.
+Output: una fila por dealer con `dealer_id`, `dealer`, `vins`, `aging_min`, `aging_max` y `aging_promedio`.
