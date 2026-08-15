@@ -8,11 +8,13 @@ test('dealer_inventory_aging is registered', () => {
   assert.ok(listMotors().includes('dealer_inventory_aging'));
 });
 
-test('dealer aging uses validated stock rules', () => {
+test('dealer aging uses validated stock rules and dealer master', () => {
   const { query, params } = buildDealerAgingQuery();
   assert.match(query, /es_dealer IS TRUE/);
   assert.match(query, /vigente::text = '1'/);
   assert.match(query, /fecha_ingreso_stk/);
+  assert.match(query, /LEFT JOIN dealers_master/);
+  assert.match(query, /d\.dealer_id/);
   assert.match(query, /aging_dias > \$1::integer/);
   assert.doesNotMatch(query, /fecha_eta/);
   assert.deepEqual(params, [60, null, null]);
