@@ -14,68 +14,42 @@ Cada motor tiene una sola responsabilidad y una llamada ejecuta un solo motor.
 - `query_table`: consulta controlada.
 - `join_tables`: cruce controlado entre tablas.
 
+Estos motores son deliberadamente genéricos porque el GPT de laboratorio debe poder explorar datos y probar hipótesis.
+
 ## Ingesta y actualización
 - `import_inventario`
+- `clean_inventario`
 - `import_notas_venta`
 - `import_estadisticas_venta`
 - `import_lista_precios`
 - `import_rvm`
 
-`normalize_rvm` es legacy/deprecated y no pertenece al flujo operativo.
-
-## Materializaciones
-- `refresh_market_penetration_monthly`: actualiza penetración mensual total y china.
-- `refresh_active_vehicle_models`: actualiza snapshot actual e histórico de modelos activos.
+## Materializaciones y maestros
+- `refresh_market_penetration_monthly`
+- `refresh_active_vehicle_models`
+- `refresh_vehicle_models_master`
+- `refresh_vehicle_versions_master`
+- `classify_electrification`
+- `detect_pending_model_enrichment`
+- `upsert_model_enrichment`
 
 ## Mercado
-Los contratos RVM de preparación y Pareto están en `rvm-motors.md`.
-### `market_penetration`
-Responsabilidad: evolución, ranking y comparación de penetración mensual.
-
-Inputs principales:
-- `universe`: `ALL` o `CHINA`
-- `brands`: marcas de foco opcionales; no restringen el payload global
-- `segment`: default `TOTAL`
-- `months`: 1–24
-- `comparison`: `none`, `rolling`, `same_period_last_year`
-- `end_month`: opcional
-
-Devuelve todas las marcas del universo consultado, ranking, penetración, comparación y serie mensual.
-
-### `geographic_market_analysis`
-Responsabilidad: participación, ranking y evolución mensual por región o comuna.
-
-Inputs:
-- Obligatorios: `level` (`REGION|COMUNA`) y `universe` (`ALL|CHINA`).
-- Opcionales: `brand`, `segment`, `months`, `comparison`, `end_month`, `page`, `page_size`.
-
-`brand` nunca modifica el denominador ni el cálculo previo del ranking. `ALL` y `CHINA`
-son universos explícitos e independientes. La paginación opera sobre geografías completas;
-nunca corta marcas dentro de una geografía.
-
-Contrato detallado: `geographic-market-analysis.md`.
-
-### Estacionalidad de ventas
+- `market_penetration`: evolución, ranking y comparación de penetración mensual.
+- `rvm_market_pareto`: concentración y Pareto del mercado RVM.
+- `rvm_quality_audit`: auditoría de calidad del RVM.
+- `geographic_market_analysis`: participación, ranking y evolución por región/comuna.
 - `monthly_seasonality_analysis`: estacionalidad mensual MARKET o CIDEF.
 - `intramonth_week_curve`: distribución W1-W5 y últimos 7 días del mes.
 
-Contratos: `monthly-seasonality-analysis.md` e `intramonth-week-curve.md`.
+## Inventario dealer
+- `dealer_inventory_aging`: VIN dealer vigentes y aging desde `fecha_ingreso_stk`.
 
-## Inventario
-### `available_inventory`
-Responsabilidad: determinar vehículos nuevos disponibles a nivel VIN único.
+La identidad de dealers se resuelve contra `dealers_master`. No agregar listas hardcodeadas de dealers dentro de motores.
 
-### `inventory_aging`
-Responsabilidad: analizar antigüedad del inventario.
+## Motores retirados
+Se eliminaron motores genéricos/legacy cuya semántica dependía de estructuras antiguas o duplicaba capacidades de exploración:
 
-## Enriquecimiento de modelos
-### `detect_pending_model_enrichment`
-Responsabilidad: detectar modelos activos sin atributos estructurales completos.
-
-### `upsert_model_enrichment`
-Responsabilidad: escribir de forma controlada `largo_mm`, `cilindrada_cc` y derivar `rango_motor`.
-
-## Analítica genérica existente
+- `normalize_rvm`
 - `sales_consolidation`
 - `time_analysis`
 - `distribution_analysis`
@@ -85,6 +59,11 @@ Responsabilidad: escribir de forma controlada `largo_mm`, `cilindrada_cc` y deri
 - `outlier_analysis`
 - `cohort_analysis`
 - `margin_analysis`
+- `inventory_aging`
+- `available_inventory`
+- `open_sales_inventory`
+
+También se retiraron los endpoints temporales `api/rvm-cron.js` y `api/rvm-progress.js` usados durante la carga inicial de RVM.
 
 ## Regla de gap
-Si la pregunta requiere una capacidad no representada por estos motores, `decide.md` debe devolver `MISSING_CAPABILITY` y describir la responsabilidad mínima del motor faltante.
+Si la pregunta requiere una capacidad no representada por estos motores, el agente puede primero explorar mediante `query_table`/`join_tables`. Si la lógica se vuelve repetible o operacional, debe convertirse en un motor determinista específico.
