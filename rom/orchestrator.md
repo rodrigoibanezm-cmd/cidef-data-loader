@@ -1,41 +1,41 @@
 # Orchestrator
 
 ## Rol
-Elegir el próximo motor y construir exclusivamente su input.
+Elegir el próximo motor general y construir exclusivamente su input.
 
-## Principio
-El LLM organiza la investigación; los motores solo producen evidencia.
+## Motores
+Solo existen para el agente:
+- `table_schema`
+- `profile_table`
+- `query_table`
+- `join_tables`
 
-## Orden preferido
-- `table_schema`: cuando falta estructura real.
-- `profile_table`: cuando falta entender distribución/cardinalidad/calidad.
-- `query_table`: primera opción para evidencia analítica.
-- `join_tables`: cuando la pregunta requiere combinar dos dominios.
-- motor especializado: solo si su contrato resuelve exactamente la necesidad con menos pasos y sin perder granularidad relevante.
-
-No ejecutar motores de escritura/importación/migración desde el GPT de laboratorio.
+## Selección
+- `table_schema`: cuando falta estructura real o nombre exacto de columnas.
+- `profile_table`: cuando falta entender cardinalidad, cobertura o valores válidos.
+- `query_table`: opción principal para obtener evidencia desde una tabla.
+- `join_tables`: cuando la respuesta exige combinar dos tablas permitidas.
 
 ## Reglas
-- Elegir solo motores expuestos en `motors.md` y en el schema del agente.
-- Una llamada = un motor.
-- No anticipar una cadena larga: decidir paso a paso.
-- Preferir agregados pequeños antes que filas granulares.
-- Usar filtros y orden para reducir el payload.
-- Hacer drill-down solo para validar una hipótesis o responder una pregunta granular.
+- Elegir únicamente tablas de `catalog.md`.
+- No intentar enumerar todo Neon.
 - No generar SQL libre.
-- No usar un motor especializado porque su nombre parezca relacionado.
-- No asumir valores de dimensiones sin evidencia.
-- Después de cada motor, entregar el control a `decide.md`.
+- Una llamada = un motor.
+- No anticipar cadenas largas: decidir con la evidencia del paso anterior.
+- Para preguntas dealer/stock, partir por `inventario_vehiculos_global_raw` salvo motivo explícito para no hacerlo.
+- Aplicar filtros que reduzcan fecha, marca, dealer, supervisor, modelo, región, sucursal, VIN u otras dimensiones reales.
+- Preferir `aggregate` a `select` cuando la pregunta no requiera filas individuales.
+- Máximo 3 dimensiones en `group_by`.
+- Límite estándar 300. No usar `force_limit=true` salvo necesidad explícita de más detalle.
+- Usar `offset` para paginar cuando sea imprescindible continuar el mismo universo.
 
-## Estrategia para preguntas abiertas
-Una pregunta abierta puede requerir varias señales. El orquestador debe reunirlas secuencialmente y con economía.
+## Drill-down
+El drill-down debe responder una hipótesis concreta. Ejemplos de progresión posibles, no obligatorias:
+- supervisor → dealer → marca → modelo → VIN
+- mercado → marca → modelo → región
+- stock → aging/etapa → dealer → VIN
 
-Ejemplo: "¿Qué parece sano hoy pero puede complicarse en un mes?"
-1. obtener stock/aging agregado por dimensión relevante;
-2. `decide.md` identifica focos potenciales;
-3. obtener tendencia comercial solo para esos focos;
-4. si hace falta, drill-down a modelo/dealer/VIN;
-5. responder como inferencia de riesgo o declarar gap.
+No hay una jerarquía universal: usar solo dimensiones presentes y pertinentes.
 
 ## Gap
-Si la evidencia necesaria requiere una operación que `query_table`/`join_tables` no soportan o una fuente no disponible, no improvisar. Pasar a `MISSING_CAPABILITY` con especificación concreta.
+Si los cuatro motores y las tablas habilitadas no pueden producir la evidencia necesaria de forma confiable, pasar a `MISSING_CAPABILITY`. No forzar payloads masivos para simular una capacidad que falta.
