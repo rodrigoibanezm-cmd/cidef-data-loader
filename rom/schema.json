@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Dealer Data Agent Router",
-    "version": "3.0.4",
-    "description": "Superficie read-only del agente analítico. Ejecuta un motor por llamada."
+    "version": "4.0.0",
+    "description": "Superficie read-only del agente analítico. Una llamada ejecuta exactamente un motor general sobre tablas permitidas."
   },
   "servers": [
     { "url": "https://cidef-data-loader.vercel.app" }
@@ -12,7 +12,7 @@
     "/api/router": {
       "post": {
         "operationId": "dealerDataRouter",
-        "summary": "Ejecuta exactamente un motor analítico read-only",
+        "summary": "Ejecuta un motor analítico read-only",
         "requestBody": {
           "required": true,
           "content": {
@@ -28,115 +28,146 @@
                       "table_schema",
                       "profile_table",
                       "query_table",
-                      "join_tables",
-                      "dealer_inventory_aging",
-                      "market_penetration",
-                      "rvm_market_pareto",
-                      "rvm_quality_audit",
-                      "geographic_market_analysis",
-                      "monthly_seasonality_analysis",
-                      "intramonth_week_curve"
+                      "join_tables"
                     ]
                   },
                   "input": {
                     "type": "object",
-                    "description": "Parametros del motor. Para table_schema, profile_table y query_table se debe enviar table. Para join_tables se deben enviar left_table, right_table, left_key y right_key.",
                     "additionalProperties": false,
+                    "description": "Parametros del motor. table_schema/profile_table/query_table usan table; join_tables usa left_table/right_table/left_key/right_key.",
                     "properties": {
                       "table": {
                         "type": "string",
-                        "description": "Tabla requerida por table_schema, profile_table y query_table. Ejemplo: rvm_raw."
+                        "enum": [
+                          "inventario_vehiculos_global_raw",
+                          "rvm_raw",
+                          "dealers_master",
+                          "supervisor_dealer_analytics",
+                          "brands_master",
+                          "vehicle_models_master",
+                          "vehicle_versions_master",
+                          "active_vehicle_models",
+                          "active_vehicle_models_history",
+                          "market_penetration_monthly_all",
+                          "market_penetration_monthly_china",
+                          "locales_master",
+                          "persona_local",
+                          "personas_master",
+                          "forum_dealers_master"
+                        ]
                       },
                       "tables": {
                         "type": "array",
-                        "items": { "type": "string" },
-                        "description": "Alternativa a table para table_schema cuando se desean varias tablas."
+                        "maxItems": 15,
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "inventario_vehiculos_global_raw",
+                            "rvm_raw",
+                            "dealers_master",
+                            "supervisor_dealer_analytics",
+                            "brands_master",
+                            "vehicle_models_master",
+                            "vehicle_versions_master",
+                            "active_vehicle_models",
+                            "active_vehicle_models_history",
+                            "market_penetration_monthly_all",
+                            "market_penetration_monthly_china",
+                            "locales_master",
+                            "persona_local",
+                            "personas_master",
+                            "forum_dealers_master"
+                          ]
+                        }
                       },
                       "operation": {
                         "type": "string",
-                        "enum": ["select", "aggregate"],
-                        "description": "Operacion de query_table."
+                        "enum": ["select", "aggregate"]
                       },
                       "columns": {
                         "type": "array",
-                        "items": { "type": "string" },
-                        "description": "Columnas a devolver en query_table."
+                        "items": { "type": "string" }
                       },
                       "filters": {
                         "type": "array",
-                        "items": {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": ["column", "op"],
-                          "properties": {
-                            "column": { "type": "string" },
-                            "op": {
-                              "type": "string",
-                              "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "in", "is_null", "not_null"]
-                            },
-                            "value": {}
-                          }
-                        }
+                        "items": { "$ref": "#/components/schemas/Filter" }
+                      },
+                      "left_filters": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/Filter" }
+                      },
+                      "right_filters": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/Filter" }
                       },
                       "group_by": {
                         "type": "array",
-                        "items": { "type": "string" }
+                        "maxItems": 3,
+                        "items": {
+                          "oneOf": [
+                            { "type": "string" },
+                            { "$ref": "#/components/schemas/JoinGroup" }
+                          ]
+                        }
                       },
                       "metrics": {
                         "type": "array",
-                        "items": {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": ["op"],
-                          "properties": {
-                            "op": { "type": "string", "enum": ["count", "sum", "avg", "min", "max"] },
-                            "column": { "type": "string" },
-                            "as": { "type": "string" }
-                          }
-                        }
+                        "items": { "$ref": "#/components/schemas/Metric" }
                       },
                       "distinct": { "type": "boolean" },
                       "order_by": {
                         "type": "array",
-                        "items": {
-                          "type": "object",
-                          "additionalProperties": false,
-                          "required": ["column"],
-                          "properties": {
-                            "column": { "type": "string" },
-                            "direction": { "type": "string", "enum": ["asc", "desc"] }
-                          }
-                        }
+                        "items": { "$ref": "#/components/schemas/OrderBy" }
                       },
-                      "limit": { "type": "integer", "minimum": 1, "maximum": 500 },
-                      "left_table": { "type": "string", "description": "Tabla izquierda requerida por join_tables." },
-                      "right_table": { "type": "string", "description": "Tabla derecha requerida por join_tables." },
-                      "left_key": { "type": "string", "description": "Columna de join de la tabla izquierda." },
-                      "right_key": { "type": "string", "description": "Columna de join de la tabla derecha." },
-                      "join_type": { "type": "string", "enum": ["inner", "left"] },
-                      "left_columns": { "type": "array", "items": { "type": "string" } },
-                      "right_columns": { "type": "array", "items": { "type": "string" } },
-                      "normalize_keys": { "type": "boolean" },
-                      "min_days": { "type": "integer", "minimum": 0 },
-                      "dealer": { "type": "string" },
-                      "as_of": { "type": "string", "description": "Fecha YYYY-MM-DD." },
-                      "universe": { "type": "string" },
-                      "segment": { "type": "string" },
-                      "brand": { "type": "string" },
-                      "model": { "type": "string" },
-                      "threshold_pct": { "type": "number" },
-                      "period": { "type": "string" },
-                      "level": { "type": "string" },
-                      "months": { "type": "integer" },
-                      "comparison": { "type": "string" },
-                      "end_month": { "type": "string" },
-                      "page": { "type": "integer" },
-                      "page_size": { "type": "integer" },
-                      "scope": { "type": "string" },
-                      "branch": { "type": "string" },
-                      "seller": { "type": "string" },
-                      "date_from": { "type": "string" },
-                      "date_to": { "type": "string" }
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2000,
+                        "default": 300,
+                        "description": "Estandar 300. Valores sobre 300 requieren force_limit=true."
+                      },
+                      "force_limit": {
+                        "type": "boolean",
+                        "description": "Debe ser true para solicitar mas de 300 filas."
+                      },
+                      "offset": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "default": 0
+                      },
+                      "top_limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20,
+                        "description": "Solo profile_table."
+                      },
+                      "sample_limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10,
+                        "description": "Solo profile_table."
+                      },
+                      "left_table": {
+                        "$ref": "#/components/schemas/AllowedTable"
+                      },
+                      "right_table": {
+                        "$ref": "#/components/schemas/AllowedTable"
+                      },
+                      "left_key": { "type": "string" },
+                      "right_key": { "type": "string" },
+                      "join_type": {
+                        "type": "string",
+                        "enum": ["inner", "left"]
+                      },
+                      "left_columns": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                      },
+                      "right_columns": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                      },
+                      "normalize_keys": { "type": "boolean" }
                     }
                   }
                 }
@@ -146,9 +177,89 @@
         },
         "responses": {
           "200": { "description": "Resultado del motor" },
-          "400": { "description": "Request invalido o motor no permitido" },
+          "400": { "description": "Request invalido o capacidad no permitida" },
           "401": { "description": "No autorizado" },
           "500": { "description": "Error interno" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AllowedTable": {
+        "type": "string",
+        "enum": [
+          "inventario_vehiculos_global_raw",
+          "rvm_raw",
+          "dealers_master",
+          "supervisor_dealer_analytics",
+          "brands_master",
+          "vehicle_models_master",
+          "vehicle_versions_master",
+          "active_vehicle_models",
+          "active_vehicle_models_history",
+          "market_penetration_monthly_all",
+          "market_penetration_monthly_china",
+          "locales_master",
+          "persona_local",
+          "personas_master",
+          "forum_dealers_master"
+        ]
+      },
+      "Filter": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["column", "op"],
+        "properties": {
+          "column": { "type": "string" },
+          "op": {
+            "type": "string",
+            "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "in", "is_null", "not_null"]
+          },
+          "value": {}
+        }
+      },
+      "Metric": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["op"],
+        "properties": {
+          "op": {
+            "type": "string",
+            "enum": ["count", "sum", "avg", "min", "max"]
+          },
+          "column": { "type": "string" },
+          "as": { "type": "string" },
+          "side": {
+            "type": "string",
+            "enum": ["left", "right"],
+            "description": "Solo join_tables cuando la metrica usa una columna."
+          }
+        }
+      },
+      "JoinGroup": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["side", "column"],
+        "properties": {
+          "side": {
+            "type": "string",
+            "enum": ["left", "right"]
+          },
+          "column": { "type": "string" },
+          "as": { "type": "string" }
+        }
+      },
+      "OrderBy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["column"],
+        "properties": {
+          "column": { "type": "string" },
+          "direction": {
+            "type": "string",
+            "enum": ["asc", "desc"]
+          }
         }
       }
     }
