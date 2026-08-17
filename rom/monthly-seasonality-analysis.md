@@ -1,8 +1,10 @@
-# monthly_seasonality_analysis
+# `monthly_seasonality_analysis`
+
+## Estado
+Motor especializado de lectura para estacionalidad mensual. No reemplaza el análisis temporal general con `query_table` sobre `rvm_raw` u otras tablas.
 
 ## Responsabilidad
-Mide estacionalidad mensual histórica sobre matriculaciones RVM. MARKET y CIDEF
-son scopes separados; la fecha siempre es `rvm_raw.fecha`.
+Mide patrones mensuales históricos de matriculaciones bajo su contrato actual. MARKET y CIDEF son scopes separados; la fecha base es `rvm_raw.fecha`.
 
 ## Input
 ```json
@@ -20,32 +22,16 @@ son scopes separados; la fecha siempre es `rvm_raw.fecha`.
 }
 ```
 
-`scope` es obligatorio; `group_by` usa `TOTAL` por defecto. MARKET admite solo
-TOTAL, MARCA y MODELO, y rechaza filtros de sucursal/vendedor. `page_size` máximo
-es 100 y pagina valores de grupo completos; TOTAL devuelve toda su serie y
-`pagination: null`. Sin fechas se usa todo el histórico filtrado disponible.
+Los valores de dimensiones deben validarse contra datos actuales.
 
-## Output
-- `periodo`: primer y último mes con datos después de filtros.
-- `coverage`: `null` en MARKET; en CIDEF incluye `rvm_cidef`, `matched`,
-  `unmatched`, `match_pct` como números.
-- `pagination`: metadatos por valores de grupo.
-- `summary_by_month_number`: grupo, mes, nombre, promedios, años observados y
-  `historical_trend_pct` (cambio desde la observación más antigua a la más nueva).
-- `series`: año-mes, grupo, unidades, pesos anual/trimestral, desviación contra
-  el promedio histórico del mismo mes y ranking dentro del año.
+## Límites
+- MARKET: TOTAL, MARCA, MODELO.
+- CIDEF: además SUCURSAL y VENDEDOR bajo el join implementado.
+- No usar este motor para inventario dealer, aging, proyección o causalidad.
+- Si la pregunta necesita otra granularidad, período o comparación, usar motores generales.
 
-Pesos y desviaciones se redondean a 4 decimales. Los pesos usan solo meses
-observados dentro del rango solicitado; no se completan meses faltantes.
+## Join CIDEF
+El join RVM/notas se realiza con la normalización y deduplicación implementadas por el motor. La cobertura del match forma parte del resultado y debe considerarse antes de concluir.
 
-## JOIN CIDEF
-Se normaliza con `UPPER(TRIM())` y se usa el primer valor no vacío entre RVM
-`vin` y `n_chasis`. Antes del JOIN, `notas_venta_raw` se reduce a una fila por
-`chasis`: presencia de `fecha_factura`, mayor valor de `fecha_factura`, mayor
-`fecha_nota_de_venta`, mayor completitud vendedor/sucursal y desempate alfabético.
-Filas idénticas producen el mismo enriquecimiento. El JOIN final es 1:0/1 y no
-multiplica filas RVM.
-
-Coverage se calcula tras fecha, marca y modelo, antes de sucursal/vendedor,
-porque esos atributos no existen para unidades no matcheadas. No se completa el
-universo faltante con otras tablas.
+## Regla de uso
+Usarlo cuando la pregunta sea explícitamente de estacionalidad mensual y el contrato baste. Para preguntas temporales nuevas, explorar primero con motores generales y promover una lógica a motor solo si se vuelve repetible.
