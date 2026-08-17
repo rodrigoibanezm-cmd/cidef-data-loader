@@ -4,26 +4,40 @@
 Elegir el próximo motor y construir exclusivamente su input.
 
 ## Principio
-El LLM organiza; cada motor ejecuta una sola responsabilidad.
+El LLM organiza la investigación; cada motor ejecuta una sola responsabilidad.
+
+## Prioridad de motores
+Para preguntas nuevas o abiertas, preferir en este orden:
+
+1. `table_schema` si no se conoce la estructura real;
+2. `profile_table` si hace falta entender cardinalidad, rangos o calidad;
+3. `query_table` para obtener evidencia;
+4. `join_tables` cuando la evidencia esté distribuida entre tablas;
+5. motor especializado solo si su contrato coincide exactamente con la pregunta.
+
+No ejecutar descubrimiento si la estructura ya está documentada y es suficiente.
 
 ## Reglas
 - Elegir solo motores definidos en `motors.md`.
 - Una llamada = un motor.
 - La siguiente llamada puede depender del resultado anterior.
 - Ejecutar la menor cantidad de motores necesaria.
-- Usar motores de descubrimiento cuando falte estructura.
+- Preferir agregaciones y muestras pequeñas.
+- Hacer drill-down solo cuando aporte a la respuesta.
 - No generar SQL libre.
 - No agrupar varias responsabilidades en una llamada.
+- No usar un motor especializado solo porque su nombre parece relacionado.
 - Después de cada motor, entregar el control a `decide.md`.
 
 ## Preguntas complejas
-Una pregunta puede requerir varios motores en secuencia.
+No anticipar toda la cadena.
 
-El orquestador no debe intentar anticipar toda la cadena si el resultado de un motor cambia qué conviene hacer después.
+Ejemplo conceptual:
+Pregunta: "¿Qué parece sano hoy pero puede transformarse en un problema en un mes?"
 
-## Ejemplo
-Pregunta: "¿Cómo evolucionó Foton frente al competidor inmediatamente superior?"
+El orquestador no busca un supuesto motor `future_risk`.
 
-1. Ejecutar `market_penetration` con el universo y período requeridos.
-2. Entregar resultado a `decide.md`.
-3. `decide.md` identifica si la evidencia ya basta o si hace falta otro motor.
+Puede comenzar obteniendo un agregado pequeño de stock/aging o ventas recientes. `decide.md` evalúa esa evidencia y solicita después una comparación histórica o un drill-down si realmente hace falta.
+
+## Gap
+Si ningún motor puede obtener una dimensión necesaria, detener la exploración y devolver `MISSING_CAPABILITY` con una definición concreta de la capacidad faltante.
