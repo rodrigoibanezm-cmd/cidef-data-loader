@@ -1,53 +1,50 @@
 # Motores RVM
 
-## `refresh_vehicle_models_master`
-- Responsabilidad: insertar modelos por `brand_id + modelo_homologado` sin borrar históricos.
-- Input: `{}`.
-- Output: `{created_models, existing_models, pending_brands, pending_brand_rows}`.
-- Lee: `rvm_raw`, `brands_master`, `vehicle_models_master`.
-- Escribe: `vehicle_models_master`.
-- Dependencia: `brands_master` actualizado.
-- Ejemplo: `{"motor":"refresh_vehicle_models_master","input":{}}`.
+## Principio
+RVM no se limita a motores especializados. El agente puede consultar `rvm_raw` y maestros directamente mediante `table_schema`, `profile_table`, `query_table` y `join_tables`.
 
-## `refresh_vehicle_versions_master`
-- Responsabilidad: insertar versiones y completar combustible antes nulo.
-- Input: `{}`.
-- Output: `{created_versions, updated_versions, pending_versions}`.
-- Lee: `rvm_raw`, `brands_master`, `vehicle_models_master`, `vehicle_versions_master`.
-- Escribe: `vehicle_versions_master`.
-- Dependencia: ejecutar después de `refresh_vehicle_models_master`.
-- Ejemplo: `{"motor":"refresh_vehicle_versions_master","input":{}}`.
+Los motores siguientes son contratos especializados existentes. Usarlos solo cuando coincidan exactamente con la pregunta.
 
-## `classify_electrification`
-- Responsabilidad: clasificar versiones solo con evidencia de combustible/nombre.
-- Input: `{}`.
-- Output: `{ICE, HEV, PHEV, BEV, PENDIENTE}`.
-- Lee/escribe: `vehicle_versions_master`.
-- Dependencia: ejecutar después de refrescar versiones.
-- Ejemplo: `{"motor":"classify_electrification","input":{}}`.
+## Lectura especializada
 
-## `rvm_market_pareto`
-- Responsabilidad: calcular concentración mensual por marca/modelo.
-- Input: `{universe, segment, brand, threshold_pct, period}`.
-- Defaults: `ALL`, `null`, `null`, `80`, último mes.
-- Output: período, filtros, unidades, cantidad de modelos y ranking acumulado.
-- Lee: `rvm_raw`, `brands_master`. No escribe.
-- Dependencia: `brands_master.origen_marca` para universo `CHINA`.
-- Ejemplo: `{"motor":"rvm_market_pareto","input":{"universe":"CHINA"}}`.
+### `rvm_market_pareto`
+Concentración/Pareto mensual por marca/modelo. Útil para preguntas de concentración; no sustituye una consulta general de RVM.
 
-## `rvm_quality_audit`
-- Responsabilidad: resumir integridad y consistencia de todo el RVM.
-- Input: `{}`.
-- Output: `{ok, period, checks, critical_issues, warnings}`.
-- Lee: RVM y maestros; no escribe.
-- Dependencias: maestros y snapshot activo existentes.
-- `period` informa el último mes disponible como referencia.
-- Ejemplo: `{"motor":"rvm_quality_audit","input":{}}`.
+### `rvm_quality_audit`
+Auditoría resumida de integridad y consistencia del RVM y maestros.
 
-## Orden de actualización
-1. `import_rvm`
-2. `refresh_vehicle_models_master`
-3. `refresh_vehicle_versions_master`
-4. `classify_electrification`
-5. `refresh_active_vehicle_models`
-6. materializaciones analíticas existentes
+### `market_penetration`
+Evolución/ranking de penetración mensual bajo su contrato existente.
+
+### `geographic_market_analysis`
+Share/ranking/evolución por región o comuna bajo su contrato documentado.
+
+### `monthly_seasonality_analysis`
+Estacionalidad mensual bajo su contrato documentado.
+
+### `intramonth_week_curve`
+Distribución intrames bajo su contrato documentado.
+
+## Maestros y materializaciones del backend
+Estos motores escriben o actualizan datos y no deben exponerse al GPT analítico read-only:
+- `refresh_vehicle_models_master`
+- `refresh_vehicle_versions_master`
+- `classify_electrification`
+- `refresh_active_vehicle_models`
+- `refresh_market_penetration_monthly`
+- `detect_pending_model_enrichment`
+- `upsert_model_enrichment`
+- `import_rvm`
+
+## Tablas RVM accesibles al análisis general
+- `rvm_raw`
+- `brands_master`
+- `vehicle_models_master`
+- `vehicle_versions_master`
+- `active_vehicle_models`
+- `active_vehicle_models_history`
+- `market_penetration_monthly_all`
+- `market_penetration_monthly_china`
+
+## Regla de diseño
+No agregar un nuevo motor RVM solo porque aparezca una pregunta nueva. Primero intentar resolverla con motores generales. Crear un motor especializado cuando exista lógica determinista repetible, costo excesivo de composición o una regla de negocio que deba quedar estable y testeada.
