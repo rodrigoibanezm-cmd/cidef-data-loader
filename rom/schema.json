@@ -1,8 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Cidef Data Router",
-    "version": "2.0.0"
+    "title": "Cidef Data Agent Router",
+    "version": "3.0.0",
+    "description": "Superficie read-only del agente analítico Cidef. Ejecuta un motor por llamada; no expone imports, migraciones, upserts ni refreshes de escritura."
   },
   "servers": [
     { "url": "https://cidef-data-loader.vercel.app" }
@@ -11,7 +12,7 @@
     "/api/router": {
       "post": {
         "operationId": "cidefRouter",
-        "summary": "Ejecuta exactamente un motor determinista de Cidef",
+        "summary": "Ejecuta exactamente un motor analítico read-only de Cidef",
         "parameters": [
           {
             "name": "x-import-secret",
@@ -32,34 +33,12 @@
                   "motor": {
                     "type": "string",
                     "enum": [
-                      "import_inventario",
-                      "import_notas_venta",
-                      "import_estadisticas_venta",
-                      "import_lista_precios",
-                      "import_rvm",
+                      "table_schema",
                       "profile_table",
                       "query_table",
-                      "table_schema",
                       "join_tables",
-                      "sales_consolidation",
-                      "time_analysis",
-                      "distribution_analysis",
-                      "group_analysis",
-                      "trend_analysis",
-                      "correlation_analysis",
-                      "outlier_analysis",
-                      "cohort_analysis",
-                      "margin_analysis",
-                      "inventory_aging",
-                      "available_inventory",
+                      "dealer_inventory_aging",
                       "market_penetration",
-                      "refresh_market_penetration_monthly",
-                      "refresh_active_vehicle_models",
-                      "detect_pending_model_enrichment",
-                      "upsert_model_enrichment",
-                      "refresh_vehicle_models_master",
-                      "refresh_vehicle_versions_master",
-                      "classify_electrification",
                       "rvm_market_pareto",
                       "rvm_quality_audit",
                       "geographic_market_analysis",
@@ -78,7 +57,7 @@
         },
         "responses": {
           "200": { "description": "Resultado del motor" },
-          "400": { "description": "Request inválido" },
+          "400": { "description": "Request inválido o motor no permitido" },
           "401": { "description": "No autorizado" },
           "500": { "description": "Error interno" }
         }
