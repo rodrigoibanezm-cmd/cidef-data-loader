@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Dealer Data Agent Router",
-    "version": "4.1.0",
+    "version": "4.1.1",
     "description": "Read-only analytical router. One request executes one general motor for the fixed analytical tenant."
   },
   "servers": [
@@ -33,7 +33,7 @@
                   },
                   "input": {
                     "type": "object",
-                    "description": "Motor input. table_schema/profile_table/query_table use table. join_tables uses left_table, right_table, left_key and right_key.",
+                    "description": "Motor input. For join_tables aggregate, group_by items must include side=left|right and column. Metrics using a column must also include side; count without column means COUNT(*).",
                     "properties": {
                       "table": { "type": "string" },
                       "tables": { "type": "array", "items": { "type": "string" } },
@@ -72,11 +72,26 @@
                           }
                         }
                       },
-                      "group_by": { "type": "array", "maxItems": 3, "items": {} },
-                      "metrics": {
+                      "group_by": {
                         "type": "array",
+                        "maxItems": 3,
+                        "description": "For join_tables aggregate use objects with side and column. Example: {side:left,column:supervisor,as:supervisor}.",
                         "items": {
                           "type": "object",
+                          "required": ["side", "column"],
+                          "properties": {
+                            "side": { "type": "string", "enum": ["left", "right"] },
+                            "column": { "type": "string" },
+                            "as": { "type": "string" }
+                          }
+                        }
+                      },
+                      "metrics": {
+                        "type": "array",
+                        "description": "When column is supplied in join_tables aggregate, side is required. For COUNT(*) omit both column and side.",
+                        "items": {
+                          "type": "object",
+                          "required": ["op"],
                           "properties": {
                             "op": { "type": "string", "enum": ["count", "sum", "avg", "min", "max"] },
                             "column": { "type": "string" },
