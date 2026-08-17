@@ -1,18 +1,18 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Cidef Data Agent Router",
-    "version": "3.0.1",
-    "description": "Superficie read-only del agente analítico Cidef. Ejecuta un motor por llamada; no expone imports, migraciones, upserts ni refreshes de escritura. La autenticación se configura en GPT Actions, fuera del schema OpenAPI."
+    "title": "Dealer Data Agent Router",
+    "version": "3.0.2",
+    "description": "Superficie read-only del agente analítico. Ejecuta un motor por llamada; no expone imports, migraciones, upserts ni refreshes de escritura. La autenticación se configura en GPT Actions, fuera del schema OpenAPI."
   },
   "servers": [
-    { "url": "https://cidef-data-loader.vercel.app" }
+    { "url": "https://dealer-data-router.vercel.app" }
   ],
   "paths": {
     "/api/router": {
       "post": {
-        "operationId": "cidefRouter",
-        "summary": "Ejecuta exactamente un motor analítico read-only de Cidef",
+        "operationId": "dealerDataRouter",
+        "summary": "Ejecuta exactamente un motor analítico read-only",
         "requestBody": {
           "required": true,
           "content": {
