@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Dealer Data Agent Router",
-    "version": "4.0.0",
-    "description": "Superficie read-only del agente analítico. Una llamada ejecuta exactamente un motor general sobre tablas permitidas."
+    "version": "4.0.1",
+    "description": "Read-only analytical router. One request executes one general motor."
   },
   "servers": [
     { "url": "https://cidef-data-loader.vercel.app" }
@@ -12,161 +12,96 @@
     "/api/router": {
       "post": {
         "operationId": "dealerDataRouter",
-        "summary": "Ejecuta un motor analítico read-only",
+        "summary": "Run one read-only analytical motor",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": false,
                 "required": ["motor", "input"],
                 "properties": {
                   "motor": {
                     "type": "string",
-                    "enum": [
-                      "table_schema",
-                      "profile_table",
-                      "query_table",
-                      "join_tables"
-                    ]
+                    "enum": ["table_schema", "profile_table", "query_table", "join_tables"]
                   },
                   "input": {
                     "type": "object",
-                    "additionalProperties": false,
-                    "description": "Parametros del motor. table_schema/profile_table/query_table usan table; join_tables usa left_table/right_table/left_key/right_key.",
+                    "description": "Motor input. table_schema/profile_table/query_table use table. join_tables uses left_table, right_table, left_key and right_key.",
                     "properties": {
-                      "table": {
-                        "type": "string",
-                        "enum": [
-                          "inventario_vehiculos_global_raw",
-                          "rvm_raw",
-                          "dealers_master",
-                          "supervisor_dealer_analytics",
-                          "brands_master",
-                          "vehicle_models_master",
-                          "vehicle_versions_master",
-                          "active_vehicle_models",
-                          "active_vehicle_models_history",
-                          "market_penetration_monthly_all",
-                          "market_penetration_monthly_china",
-                          "locales_master",
-                          "persona_local",
-                          "personas_master",
-                          "forum_dealers_master"
-                        ]
-                      },
-                      "tables": {
-                        "type": "array",
-                        "maxItems": 15,
-                        "items": {
-                          "type": "string",
-                          "enum": [
-                            "inventario_vehiculos_global_raw",
-                            "rvm_raw",
-                            "dealers_master",
-                            "supervisor_dealer_analytics",
-                            "brands_master",
-                            "vehicle_models_master",
-                            "vehicle_versions_master",
-                            "active_vehicle_models",
-                            "active_vehicle_models_history",
-                            "market_penetration_monthly_all",
-                            "market_penetration_monthly_china",
-                            "locales_master",
-                            "persona_local",
-                            "personas_master",
-                            "forum_dealers_master"
-                          ]
-                        }
-                      },
-                      "operation": {
-                        "type": "string",
-                        "enum": ["select", "aggregate"]
-                      },
-                      "columns": {
-                        "type": "array",
-                        "items": { "type": "string" }
-                      },
+                      "table": { "type": "string" },
+                      "tables": { "type": "array", "items": { "type": "string" } },
+                      "operation": { "type": "string", "enum": ["select", "aggregate"] },
+                      "columns": { "type": "array", "items": { "type": "string" } },
                       "filters": {
                         "type": "array",
-                        "items": { "$ref": "#/components/schemas/Filter" }
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "column": { "type": "string" },
+                            "op": { "type": "string", "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "in", "is_null", "not_null"] },
+                            "value": {}
+                          }
+                        }
                       },
                       "left_filters": {
                         "type": "array",
-                        "items": { "$ref": "#/components/schemas/Filter" }
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "column": { "type": "string" },
+                            "op": { "type": "string", "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "in", "is_null", "not_null"] },
+                            "value": {}
+                          }
+                        }
                       },
                       "right_filters": {
                         "type": "array",
-                        "items": { "$ref": "#/components/schemas/Filter" }
-                      },
-                      "group_by": {
-                        "type": "array",
-                        "maxItems": 3,
                         "items": {
-                          "oneOf": [
-                            { "type": "string" },
-                            { "$ref": "#/components/schemas/JoinGroup" }
-                          ]
+                          "type": "object",
+                          "properties": {
+                            "column": { "type": "string" },
+                            "op": { "type": "string", "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "in", "is_null", "not_null"] },
+                            "value": {}
+                          }
                         }
                       },
+                      "group_by": { "type": "array", "maxItems": 3, "items": {} },
                       "metrics": {
                         "type": "array",
-                        "items": { "$ref": "#/components/schemas/Metric" }
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "op": { "type": "string", "enum": ["count", "sum", "avg", "min", "max"] },
+                            "column": { "type": "string" },
+                            "as": { "type": "string" },
+                            "side": { "type": "string", "enum": ["left", "right"] }
+                          }
+                        }
                       },
                       "distinct": { "type": "boolean" },
                       "order_by": {
                         "type": "array",
-                        "items": { "$ref": "#/components/schemas/OrderBy" }
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "column": { "type": "string" },
+                            "direction": { "type": "string", "enum": ["asc", "desc"] }
+                          }
+                        }
                       },
-                      "limit": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 2000,
-                        "default": 300,
-                        "description": "Estandar 300. Valores sobre 300 requieren force_limit=true."
-                      },
-                      "force_limit": {
-                        "type": "boolean",
-                        "description": "Debe ser true para solicitar mas de 300 filas."
-                      },
-                      "offset": {
-                        "type": "integer",
-                        "minimum": 0,
-                        "default": 0
-                      },
-                      "top_limit": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 20,
-                        "description": "Solo profile_table."
-                      },
-                      "sample_limit": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 10,
-                        "description": "Solo profile_table."
-                      },
-                      "left_table": {
-                        "$ref": "#/components/schemas/AllowedTable"
-                      },
-                      "right_table": {
-                        "$ref": "#/components/schemas/AllowedTable"
-                      },
+                      "limit": { "type": "integer", "minimum": 1, "maximum": 2000, "default": 300 },
+                      "force_limit": { "type": "boolean" },
+                      "offset": { "type": "integer", "minimum": 0, "default": 0 },
+                      "top_limit": { "type": "integer", "minimum": 1, "maximum": 20 },
+                      "sample_limit": { "type": "integer", "minimum": 1, "maximum": 10 },
+                      "left_table": { "type": "string" },
+                      "right_table": { "type": "string" },
                       "left_key": { "type": "string" },
                       "right_key": { "type": "string" },
-                      "join_type": {
-                        "type": "string",
-                        "enum": ["inner", "left"]
-                      },
-                      "left_columns": {
-                        "type": "array",
-                        "items": { "type": "string" }
-                      },
-                      "right_columns": {
-                        "type": "array",
-                        "items": { "type": "string" }
-                      },
+                      "join_type": { "type": "string", "enum": ["inner", "left"] },
+                      "left_columns": { "type": "array", "items": { "type": "string" } },
+                      "right_columns": { "type": "array", "items": { "type": "string" } },
                       "normalize_keys": { "type": "boolean" }
                     }
                   }
@@ -176,90 +111,10 @@
           }
         },
         "responses": {
-          "200": { "description": "Resultado del motor" },
-          "400": { "description": "Request invalido o capacidad no permitida" },
-          "401": { "description": "No autorizado" },
-          "500": { "description": "Error interno" }
-        }
-      }
-    }
-  },
-  "components": {
-    "schemas": {
-      "AllowedTable": {
-        "type": "string",
-        "enum": [
-          "inventario_vehiculos_global_raw",
-          "rvm_raw",
-          "dealers_master",
-          "supervisor_dealer_analytics",
-          "brands_master",
-          "vehicle_models_master",
-          "vehicle_versions_master",
-          "active_vehicle_models",
-          "active_vehicle_models_history",
-          "market_penetration_monthly_all",
-          "market_penetration_monthly_china",
-          "locales_master",
-          "persona_local",
-          "personas_master",
-          "forum_dealers_master"
-        ]
-      },
-      "Filter": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["column", "op"],
-        "properties": {
-          "column": { "type": "string" },
-          "op": {
-            "type": "string",
-            "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "in", "is_null", "not_null"]
-          },
-          "value": {}
-        }
-      },
-      "Metric": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["op"],
-        "properties": {
-          "op": {
-            "type": "string",
-            "enum": ["count", "sum", "avg", "min", "max"]
-          },
-          "column": { "type": "string" },
-          "as": { "type": "string" },
-          "side": {
-            "type": "string",
-            "enum": ["left", "right"],
-            "description": "Solo join_tables cuando la metrica usa una columna."
-          }
-        }
-      },
-      "JoinGroup": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["side", "column"],
-        "properties": {
-          "side": {
-            "type": "string",
-            "enum": ["left", "right"]
-          },
-          "column": { "type": "string" },
-          "as": { "type": "string" }
-        }
-      },
-      "OrderBy": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["column"],
-        "properties": {
-          "column": { "type": "string" },
-          "direction": {
-            "type": "string",
-            "enum": ["asc", "desc"]
-          }
+          "200": { "description": "Motor result" },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Internal error" }
         }
       }
     }
