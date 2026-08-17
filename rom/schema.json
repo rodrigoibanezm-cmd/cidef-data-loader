@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Dealer Data Agent Router",
-    "version": "4.0.1",
-    "description": "Read-only analytical router. One request executes one general motor."
+    "version": "4.1.0",
+    "description": "Read-only analytical router. One request executes one general motor for the fixed analytical tenant."
   },
   "servers": [
     { "url": "https://cidef-data-loader.vercel.app" }
@@ -19,8 +19,14 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["motor", "input"],
+                "required": ["tenant", "motor", "input"],
                 "properties": {
+                  "tenant": {
+                    "type": "string",
+                    "enum": ["dealer_analytics"],
+                    "default": "dealer_analytics",
+                    "description": "Always send dealer_analytics."
+                  },
                   "motor": {
                     "type": "string",
                     "enum": ["table_schema", "profile_table", "query_table", "join_tables"]
@@ -113,7 +119,7 @@
         "responses": {
           "200": { "description": "Motor result" },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "403": { "description": "Tenant or motor not allowed" },
           "500": { "description": "Internal error" }
         }
       }
