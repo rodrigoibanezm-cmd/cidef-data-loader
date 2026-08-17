@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Dealer Data Agent Router",
-    "version": "3.0.3",
-    "description": "Superficie read-only del agente analítico. Ejecuta un motor por llamada; no expone imports, migraciones, upserts ni refreshes de escritura. La autenticación se configura en GPT Actions, fuera del schema OpenAPI."
+    "version": "3.0.4",
+    "description": "Superficie read-only del agente analítico. Ejecuta un motor por llamada."
   },
   "servers": [
     { "url": "https://cidef-data-loader.vercel.app" }
@@ -40,7 +40,104 @@
                   },
                   "input": {
                     "type": "object",
-                    "additionalProperties": true
+                    "description": "Parametros del motor. Para table_schema, profile_table y query_table se debe enviar table. Para join_tables se deben enviar left_table, right_table, left_key y right_key.",
+                    "additionalProperties": false,
+                    "properties": {
+                      "table": {
+                        "type": "string",
+                        "description": "Tabla requerida por table_schema, profile_table y query_table. Ejemplo: rvm_raw."
+                      },
+                      "tables": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "Alternativa a table para table_schema cuando se desean varias tablas."
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": ["select", "aggregate"],
+                        "description": "Operacion de query_table."
+                      },
+                      "columns": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "Columnas a devolver en query_table."
+                      },
+                      "filters": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["column", "op"],
+                          "properties": {
+                            "column": { "type": "string" },
+                            "op": {
+                              "type": "string",
+                              "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "in", "is_null", "not_null"]
+                            },
+                            "value": {}
+                          }
+                        }
+                      },
+                      "group_by": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                      },
+                      "metrics": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["op"],
+                          "properties": {
+                            "op": { "type": "string", "enum": ["count", "sum", "avg", "min", "max"] },
+                            "column": { "type": "string" },
+                            "as": { "type": "string" }
+                          }
+                        }
+                      },
+                      "distinct": { "type": "boolean" },
+                      "order_by": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": ["column"],
+                          "properties": {
+                            "column": { "type": "string" },
+                            "direction": { "type": "string", "enum": ["asc", "desc"] }
+                          }
+                        }
+                      },
+                      "limit": { "type": "integer", "minimum": 1, "maximum": 500 },
+                      "left_table": { "type": "string", "description": "Tabla izquierda requerida por join_tables." },
+                      "right_table": { "type": "string", "description": "Tabla derecha requerida por join_tables." },
+                      "left_key": { "type": "string", "description": "Columna de join de la tabla izquierda." },
+                      "right_key": { "type": "string", "description": "Columna de join de la tabla derecha." },
+                      "join_type": { "type": "string", "enum": ["inner", "left"] },
+                      "left_columns": { "type": "array", "items": { "type": "string" } },
+                      "right_columns": { "type": "array", "items": { "type": "string" } },
+                      "normalize_keys": { "type": "boolean" },
+                      "min_days": { "type": "integer", "minimum": 0 },
+                      "dealer": { "type": "string" },
+                      "as_of": { "type": "string", "description": "Fecha YYYY-MM-DD." },
+                      "universe": { "type": "string" },
+                      "segment": { "type": "string" },
+                      "brand": { "type": "string" },
+                      "model": { "type": "string" },
+                      "threshold_pct": { "type": "number" },
+                      "period": { "type": "string" },
+                      "level": { "type": "string" },
+                      "months": { "type": "integer" },
+                      "comparison": { "type": "string" },
+                      "end_month": { "type": "string" },
+                      "page": { "type": "integer" },
+                      "page_size": { "type": "integer" },
+                      "scope": { "type": "string" },
+                      "branch": { "type": "string" },
+                      "seller": { "type": "string" },
+                      "date_from": { "type": "string" },
+                      "date_to": { "type": "string" }
+                    }
                   }
                 }
               }
@@ -49,7 +146,7 @@
         },
         "responses": {
           "200": { "description": "Resultado del motor" },
-          "400": { "description": "Request inválido o motor no permitido" },
+          "400": { "description": "Request invalido o motor no permitido" },
           "401": { "description": "No autorizado" },
           "500": { "description": "Error interno" }
         }
