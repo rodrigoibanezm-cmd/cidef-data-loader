@@ -4,6 +4,9 @@ const TENANTS = {
   dealer_analytics: {
     motors: ['table_schema', 'profile_table', 'query_table', 'join_tables'],
   },
+  data_loader: {
+    motors: ['import_lista_precios'],
+  },
 };
 
 export default async function handler(req, res) {
