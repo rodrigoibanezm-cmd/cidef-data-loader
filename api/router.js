@@ -5,7 +5,7 @@ const TENANTS = {
     motors: ['table_schema', 'profile_table', 'query_table', 'join_tables'],
   },
   data_loader: {
-    motors: ['import_lista_precios'],
+    motors: ['import_lista_precios', 'patch_inventario_modelo'],
   },
 };
 
