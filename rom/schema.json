@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Dealer Data Agent Router",
-    "version": "4.1.1",
+    "version": "4.1.2",
     "description": "Read-only analytical router. One request executes one general motor for the fixed analytical tenant."
   },
   "servers": [
@@ -33,7 +33,7 @@
                   },
                   "input": {
                     "type": "object",
-                    "description": "Motor input. For join_tables aggregate, group_by items must include side=left|right and column. Metrics using a column must also include side; count without column means COUNT(*).",
+                    "description": "Motor input. query_table aggregate uses group_by as column-name strings. join_tables aggregate uses group_by objects with side=left|right and column. Metrics using a column in join_tables must also include side; count without column means COUNT(*).",
                     "properties": {
                       "table": { "type": "string" },
                       "tables": { "type": "array", "items": { "type": "string" } },
@@ -75,20 +75,25 @@
                       "group_by": {
                         "type": "array",
                         "maxItems": 3,
-                        "description": "For join_tables aggregate use objects with side and column. Example: {side:left,column:supervisor,as:supervisor}.",
+                        "description": "For query_table aggregate use strings, e.g. [\"vendedor\"]. For join_tables aggregate use objects, e.g. [{\"side\":\"left\",\"column\":\"supervisor\",\"as\":\"supervisor\"}].",
                         "items": {
-                          "type": "object",
-                          "required": ["side", "column"],
-                          "properties": {
-                            "side": { "type": "string", "enum": ["left", "right"] },
-                            "column": { "type": "string" },
-                            "as": { "type": "string" }
-                          }
+                          "oneOf": [
+                            { "type": "string" },
+                            {
+                              "type": "object",
+                              "required": ["side", "column"],
+                              "properties": {
+                                "side": { "type": "string", "enum": ["left", "right"] },
+                                "column": { "type": "string" },
+                                "as": { "type": "string" }
+                              }
+                            }
+                          ]
                         }
                       },
                       "metrics": {
                         "type": "array",
-                        "description": "When column is supplied in join_tables aggregate, side is required. For COUNT(*) omit both column and side.",
+                        "description": "For query_table, side is ignored/not needed. For join_tables, when column is supplied side is required. For COUNT(*) omit both column and side.",
                         "items": {
                           "type": "object",
                           "required": ["op"],
