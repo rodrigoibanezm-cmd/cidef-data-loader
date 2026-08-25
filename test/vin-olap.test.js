@@ -121,3 +121,13 @@ test('SQL plan keeps pushdown and canonical bucket distinction', () => {
   assert.match(p.rows,/__MISSING__/); assert.match(p.rows,/__UNMATCHED__/); assert.match(p.rows,/GROUP BY/); assert.match(p.rows,/LIMIT 1 OFFSET 0/);
   assert.match(p.filteredCount,/COUNT\(\*\)/); assert.match(p.usedCount,/COUNT\(\*\)/); assert.match(p.universeCount,/COUNT\(\*\)/);
 });
+
+test('derived metric parameters are not bound to filter-only counts', () => {
+  const p = buildVinSqlPlan(base({
+    derived_metrics:[{name:'aging_days',aggregation:'AVG',as_of_date:'2026-08-25'}],
+  }));
+  assert.deepEqual(p.filterValues,[]);
+  assert.deepEqual(p.values,['2026-08-25']);
+  assert.doesNotMatch(p.filteredCount,/\$1/);
+  assert.match(p.rows,/\$1::date/);
+});
