@@ -1,46 +1,36 @@
 # VIN OLAP Engine V0.1
 
 ## Responsabilidad
-`vin_olap` ejecuta consultas semánticas deterministas sobre `VIN_SEMANTIC_CUBE_V0.1`:
+`vin_olap` ejecuta consultas semánticas deterministas sobre `VIN_SEMANTIC_CUBE_V0.1` sin aceptar SQL ni columnas físicas del caller.
 
-`validate → registry → normalize → universe → filter → aggregate → derive → reconcile → audit → JSON`.
+## Arquitectura
+- `vin-cube-registry.js`: contrato semántico y mappings físicos validados.
+- `vin-normalizers.js`: normalización VIN/texto/fechas.
+- `vin-auditors.js`: grain y reconciliaciones.
+- `vin-query-builder.js`: validación compartida y SQL determinista construido exclusivamente desde registry/enums internos.
+- `vin-engine.js`: engine puro sobre arrays para tests unitarios.
+- `vin-olap.js`: ejecución productiva en Postgres.
 
-No interpreta lenguaje natural y no acepta columnas físicas, SQL, regex ni fórmulas.
+Producción no carga la tabla completa en Node. Elegibilidad, universo, filtros, tiempo, grouping, `COUNT(*)`, aging, totals y paginación se empujan a Postgres. Auditorías usan queries auxiliares pequeñas.
 
-## Implementación
-- `lib/olap/vin-cube-registry.js`: contrato semántico versionado.
-- `lib/olap/vin-normalizers.js`: VIN/texto/fechas/duración.
-- `lib/olap/vin-auditors.js`: grain y reconciliaciones.
-- `lib/olap/vin-query-builder.js`: lectura física fija sin SQL del caller.
-- `lib/olap/vin-engine.js`: validación y ejecución pura sobre filas.
-- `lib/olap/vin-olap.js`: adaptador Neon.
-- `lib/motors/vin-olap.js`: wrapper de registro.
+## Filters
+Formato público:
+```json
+{"field":{"type":"dimension","name":"brand","level":"normalized"},"op":"in","value":["FOTON","DFM"]}
+```
+`field` string y nombres físicos se rechazan. `field.type="derived_metric"` para `aging_days` se rechaza en V0.1 con `METRIC_NOT_AVAILABLE`.
 
-## Contrato
-Entrada: cube, universe, measures, derived_metrics, dimensions, time, filters y options. Máximo 3 dimensiones no temporales más una temporal opcional. `time.grain=null` filtra sin agrupar.
+## Tiempo
+Toda consulta temporal declara `time.role`. `grain=null` filtra por fecha sin agregar dimensión temporal. Los roles físicos están declarados únicamente en el registry.
+
+## Identidad dealer
+`dealer_sale.canonical` hace join a `dealers_master`. `dealer_supervisor` se deriva desde el dealer canónico y corresponde al supervisor actual. Consultas con tiempo histórico requieren `options.identity_semantics="current"`; de lo contrario `HISTORICAL_IDENTITY_NOT_AVAILABLE`.
 
 ## Auditoría
-Incluye VIN Universe, Temporal Parse, Time Role, Dealer Stock, Universe Reconciliation y Aggregation Reconciliation. Un FAIL devuelve `result:null`; WARNING puede devolver datos.
+Se calculan independientemente de la página: source rows, VIN elegibles, duplicados, universo, filtered/used, parse temporal, totals y aggregation reconciliation. Un `FAIL` nunca devuelve filas analíticas.
 
-## Paginación
-`limit` y `offset` se aplican después de agregar. Totals, coverage y reconciliaciones usan todos los grupos.
-
-## Lineage
-Devuelve fuente física, fact, versión del cubo, universo, time role, normalizaciones e identity masters usados. Nunca devuelve SQL.
+## Limit/offset
+Solo afectan `result.rows`. `totals`, coverage y reconciliaciones siempre usan el universo completo. `has_more` usa el número total de grupos.
 
 ## Exposición
-El motor está registrado internamente en `lib/motors/index.js`, pero no se agrega a `dealer_analytics` ni al OpenAPI del Custom GPT en V0.1.
-
-## Ejemplo
-```json
-{
-  "cube":"VIN_SEMANTIC_CUBE_V0.1",
-  "universe":{"type":"ALL_VIN"},
-  "measures":[{"name":"unit_count","aggregation":"SUM","as":"units"}],
-  "derived_metrics":[],
-  "dimensions":[{"name":"seller","level":"normalized"}],
-  "time":{"role":"NV","grain":null,"from":"2026-01-01","to":"2026-07-31"},
-  "filters":[],
-  "options":{"include_totals":true,"include_coverage":true,"include_lineage":true,"limit":300,"offset":0}
-}
-```
+`vin_olap` permanece registrado internamente, pero `api/router.js` mantiene `dealer_analytics` únicamente con `table_schema`, `profile_table`, `query_table`, `join_tables`. `rom/schema.json` no expone `vin_olap`.
