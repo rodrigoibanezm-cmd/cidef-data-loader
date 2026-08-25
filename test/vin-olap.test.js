@@ -10,6 +10,7 @@ const rows = [
   { vin_chasis:'VIN2', vendedor:'ANA\tPÉREZ', fecha_nv:'02/15/26 10:00', fecha_ingreso_stk:'01/01/26 09:00', dealer_venta:'Dealer Dos', es_dealer:true, vigente:'1', reservado:false, marca:'DFM' },
   { vin_chasis:'VIN3', vendedor:null, fecha_nv:'02/20/26 10:00', fecha_ingreso_stk:'02/01/26 09:00', dealer_venta:'Dealer X', es_dealer:false, vigente:'0', reservado:false, marca:'FOTON' },
 ];
+const dealerStockRows = [...rows, { vin_chasis:'VIN4', vendedor:'OTRO', fecha_nv:'02/25/26 10:00', fecha_ingreso_stk:'02/05/26 09:00', dealer_venta:'Dealer X', es_dealer:true, vigente:'1', reservado:false, marca:'FOTON' }];
 const dealers = [{ dealer:'DEALER UNO', dealer_id:'D1' }, { dealer:'DEALER DOS', dealer_id:'D2' }];
 
 const base = (extra={}) => ({
@@ -50,12 +51,12 @@ test('NV time filter without grouping', () => {
 });
 
 test('dealer stock by dealer canonical preserves unmatched', () => {
-  const r = executeVinOlap(base({universe:{type:'DEALER_STOCK'},dimensions:[{name:'dealer_sale',level:'canonical'}]}), rows, dealers);
-  assert.deepEqual(r.result.rows.map(x=>x.dealer_sale).sort(), ['D1','D2']);
+  const r = executeVinOlap(base({universe:{type:'DEALER_STOCK'},dimensions:[{name:'dealer_sale',level:'canonical'}]}), dealerStockRows, dealers);
+  assert.deepEqual(r.result.rows.map(x=>x.dealer_sale).sort(), ['D1','D2','__UNMATCHED__']);
 });
 
 test('aging average dealer stock', () => {
-  const r = executeVinOlap(base({universe:{type:'DEALER_STOCK'},dimensions:[{name:'dealer_sale',level:'canonical'}],derived_metrics:[{name:'aging_days',aggregation:'AVG',as:'aging',as_of_date:'2026-03-01'}]}), rows, dealers);
+  const r = executeVinOlap(base({universe:{type:'DEALER_STOCK'},dimensions:[{name:'dealer_sale',level:'canonical'}],derived_metrics:[{name:'aging_days',aggregation:'AVG',as:'aging',as_of_date:'2026-03-01'}]}), dealerStockRows, dealers);
   assert.ok(r.result.rows.every(x=>typeof x.aging==='number'));
 });
 
@@ -93,6 +94,17 @@ test('physical field fails', () => {
 test('duplicate VIN fails grain audit', () => {
   const r = executeVinOlap(base(), [...rows,{...rows[0]}], dealers);
   assert.equal(r.ok,false); assert.equal(r.audit.checks[0].name,'VIN_GRAIN_VIOLATION');
+});
+
+test('aggregation reconciliation', () => {
+  const r = executeVinOlap(base({dimensions:[{name:'brand',level:'normalized'}]}), rows, dealers);
+  assert.ok(r.audit.checks.some(c=>c.name==='Aggregation Reconciliation'&&c.status==='PASS'));
+});
+
+test('universe reconciliation', () => {
+  const r = executeVinOlap(base({universe:{type:'DEALER_STOCK'}}), rows, dealers);
+  assert.ok(r.audit.checks.some(c=>c.name==='Universe Reconciliation'&&c.status==='PASS'));
+  assert.equal(r.result.totals.units,2);
 });
 
 test('auditors reconcile', () => {
