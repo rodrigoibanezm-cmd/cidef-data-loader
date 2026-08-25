@@ -1,8 +1,11 @@
 import { getMotor, listMotors } from '../lib/motors/index.js';
+import { DEALER_ANALYTICS_MOTORS, isDealerAnalyticsMotor } from '../lib/public-motors.js';
+
+export { DEALER_ANALYTICS_MOTORS } from '../lib/public-motors.js';
 
 const TENANTS = {
   dealer_analytics: {
-    motors: ['table_schema', 'profile_table', 'query_table', 'join_tables'],
+    motors: DEALER_ANALYTICS_MOTORS,
   },
   data_loader: {
     motors: ['import_lista_precios', 'patch_inventario_modelo'],
@@ -30,7 +33,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok: false, error: 'motor is required' });
     }
 
-    if (!tenant.motors.includes(motorName)) {
+    const motorAllowed = tenantName === 'dealer_analytics'
+      ? isDealerAnalyticsMotor(motorName)
+      : tenant.motors.includes(motorName);
+    if (!motorAllowed) {
       return res.status(403).json({
         ok: false,
         error: 'Motor not allowed for tenant',
