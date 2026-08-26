@@ -22,7 +22,7 @@ Cruza dos tablas permitidas por llaves explícitas existentes, con join `inner|l
 
 ### `vin_olap`
 
-Motor semántico determinista sobre `VIN_SEMANTIC_CUBE_V0.1`, preferido para análisis VIN internos expresables por el cubo. Soporta universos, dimensiones semánticas, time roles explícitos, filtros, `unit_count`, `aging_days`, cobertura y auditoría.
+Motor semántico determinista sobre `VIN_SEMANTIC_CUBE_V0.1`, preferido para análisis VIN internos expresables por el cubo. Soporta agregación y descubrimiento de límites temporales, además de universos, dimensiones semánticas, time roles explícitos, filtros, `unit_count`, `aging_days`, cobertura y auditoría.
 
 No es SQL libre y no acepta columnas físicas. No realiza forecasting, causalidad, ranking sofisticado ni análisis superiores de negocio. Ver `vin-cube.md`.
 

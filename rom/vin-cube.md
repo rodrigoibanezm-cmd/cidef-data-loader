@@ -51,6 +51,14 @@
 
 No existe fecha default. Si hay bloque `time`, `time.role` es obligatorio. Los grains válidos son `day`, `month`, `quarter`, `year` o `null` para filtrar sin agrupar temporalmente.
 
+## TEMPORAL_BOUNDARY
+
+Descubre un extremo temporal sin solicitar una serie. `boundary=MIN|MAX` devuelve el primer o último período válido para un `time.role` explícito y grain `day|month|quarter|year`. Admite los universos y filtros semánticos del cubo; no acepta grain `null`, columnas físicas ni SQL.
+
+Ejemplo: `EVENT_POPULATION NV + time.role=NV + grain=month + boundary=MAX` devuelve el último mes con NV válida. Si se usa `EVENT_POPULATION`, `universe.event` debe coincidir con `time.role`.
+
+> Cuando una consulta dependa de un extremo temporal desconocido, usar `TEMPORAL_BOUNDARY` antes de solicitar la serie principal.
+
 ## Measures
 
 `unit_count` soporta únicamente `SUM`.

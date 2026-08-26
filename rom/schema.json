@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Dealer Data Agent Router",
-    "version": "5.0.0",
+    "version": "5.1.0",
     "description": "Single read-only analytical Action for four exploratory motors and the VIN semantic cube."
   },
   "servers": [
@@ -463,6 +463,21 @@
         },
         "additionalProperties": false
       },
+      "VinBoundaryTime": {
+        "type": "object",
+        "required": ["role", "grain"],
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/TimeRole"
+          },
+          "grain": {
+            "type": "string",
+            "enum": ["day", "month", "quarter", "year"]
+          }
+        },
+        "description": "TEMPORAL_BOUNDARY requires an explicit role and non-null grain.",
+        "additionalProperties": false
+      },
       "VinFilterField": {
         "description": "Semantic dimension only. Use the same name/level compatibility as VinDimension; physical columns and derived metrics are not accepted.",
         "oneOf": [
@@ -596,7 +611,7 @@
       },
       "VinOlapInput": {
         "type": "object",
-        "required": ["cube", "universe", "measures"],
+        "required": ["cube", "universe"],
         "properties": {
           "cube": {
             "type": "string",
@@ -604,6 +619,17 @@
           },
           "universe": {
             "$ref": "#/components/schemas/VinUniverse"
+          },
+          "operation": {
+            "type": "string",
+            "enum": ["AGGREGATE", "TEMPORAL_BOUNDARY"],
+            "default": "AGGREGATE",
+            "description": "Defaults to AGGREGATE when omitted."
+          },
+          "boundary": {
+            "type": "string",
+            "enum": ["MIN", "MAX"],
+            "description": "Applies only to TEMPORAL_BOUNDARY."
           },
           "measures": {
             "type": "array",
@@ -642,6 +668,44 @@
             "$ref": "#/components/schemas/VinOptions"
           }
         },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "operation": {
+                  "const": "TEMPORAL_BOUNDARY"
+                }
+              },
+              "required": ["operation"]
+            },
+            "then": {
+              "required": ["boundary", "time"],
+              "properties": {
+                "time": {
+                  "$ref": "#/components/schemas/VinBoundaryTime"
+                },
+                "measures": {
+                  "type": "array",
+                  "maxItems": 0
+                },
+                "derived_metrics": {
+                  "type": "array",
+                  "maxItems": 0
+                },
+                "dimensions": {
+                  "type": "array",
+                  "maxItems": 0
+                }
+              }
+            },
+            "else": {
+              "required": ["measures"],
+              "not": {
+                "required": ["boundary"]
+              }
+            }
+          }
+        ],
         "additionalProperties": false
       }
     }

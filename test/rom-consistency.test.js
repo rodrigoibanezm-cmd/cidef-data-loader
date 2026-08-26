@@ -55,6 +55,14 @@ test('catalog and OpenAPI table enum match allowed-tables', () => {
   assert.deepEqual(schemaTables, allowed);
 });
 
+test('OpenAPI exposes vin_olap operations without adding a motor', () => {
+  const document = schema();
+  const input = document.components.schemas.VinOlapInput;
+  assert.deepEqual(input.properties.operation.enum,['AGGREGATE','TEMPORAL_BOUNDARY']);
+  assert.deepEqual(input.properties.boundary.enum,['MIN','MAX']);
+  assert.equal(input.properties.operation.default,'AGGREGATE');
+});
+
 test('non-public backend motor remains forbidden for dealer_analytics', () => {
   assert.equal(isDealerAnalyticsMotor('rvm_market_pareto'), false);
   assert.equal(isDealerAnalyticsMotor('vin_olap'), true);
