@@ -5,13 +5,21 @@
 
 ## Arquitectura
 - `vin-cube-registry.js`: contrato semántico y mappings físicos validados.
-- `vin-normalizers.js`: normalización VIN/texto/fechas.
+- `vin-normalizers.js`: normalización VIN/texto y compatibilidad de imports temporales.
 - `vin-auditors.js`: grain y reconciliaciones.
-- `vin-query-builder.js`: validación compartida y SQL determinista construido exclusivamente desde registry/enums internos.
-- `vin-engine.js`: engine puro sobre arrays para tests unitarios.
-- `vin-olap.js`: ejecución productiva en Postgres.
+- `semantics/`: dimensiones, filtros, universos y tiempo compartidos por ambos engines.
+- `validation/`: validación estructural, operación y guards semánticos.
+- `query/`: utilidades y planes SQL independientes para aggregate y temporal boundary.
+- `operations/pure/`: ejecución sobre arrays para tests unitarios.
+- `operations/sql/`: ejecución productiva en Postgres.
+- `output/`: coverage, auditoría, lineage y envelopes compartidos.
+- `vin-query-builder.js`, `vin-engine.js` y `vin-olap.js`: entrypoints que validan y despachan.
 
 Producción no carga la tabla completa en Node. Elegibilidad, universo, filtros, tiempo, grouping, `COUNT(*)`, aging, totals y paginación se empujan a Postgres. Auditorías usan queries auxiliares pequeñas.
+
+### Regla de mantenibilidad
+
+Las nuevas operaciones o capacidades de `vin_olap` deben implementarse como módulos/helpers propios. Los entrypoints y módulos core no deben incorporar la implementación completa de nuevas features. Los archivos de lógica deben mantenerse idealmente en el rango de 100–120 líneas.
 
 ## Filters
 Formato público:
@@ -57,4 +65,4 @@ Se calculan independientemente de la página: source rows, VIN elegibles, duplic
 Solo afectan `result.rows`. `totals`, coverage y reconciliaciones siempre usan el universo completo. `has_more` usa el número total de grupos.
 
 ## Exposición
-`vin_olap` permanece registrado internamente, pero `api/router.js` mantiene `dealer_analytics` únicamente con `table_schema`, `profile_table`, `query_table`, `join_tables`. `rom/schema.json` no expone `vin_olap`.
+`vin_olap` está registrado y expuesto a `dealer_analytics` por la Action única `/api/router`, junto con `table_schema`, `profile_table`, `query_table` y `join_tables`.
