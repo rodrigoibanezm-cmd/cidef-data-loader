@@ -11,6 +11,7 @@ const TENANTS = {
     motors: [
       'import_vehiculos',
       'import_estadisticas_venta',
+      'import_notas_venta',
       'import_lista_precios',
       'patch_inventario_modelo',
     ],
