@@ -8,7 +8,7 @@ const TENANTS = {
     motors: DEALER_ANALYTICS_MOTORS,
   },
   data_loader: {
-    motors: ['import_lista_precios', 'patch_inventario_modelo'],
+    motors: ['import_vehiculos', 'import_lista_precios', 'patch_inventario_modelo'],
   },
 };
 
