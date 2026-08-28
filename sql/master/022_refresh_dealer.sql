@@ -45,9 +45,6 @@ WHERE o.names=1;
 INSERT INTO dealer_aliases(dealer_id,fuente,valor_raw,valor_normalizado,tipo_alias,match_method,validated)
 SELECT dealer_id,'vehiculos_raw',razon_social_canonica,master_norm(razon_social_canonica),'razon_social','exact_rut_body',true
 FROM dealers_master;
-INSERT INTO dealer_aliases(dealer_id,fuente,valor_raw,valor_normalizado,tipo_alias,match_method,validated)
-SELECT dealer_id,'respaldo.dealers_master',nombre_comercial,master_norm(nombre_comercial),'nombre_comercial','historical_master_revalidated_raw',true
-FROM dealers_master WHERE nombre_comercial IS NOT NULL;
 
 INSERT INTO dealer_supervisor(dealer_id,persona_id,vigente,fuente)
 SELECT d.dealer_id,p.persona_id,true,'respaldo.dealers_master'
