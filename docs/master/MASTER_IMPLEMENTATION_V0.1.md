@@ -1,11 +1,61 @@
-# MASTER implementation V0.1
+# MASTER_IMPLEMENTATION_V0.1
 
-## Scope
+## OBJETIVO
 
-Physical implementation of the conforming identity layer defined by `MASTER_LAYER_V0.1.md`.
-It contains identity only: product, branch, person and dealer. It does not create canonical facts, metrics, marts or analytical motors.
+Documentar implementación física y estado verificado de MASTER V0.1.
 
-## Execution order
+Contrato lógico: `docs/master/MASTER_LAYER_V0.1.md`.
+
+## SCOPE
+
+Incluye identidad conformada de:
+
+- producto;
+- sucursal;
+- persona;
+- dealer;
+- aliases;
+- conflictos de identidad.
+
+NO incluye:
+
+- `vehiculo_canonico`;
+- `fact_operacion`;
+- `fact_venta`;
+- `fact_mercado`;
+- métricas certificadas;
+- marts/cubos;
+- motores analíticos.
+
+## ESTADO VERIFICADO
+
+**Neon proyecto:** Cidef.
+
+**Branch:** `main`.
+
+MASTER V0.1 está desplegado y poblado en `main`.
+
+Verificación 2026-08-28:
+
+- `marcas_master`: 6;
+- `modelos_master`: 193;
+- `versiones_master`: 241;
+- `sucursales_master`: 22;
+- `personas_master`: 237;
+- `dealers_master`: 7;
+- `master_conflicts`: 27.
+
+Duplicados observados en claves naturales verificadas:
+
+- marca: 0;
+- SKU/version: 0;
+- sucursal fuente: 0;
+- usuario/persona: 0;
+- RUT dealer: 0.
+
+## SQL
+
+Orden de ejecución:
 
 1. `sql/010_master_schema.sql`
 2. `sql/master/020_refresh_producto.sql`
@@ -13,42 +63,147 @@ It contains identity only: product, branch, person and dealer. It does not creat
 4. `sql/master/022_refresh_dealer.sql`
 5. `sql/master/023_validate_master.sql`
 
-Refreshes are additive. Natural identities are unique and surrogate IDs are generated only on first insert. No refresh drops, truncates, renumbers or deletes historical identities.
+## REFRESH
 
-## Product
+Refreshes son aditivos.
 
-Technical SKU is the strong version identity. Commercial name is a hierarchy attribute and may group several SKUs. Different SKUs are never merged from shared historical VIN evidence.
+### REGLAS
 
-Current RAW audit before implementation: 241 normalized SKUs; no SKU with multiple observed brands; no SKU with multiple observed commercial names; 22 SKUs without commercial name evidence.
+- identidad natural única;
+- surrogate ID se genera SOLO en primera inserción;
+- NO `DROP`;
+- NO `TRUNCATE`;
+- NO renumerar;
+- NO borrar identidad histórica;
+- nueva evidencia validada puede enriquecer identidad existente;
+- evidencia ambigua → `master_conflicts`.
 
-Unresolved SKU/name evidence is written to `master_conflicts` rather than guessed.
+## PRODUCTO
 
-## Branch
+### IDENTIDAD
 
-`ventas_raw.id_sucursal_vta` is the source identity. Current audit: 22 source IDs with one normalized name each. `notas_venta_raw` names resolve only through a unique normalized name already anchored by sales.
+SKU técnico normalizado = identidad fuerte de versión.
 
-`Sucursal Chacabuco` has no source ID and remains an explicit conflict. `vehiculos_raw.bodega` is not used.
+Nombre comercial = jerarquía/atributo; puede agrupar múltiples SKU.
 
-## Person
+### EVIDENCIA PREIMPLEMENTACIÓN
 
-Login is the persistent observed identity. Full name mapping requires simultaneous equality of VIN and nota de venta between `notas_venta_raw` and `vehiculos_raw`.
+- 241 SKU normalizados;
+- 0 SKU con múltiples marcas observadas;
+- 0 SKU con múltiples nombres comerciales observados;
+- 22 SKU sin nombre comercial observado.
 
-Current audit: 237 logins; 235 unique login/full-name mappings; 206 have at least 5 concordant observations; 29 have 1-4; `DDROGUETT` and `FMALDONADO` remain without verified full name. Weak mappings are retained with confidence but are not marked validated.
+### REGLAS
 
-No active/inactive, current role or current branch is inferred.
+- SKUs distintos NO se fusionan por VIN histórico compartido.
+- SKU/nombre no resuelto → conflicto; NO inferir.
 
-## Dealer
+## SUCURSAL
 
-Dealer identity is persisted by normalized RUT body because direct ERP rows expose the historical RUT body without verifier digit. When a full RUT is observed in a Forum Distribuidora comment, its verifier digit is validated and the identity is upgraded to `rut_validated` without changing `dealer_id`.
+### IDENTIDAD
 
-The historical dealer catalogue is used only as seed evidence and only inserted when its RUT is observed in current RAW. Forum parsing is conservative: a valid full RUT can enrich an existing dealer; a valid but unknown RUT becomes a conflict and does not silently create a dealer from free text.
+`ventas_raw.id_sucursal_vta` = ancla fuente.
 
-`entidad_financiera = FORUM` is never used as a dealer identity rule. Composite names such as `VALDEPEZ SPA // CARPOINT` remain aliases, not two identities.
+`notas_venta_raw` resuelve nombre SOLO mediante match normalizado único contra sucursal ya anclada.
 
-## Persistence and conflicts
+### EVIDENCIA
 
-All refresh scripts use `INSERT ... ON CONFLICT DO NOTHING` for identity creation and targeted updates only for newly verified evidence. `master_conflicts` is the common pending-review surface. Missing or ambiguous evidence never causes destructive rebuilds.
+- 22 IDs fuente;
+- un nombre normalizado por ID en auditoría;
+- `Sucursal Chacabuco` sin ID fuente → conflicto.
 
-## Validation
+### REGLA
 
-`023_validate_master.sql` reconciles MASTER counts against RAW identities, checks duplicate natural keys and summarizes pending conflicts. A production deployment is complete only after schema + all refresh scripts execute successfully on Neon `main` and the validation query returns zero duplicate natural keys.
+`vehiculos_raw.bodega` NO participa en identidad de sucursal comercial.
+
+## PERSONA
+
+### IDENTIDAD
+
+Login/código = identidad persistente observada.
+
+### MATCH LOGIN → NOMBRE
+
+Requiere igualdad simultánea entre `notas_venta_raw` y `vehiculos_raw` de:
+
+```text
+VIN + nota_de_venta
+```
+
+VIN solo NO basta.
+
+### EVIDENCIA PREIMPLEMENTACIÓN
+
+- 237 logins;
+- 235 mappings únicos login → nombre;
+- 206 con >=5 observaciones concordantes;
+- 29 con 1–4;
+- `DDROGUETT` y `FMALDONADO` sin nombre verificado.
+
+Mappings débiles pueden persistir con confianza explícita; NO se marcan validados sin cumplir threshold.
+
+### NO INFERIR
+
+- activo/inactivo;
+- rol actual;
+- sucursal actual.
+
+## DEALER
+
+### IDENTIDAD
+
+RUT normalizado = ancla fuerte.
+
+ERP puede exponer cuerpo RUT histórico sin DV.
+
+RUT completo observado en contexto Forum Distribuidora puede validar/enriquecer identidad existente sin cambiar `dealer_id`.
+
+### REGLAS
+
+- catálogo histórico = seed SOLO si RUT está observado en RAW actual;
+- RUT completo Forum válido + dealer existente → enriquecer;
+- RUT válido pero desconocido en texto libre → conflicto;
+- `entidad_financiera = FORUM` NO identifica dealer;
+- nombres compuestos permanecen aliases salvo evidencia de identidades separadas.
+
+## CONFLICTOS
+
+`master_conflicts` es la superficie común de identidad pendiente.
+
+Estado verificado 2026-08-28: 27 conflictos registrados.
+
+Un conflicto NO bloquea identidades deterministas ya resueltas.
+
+NO resolver conflictos mediante interpretación LLM.
+
+## VALIDACIÓN
+
+`sql/master/023_validate_master.sql` debe:
+
+- reconciliar MASTER contra identidades RAW;
+- detectar duplicados de claves naturales;
+- resumir conflictos pendientes.
+
+### CRITERIO DE INTEGRIDAD
+
+- tablas MASTER existen;
+- refresh ejecuta sin reconstrucción destructiva;
+- claves naturales verificadas sin duplicados;
+- conflictos ambiguos quedan explícitos.
+
+Estado 2026-08-28: criterios estructurales y unicidad verificados en Neon `main`.
+
+## SIGUIENTE CAPA
+
+MASTER V0.1 habilita implementación de capa canónica:
+
+```text
+MASTER
+→ vehiculo_canonico
+→ fact_operacion
+→ fact_venta
+```
+
+`fact_mercado` requiere contrato independiente antes de implementación.
+
+NO ampliar MASTER para absorber hechos de la capa canónica.
