@@ -12,6 +12,7 @@ const NAMES = [
   'geographic_market_analysis',
 ];
 const source = name => readFileSync(new URL(`../lib/motors/${name}`, import.meta.url), 'utf8');
+const libSource = name => readFileSync(new URL(`../lib/${name}`, import.meta.url), 'utf8');
 
 test('all RVM motors are registered', () => {
   for (const name of NAMES) assert.equal(typeof getMotor(name), 'function');
@@ -23,6 +24,17 @@ test('master motors use the real model identity', () => {
   assert.match(models, /ON CONFLICT \(brand_id, modelo_homologado\)/);
   assert.doesNotMatch(models, /vehicle_models_master \(brand_id, marca/);
   assert.doesNotMatch(versions, /vm\.marca/);
+});
+
+test('RVM import retains competitive product evidence and does not hardcode legacy files', () => {
+  const cleaner = libSource('rvm-cleaner.js');
+  const importer = source('import-rvm.js');
+  for (const column of [
+    'tipo_original', 'descripcion_tipo', 'region', 'pbv',
+    'n_puertas', 'n_asientos', 'carga', 'ano_vin',
+  ]) assert.match(cleaner, new RegExp(`'${column}'`));
+  assert.doesNotMatch(cleaner, /RVM_2025\.xlsx|RVM_2026\.xlsx/);
+  assert.match(importer, /for \(const file of files\)/);
 });
 
 test('Pareto defaults and validates its closed inputs', () => {
