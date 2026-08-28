@@ -4,17 +4,13 @@
 
 **CONTRATO EN REVISIÓN DE COBERTURA.**
 
-Los principios de identidad de este documento siguen vigentes, pero el universo de fuentes/reglas usado para implementar MASTER resultó incompleto.
+Los principios de identidad de este documento siguen vigentes. Cada dominio debe reconciliarse contra todas las fuentes relevantes antes del cierre V0.1.
 
-Antes de congelar V0.1 se debe reconciliar cada dominio contra todas las RAW relevantes y usar las MASTER históricas de branch `respaldo` como índice de identidades candidatas a revalidar contra RAW.
-
-NO copiar `respaldo` como verdad. NO asumir que la implementación actual de `main` es exhaustiva.
-
-Hallazgo confirmado 2026-08-28: `main.dealers_master` contiene 7 dealers mientras 23 de 24 dealers históricos de `respaldo.dealers_master` tienen evidencia directa por nombre normalizado en `inventario_vehiculos_global_raw.dealer_venta`.
+`respaldo` es índice de identidades candidatas. NO es autoridad. NO copiar tablas históricas como verdad.
 
 ## OBJETIVO
 
-Definir contrato lógico de MASTER V0.1 sobre evidencia RAW disponible.
+Definir contrato lógico de MASTER V0.1.
 
 MASTER resuelve identidad canónica + aliases.
 
@@ -32,41 +28,296 @@ Implementación física: `docs/master/MASTER_IMPLEMENTATION_V0.1.md`.
 6. Matching/normalización DEBE ser determinista y auditable.
 7. Conflictos quedan explícitos para revisión.
 8. Ausencia en snapshot actual NO elimina identidad histórica.
-9. Estado `activo` requiere regla de dominio explícita.
-10. Validación MASTER requiere cobertura + unicidad; unicidad sola NO basta.
-11. Una fuente RAW relevante NO puede excluirse por conveniencia de implementación.
+9. Estado activo/vigente requiere contrato temporal explícito; NO se deriva de existencia en MASTER.
+10. Validación MASTER requiere cobertura + unicidad.
+11. Una fuente relevante NO puede excluirse por conveniencia de implementación.
 
 ## 1. PRODUCTO
 
-### JERARQUÍA
+### CONTRATO
+
+Producto se divide en seis piezas:
 
 ```text
-marca
-→ modelo comercial
-→ versión / SKU técnico
+IDENTIDAD
+marcas_master
+→ modelos_master
+→ versiones_master
+
+EVIDENCIA
+producto_aliases
+
+CLASIFICACIÓN
+producto_clasificacion
+
+RELACIÓN COMERCIAL TEMPORAL
+producto_portafolio
 ```
 
-### EVIDENCIA ACTUAL CONOCIDA
+Competencia NO pertenece a MASTER. Es una relación analítica recalculable por motores sobre hechos y métricas.
 
-**SKU técnico:**
-- `vehiculos_raw.modelo`;
-- `ventas_raw.articulo`;
-- `notas_venta_raw.modelo`.
+### 1.1 `marcas_master`
 
-**Nombre comercial:**
-- `ventas_raw.desc_articulo`;
-- `notas_venta_raw.modelo_comercial`.
+**GRAIN:** 1 fila por marca canónica.
 
-Estas fuentes NO se consideran todavía lista exhaustiva. La revisión debe contrastarlas con RAW históricas/vigentes relevantes y con identidades de producto observadas en `respaldo`.
+Campos mínimos:
 
-### REGLAS
+```text
+marca_id
+nombre_canonico
+nombre_normalizado
+created_at
+updated_at
+```
 
-- SKU/código técnico es identidad fuerte cuando representa el mismo dominio de producto.
-- Asociación SKU → modelo comercial requiere evidencia compatible.
-- SKU con asociaciones comerciales incompatibles → conflicto.
-- Renombres/cambios de código NO se resuelven por similitud semántica.
-- SKUs distintos NO se fusionan solo porque compartan VIN histórico.
-- La jerarquía final debe explicar identidades históricas omitidas o incorporarlas con evidencia.
+Reglas:
+
+- marca persiste aunque deje de estar activa;
+- `DFM` y `DFLM` son aliases de fuente de `DONGFENG` cuando la evidencia validada lo soporte;
+- `ZNA` permanece identidad separada salvo evidencia determinista de equivalencia;
+- NO almacenar `vigente`, `es_cidef`, `es_competencia` ni fuente única como atributos de identidad.
+
+### 1.2 `modelos_master`
+
+**GRAIN:** 1 modelo canónico dentro de una marca.
+
+Campos mínimos:
+
+```text
+modelo_id
+marca_id
+nombre_canonico
+nombre_normalizado
+created_at
+updated_at
+```
+
+Clave lógica:
+
+```text
+UNIQUE (marca_id, nombre_normalizado)
+```
+
+Reglas:
+
+- nombre observado en RVM NO implica modelo canónico distinto;
+- equivalencias de nomenclatura se resuelven mediante `producto_aliases`;
+- modelo persiste aunque deje de comercializarse.
+
+### 1.3 `versiones_master`
+
+**GRAIN:** 1 versión canónica dentro de un modelo.
+
+Campos mínimos:
+
+```text
+version_id
+modelo_id
+nombre_canonico
+nombre_normalizado
+created_at
+updated_at
+```
+
+Clave lógica:
+
+```text
+UNIQUE (modelo_id, nombre_normalizado)
+```
+
+Reglas:
+
+- NO usar unicidad global de `nombre_normalizado`;
+- SKU/código técnico de una fuente es alias/evidencia cuando no constituye el nombre canónico;
+- combustible, electrificación u otros atributos técnicos solo ingresan a clasificación cuando exista normalización certificada.
+
+### 1.4 `producto_aliases`
+
+**GRAIN:** 1 nomenclatura observada en una fuente asociada a identidad canónica.
+
+Campos mínimos:
+
+```text
+alias_id
+nivel
+fuente
+valor_raw
+valor_normalizado
+contexto_marca_raw
+contexto_modelo_raw
+marca_id
+modelo_id
+version_id
+evidencia_tipo
+evidencia_count
+primera_observacion
+ultima_observacion
+estado
+created_at
+updated_at
+```
+
+`nivel`:
+
+```text
+MARCA | MODELO | VERSION
+```
+
+`estado`:
+
+```text
+RESUELTO | AMBIGUO | RECHAZADO
+```
+
+Reglas:
+
+- alias se contextualiza por fuente + jerarquía observada; NO asumir unicidad global del texto;
+- VIN exacto puede aportar evidencia de equivalencia;
+- VIN individual permanece fuera de MASTER;
+- fuzzy match NO resuelve identidad automáticamente;
+- conflictos permanecen explícitos.
+
+### 1.5 `producto_clasificacion`
+
+**OBJETIVO:** almacenar taxonomías y atributos normalizados necesarios para comparación analítica sin convertirlos en identidad.
+
+**GRAIN:** 1 clasificación vigente/observada de una identidad de producto bajo una taxonomía definida.
+
+Debe soportar, según evidencia certificada:
+
+```text
+segmento
+familia
+tipo
+combustible
+electrificacion
+otras taxonomias validadas
+```
+
+Campos conceptuales mínimos:
+
+```text
+clasificacion_id
+marca_id
+modelo_id
+version_id
+taxonomia
+valor
+fuente
+valid_from
+valid_to
+estado
+created_at
+updated_at
+```
+
+Reglas:
+
+- clasificación NO cambia identidad;
+- clasificación de una fuente NO se transforma automáticamente en verdad canónica;
+- competencia NO se almacena aquí;
+- debe permitir que hechos/marts soporten cortes por segmento, familia, modelo u otras taxonomías certificadas.
+
+### 1.6 `producto_portafolio`
+
+**OBJETIVO:** relación comercial temporal entre producto y organización/portafolio.
+
+**GRAIN:** 1 relación temporal de una identidad de producto con un portafolio.
+
+Campos conceptuales mínimos:
+
+```text
+portafolio_id
+marca_id
+modelo_id
+version_id
+organizacion
+valid_from
+valid_to
+vigente
+fuente
+documento_origen
+created_at
+updated_at
+```
+
+Reglas:
+
+- V0.1 carga CIDEF; el contrato NO queda limitado estructuralmente a CIDEF;
+- lista de precios vigente es autoridad para portafolio CIDEF actual;
+- nueva lista cierra vigencia anterior y abre nueva relación cuando corresponda;
+- ausencia de portafolio vigente NO elimina identidad MASTER;
+- RVM NO define portafolio CIDEF.
+
+### FUENTES Y AUTORIDAD
+
+```text
+RVM
+→ universo de mercado
+→ aliases/evidencia de mercado
+→ actividad de mercado
+→ NO autoridad de portafolio CIDEF
+
+lista de precios vigente CIDEF
+→ autoridad de portafolio CIDEF actual
+
+vehiculos_raw / ventas_raw / notas_venta_raw
+→ aliases CIDEF
+→ evidencia histórica
+→ matching
+
+respaldo
+→ candidatos/mappings históricos
+→ NO autoridad
+```
+
+### ORDEN DE RESOLUCIÓN
+
+```text
+1. evidencia exacta por VIN
+2. identidad explícita de fuente autoritativa del dominio
+3. mapping determinista validado
+4. alias textual contextualizado
+5. evidencia insuficiente → AMBIGUO
+```
+
+Fuzzy match puede proponer candidatos. NO puede cerrar equivalencia.
+
+### CASOS VALIDADOS
+
+```text
+DFM / DFLM
+→ aliases de fuente de DONGFENG bajo mappings validados
+
+MAGE EV
+!= S50 EV
+
+RVM S50 observado sobre VIN CIDEF MAGE EV
+→ evidencia/alias histórico RVM
+→ NO fusionar identidades
+
+RICH 6
+→ identidad CIDEF
+
+RVM ZNA / NEW RICH
+RVM DFM / DF6
+→ aliases RVM de RICH 6 cuando el cruce VIN/version lo valide
+```
+
+### ALINEACIÓN ANALÍTICA
+
+Las mismas `marca_id`, `modelo_id` y `version_id` deben poder ser referenciadas por:
+
+```text
+fact_venta
+fact_operacion
+vehiculo_canonico
+fact_mercado
+```
+
+Esto permite que motores comparen CIDEF y mercado sin redefinir identidad.
+
+`producto_clasificacion` entrega cortes comparables. `producto_portafolio` determina relación comercial temporal. Ninguna de ambas define competencia.
 
 ## 2. SUCURSAL / LOCAL
 
@@ -75,15 +326,19 @@ Estas fuentes NO se consideran todavía lista exhaustiva. La revisión debe cont
 - `ventas_raw.id_sucursal_vta`;
 - `ventas_raw.desc_sucursal_vta`;
 - `notas_venta_raw.desc_sucursal_vta`;
-- evidencia histórica de local/bodega a revalidar.
+- catálogo corporativo vigente;
+- evidencia histórica de local/bodega revalidada.
 
 ### REGLAS
 
-- `id_sucursal_vta` es ancla fuerte cuando existe.
-- Nombre normalizado puede actuar como alias, NO necesariamente como identidad suficiente.
-- `bodega` NO debe equipararse automáticamente a sucursal comercial.
-- Mapping local/bodega ↔ sucursal requiere evidencia determinista.
-- La revisión debe explicar la diferencia entre las 22 sucursales actuales y el universo histórico de locales.
+- `sucursales_master` es dimensión conformada de puntos comerciales CIDEF + dealer;
+- `sucursal` = punto físico/comercial;
+- `dealer` = entidad legal;
+- `dealer_group` = red comercial;
+- `id_sucursal_vta` es ancla fuerte cuando existe;
+- nombre normalizado puede actuar como alias, NO necesariamente como identidad suficiente;
+- `bodega` NO se equipara automáticamente a sucursal comercial;
+- mapping local/bodega ↔ sucursal requiere evidencia determinista.
 
 ## 3. DEALER
 
@@ -100,72 +355,45 @@ RUT validado
 > alias textual
 ```
 
-### FUENTES A REVISAR
-
-La implementación NO puede limitarse a una sola ruta de detección.
-
-Debe considerar al menos:
-
-- campos dealer estructurados de inventario/vehículos;
-- cliente/RUT cuando representa venta directa dealer;
-- `dealer_venta` y campos derivados que puedan rastrearse a evidencia fuente;
-- contexto Forum Distribuidora + comentario bajo regla determinista;
-- MASTER histórica solo como índice para buscar evidencia nuevamente.
-
-### HALLAZGO CONFIRMADO
-
-`respaldo.dealers_master` contiene 24 dealers.
-
-23 tienen evidencia directa por nombre normalizado en `inventario_vehiculos_global_raw.dealer_venta`.
-
-`main.dealers_master` contiene 7.
-
-Por lo tanto, la implementación actual NO tiene cobertura aceptable.
-
 ### REGLAS
 
-- `entidad_financiera = FORUM` NO identifica dealer por sí sola.
-- No todo comentario representa dealer.
-- Nombre compuesto puede ser alias; NO implica automáticamente dos dealers.
-- Toda exclusión de un dealer histórico debe quedar explicada por evidencia.
+- `dealers_master` = 1 entidad legal/RUT;
+- `dealer_groups` = red comercial;
+- supervisor es relación temporal, NO atributo de identidad;
+- RUT distintos NO se fusionan;
+- `entidad_financiera = FORUM` NO identifica dealer por sí sola;
+- no todo comentario representa dealer;
+- toda exclusión de candidato histórico debe quedar explicada por evidencia.
 
 ## 4. PERSONA
 
 ### IDENTIDAD
 
-La definición final de identidad persona está bajo revisión.
+Separar identidad persistente de rol, vigencia y asignación organizacional.
 
-Login/código es evidencia de identidad operacional, pero NO debe asumirse automáticamente equivalente a persona física sin reconciliación suficiente.
-
-### FUENTES CONOCIDAS
+### FUENTES
 
 - `ventas_raw.nombre_usuario`;
 - `notas_venta_raw.vendedor`;
 - `vehiculos_raw.vendedor`;
-- nómina corporativa vigente cuando exista;
-- evidencia histórica de `personas_master` para revalidación.
-
-### MATCH OBSERVADO
-
-VIN + `nota_de_venta` simultáneos entre fuentes constituye evidencia determinista para relacionar login con nombre observado.
-
-VIN solo NO basta.
+- nómina corporativa vigente;
+- evidencia histórica revalidada.
 
 ### REGLAS
 
-- Separar identidad persistente de rol, vigencia y asignación organizacional.
-- No inferir equivalencia de personas por nombre similar.
-- No inferir activo/inactivo desde ausencia de ventas.
-- La diferencia entre universo histórico de personas y logins actuales debe explicarse antes de congelar el contrato.
+- login/código es evidencia operacional; NO equivale automáticamente a persona física;
+- VIN + nota_de_venta simultáneos entre fuentes constituyen evidencia determinista para relacionar login con nombre observado;
+- VIN solo NO basta;
+- no inferir equivalencia por nombre similar;
+- no inferir activo/inactivo desde ausencia de ventas;
+- históricos permanecen en `personas_master`.
 
 ## 5. PERSISTENCIA Y REFRESH
 
 MASTER NO se reconstruye mediante `DROP + CREATE` diario.
 
-Flujo objetivo:
-
 ```text
-leer todas las fuentes relevantes
+leer fuentes relevantes
 → normalizar para matching
 → reconciliar contra identidad persistente
 → reutilizar IDs existentes
@@ -178,12 +406,12 @@ leer todas las fuentes relevantes
 
 ### REGLAS
 
-- NO `TRUNCATE` como estrategia de refresh.
-- NO renumerar IDs.
-- NO borrar identidad por ausencia temporal.
-- Updates SOLO para evidencia nueva validada.
-- Conflictos deben quedar explícitos.
-- Validación debe detectar identidades RAW no cubiertas por MASTER.
+- NO `TRUNCATE` como estrategia de refresh;
+- NO renumerar IDs;
+- NO borrar identidad por ausencia temporal;
+- updates SOLO para evidencia nueva validada;
+- conflictos explícitos;
+- validación detecta identidades fuente no cubiertas por MASTER.
 
 ## 6. MÉTODO DE CIERRE V0.1
 
@@ -192,7 +420,7 @@ Para cada dominio:
 ```text
 MASTER histórica respaldo
 → identidades candidatas
-→ búsqueda en RAW
+→ búsqueda en fuentes actuales
 → regla/fuente de descubrimiento
 → comparación con main
 → contrato final
@@ -200,7 +428,7 @@ MASTER histórica respaldo
 → validación de cobertura
 ```
 
-MASTER V0.1 NO se cierra hasta completar esta reconciliación para producto, sucursal/local, persona y dealer.
+MASTER V0.1 NO se cierra hasta completar reconciliación de producto, sucursal, persona y dealer.
 
 ## NO HACER
 
@@ -209,3 +437,4 @@ MASTER V0.1 NO se cierra hasta completar esta reconciliación para producto, suc
 - NO validar solo duplicados.
 - NO ocultar identidades sin mapping eliminándolas del universo.
 - NO iniciar capa canónica sobre MASTER no validada.
+- NO almacenar competencia como atributo estático de producto.
