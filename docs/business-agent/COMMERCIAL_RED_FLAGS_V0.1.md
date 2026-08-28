@@ -1,87 +1,212 @@
-# COMMERCIAL RED FLAGS V0.1
+# COMMERCIAL_RED_FLAGS_V0.1
 
-## Objetivo
+## OBJETIVO
 
-Detectar deterioro, fragilidad y anomalías comerciales antes de que sean evidentes en el cierre mensual.
+Definir contrato analítico especializado para Familia 3 — Deterioro y red flags.
 
-El agente no debe limitarse a observar ventas totales.
+Detectar señales adversas antes de que el deterioro sea evidente en el resultado mensual.
 
-Debe analizar cómo se construyen esas ventas.
+Contrato superior: `docs/business-agent/QUESTION_FAMILIES_V0.1.md`.
 
-## Red flags iniciales
+## PRINCIPIO
 
-### Concentración de cierres al final del mes
+Resultado final y salud comercial NO son equivalentes.
 
-Medir qué porcentaje de las ventas de un vendedor o tienda se concentra en:
-
-- últimos 10 días;
-- últimos 7 días;
-- últimos 5 días.
-
-Una concentración alta repetida durante varios meses puede indicar dependencia del cierre tardío.
-
-No debe interpretarse automáticamente como mal desempeño.
-
-Debe evaluarse contra la propia historia y contra comparables.
-
-### Volatilidad mensual
-
-Medir cuánto fluctúa el resultado mensual respecto de su nivel habitual.
-
-Alta volatilidad puede indicar baja predictibilidad.
-
-### Dependencia de rescates de fin de mes
-
-Detectar vendedores que frecuentemente parecen estar bajo objetivo durante gran parte del mes y recuperan el resultado en los últimos días.
-
-La repetición del patrón puede ser más informativa que un mes aislado.
-
-### Notas de venta sin factura
-
-Analizar:
-
-- cantidad;
-- antigüedad;
-- tasa histórica de conversión a factura;
-- diferencias por vendedor y tienda.
-
-### Tiempo nota de venta → factura
-
-Detectar aumentos persistentes en el tiempo de conversión.
-
-### Reservas o procesos envejecidos
-
-Detectar unidades reservadas o en etapas previas al cierre que permanecen demasiado tiempo sin avanzar.
-
-### Deterioro respecto de historia propia
-
-Comparar cada vendedor y tienda contra su propia línea base:
-
-- ritmo acumulado;
-- cierre mensual;
-- concentración temporal;
-- volatilidad;
-- tiempos de conversión.
-
-### Deterioro respecto de comparables
-
-Comparar vendedores contra el comportamiento histórico de vendedores equivalentes dentro de la misma tienda o contexto comparable.
-
-## Distinción crítica
-
-Una mala semana no es necesariamente deterioro.
-
-El motor debe distinguir entre:
+El motor debe analizar cómo se construye el resultado y distinguir:
 
 - ruido;
 - anomalía puntual;
 - cambio persistente;
 - deterioro estructural.
 
-## Preguntas de negocio
+Una red flag DEBE ser una señal observable anterior o adicional al resultado final. NO es simplemente una venta baja.
 
-- ¿Quién parece estar bien por resultado final pero muestra fragilidad?
-- ¿Qué vendedor depende demasiado de los últimos días?
+## INPUT REQUERIDO
+
+- hechos canónicos comerciales/operacionales;
+- métricas certificadas;
+- historia suficiente para construir línea base;
+- dimensiones conformadas de persona/sucursal/producto cuando correspondan;
+- comparables válidos cuando el análisis sea relativo.
+
+Motores NO consumen RAW directamente.
+
+## PREGUNTAS
+
 - ¿Quién se está deteriorando respecto de su propia historia?
-- ¿Dónde conviene que el supervisor gestione esta semana?
-- ¿Qué desviaciones requieren explicación humana?
+- ¿Desde cuándo comenzó el deterioro?
+- ¿Cuál fue la primera señal observable?
+- ¿Qué cambios pequeños pero anormales preceden una caída de resultado?
+- ¿Quién depende sistemáticamente de los últimos días del mes?
+- ¿Quién presenta volatilidad anormal?
+- ¿Dónde aumentan NV sin factura o procesos envejecidos?
+- ¿Dónde están aumentando los tiempos de conversión?
+- ¿Quién parece saludable por resultado final pero muestra fragilidad?
+- ¿Qué patrones han precedido deterioros anteriores?
+
+## UNIDAD DE ANÁLISIS
+
+Candidatos según pregunta:
+
+- vendedor;
+- sucursal;
+- producto/familia;
+- proceso comercial;
+- combinación validada de dimensiones.
+
+La unidad debe compararse contra una línea base compatible con su contexto.
+
+## SEÑALES V0.1
+
+### CONCENTRACIÓN DE CIERRES
+
+Medir proporción de ventas concentrada en ventanas finales del mes, por ejemplo:
+
+- últimos 10 días;
+- últimos 7 días;
+- últimos 5 días.
+
+Interpretar SOLO contra historia propia y/o comparables válidos.
+
+Concentración alta aislada NO implica deterioro.
+
+### DEPENDENCIA DE RESCATE FIN DE MES
+
+Detectar patrón repetido:
+
+```text
+ritmo bajo durante mes
+→ recuperación concentrada al cierre
+→ repetición histórica
+```
+
+La repetición es evidencia más fuerte que un evento aislado.
+
+### VOLATILIDAD
+
+Medir desviación del comportamiento mensual respecto de línea base histórica.
+
+Alta volatilidad puede indicar fragilidad/predictibilidad baja. NO equivale automáticamente a mal desempeño.
+
+### NV SIN FACTURA
+
+Medir:
+
+- unidades abiertas;
+- antigüedad;
+- distribución de aging;
+- tasa histórica de conversión;
+- desviación respecto de historia/comparables.
+
+### TIEMPO NV → FACTURA
+
+Detectar incremento persistente del tiempo de conversión respecto de línea base.
+
+### PROCESOS ENVEJECIDOS
+
+Detectar unidades reservadas o en etapas previas al cierre que exceden comportamiento histórico esperado sin avanzar.
+
+### DETERIORO VS HISTORIA PROPIA
+
+Comparar, cuando existan métricas certificadas:
+
+- ritmo acumulado;
+- resultado mensual;
+- concentración temporal;
+- volatilidad;
+- tiempos de conversión;
+- aging operacional.
+
+### DETERIORO VS COMPARABLES
+
+Comparar SOLO contra unidades equivalentes bajo criterios explícitos.
+
+NO usar promedio global si mezcla contextos incompatibles.
+
+## CLASIFICACIÓN DE SEÑAL
+
+El motor DEBE clasificar la evidencia al menos como:
+
+```text
+NORMAL
+ANOMALÍA_PUNTUAL
+CAMBIO_PERSISTENTE
+DETERIORO
+INSUFICIENTE_EVIDENCIA
+```
+
+La clasificación debe derivarse de reglas deterministas y parámetros explícitos.
+
+## PERSISTENCIA
+
+Una señal gana fuerza cuando presenta:
+
+- duración;
+- repetición;
+- magnitud creciente;
+- consistencia entre métricas relacionadas;
+- diferencia respecto de historia propia;
+- diferencia respecto de comparables válidos.
+
+NO convertir un único período adverso en deterioro estructural sin regla que lo soporte.
+
+## DETECCIÓN TEMPRANA
+
+Objetivo prioritario: identificar señales que aparezcan ANTES del deterioro final.
+
+Cuando exista historia suficiente, validar retrospectivamente:
+
+```text
+señal en t-n
+→ deterioro posterior en t
+```
+
+El patrón debe mostrar recurrencia suficiente antes de incorporarse como red flag certificada.
+
+Correlación histórica NO demuestra causalidad.
+
+## OUTPUT MÍNIMO
+
+Por señal detectada:
+
+- entidad/unidad afectada;
+- tipo de señal;
+- clasificación;
+- fecha/período de inicio;
+- magnitud;
+- persistencia;
+- línea base usada;
+- comparable usado cuando corresponda;
+- métricas/evidencia que soportan la señal;
+- primera evidencia observable cuando pueda determinarse;
+- gaps/incertidumbre.
+
+## REGLAS
+
+- NO consumir RAW directamente.
+- NO redefinir métricas certificadas.
+- NO declarar deterioro solo por resultado bajo.
+- NO comparar contextos incompatibles.
+- NO interpretar volatilidad o cierre tardío automáticamente como mal desempeño.
+- NO afirmar causalidad sin evidencia específica.
+- Si historia o comparable son insuficientes, devolver `INSUFICIENTE_EVIDENCIA`.
+
+## DEPENDENCIAS
+
+```text
+MASTER
+→ hechos canónicos
+→ métricas certificadas
+→ marts/cubos opcionales
+→ motor Familia 3
+```
+
+## CRITERIO DE CIERRE V0.1
+
+El contrato es implementable cuando:
+
+- métricas requeridas están certificadas;
+- línea base histórica está definida;
+- criterios de comparabilidad están definidos;
+- thresholds/reglas de clasificación son explícitos;
+- señales candidatas pueden validarse retrospectivamente.
