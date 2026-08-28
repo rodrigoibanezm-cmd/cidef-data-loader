@@ -1,64 +1,175 @@
-# COMPETITIVE POSITION V0.1
+# COMPETITIVE_POSITION_V0.1
 
-## Objetivo
+## OBJETIVO
 
-Convertir RVM en una lectura competitiva útil para gestión semanal.
+Definir contrato analítico especializado para Familia 2 — Posición competitiva.
 
-La métrica principal es **participación de mercado (%)**.
+Determinar competencia real, penetración relativa, trayectoria y desplazamiento competitivo usando evidencia externa de mercado procesada.
 
-## Principio
+Contrato superior: `docs/business-agent/QUESTION_FAMILIES_V0.1.md`.
 
-No basta con observar el ranking o el market share de manera aislada.
+## PRINCIPIO
 
-La posición debe leerse como una carrera contra las marcas inmediatamente vecinas.
+Competencia NO equivale a:
 
-## Para cada corte relevante
+- marca inmediatamente superior/inferior en ranking;
+- mismo segmento nominal;
+- mercado total por defecto.
 
-Identificar:
+La relación competitiva DEBE derivarse de evidencia de comparabilidad y comportamiento dentro de un mercado relevante.
 
-- participación de mercado de Cidef / marca analizada;
-- posición en ranking;
-- marca inmediatamente superior;
-- participación de la marca superior;
-- brecha en puntos porcentuales contra la superior;
-- marca inmediatamente inferior;
-- participación de la marca inferior;
-- brecha en puntos porcentuales contra la inferior.
+La competencia es una relación analítica recalculable. NO es atributo MASTER.
 
-## Evolución
+## INPUT REQUERIDO
 
-Además del valor actual, medir:
+- `fact_mercado` con grain explícito;
+- dimensiones de mercado normalizadas;
+- producto Cidef vinculable a nomenclatura externa cuando exista evidencia suficiente;
+- métricas certificadas de unidades/participación;
+- historia temporal suficiente para evaluar trayectoria;
+- `cube_mercado` SOLO si agrega eficiencia.
 
-- cambio semanal;
-- cambio mensual;
-- variación de brecha contra la marca superior;
-- variación de brecha contra la marca inferior.
+RVM RAW NO es input directo del motor.
 
-## Ejemplo conceptual
+## PREGUNTAS
 
-- DFM: 7,2%
-- marca superior: 7,8%
-- brecha superior: -0,6 pp
-- marca inferior: 6,5%
-- brecha inferior: +0,7 pp
+- ¿Quién compite realmente con cada producto Cidef?
+- ¿Qué marcas/modelos son comparables y con qué evidencia?
+- ¿Cuál es la penetración de Cidef dentro del mercado competitivo relevante?
+- ¿La posición relativa está mejorando o empeorando?
+- ¿A qué competidores Cidef está ganando terreno?
+- ¿Qué competidores están ganando terreno a Cidef?
+- ¿Dónde ocurre el desplazamiento competitivo?
+- ¿El movimiento es puntual o persistente?
+- ¿Qué movimientos son relevantes para marketing, fuerza de venta o portafolio?
 
-Si la semana anterior la brecha superior era -0,8 pp:
+## CONSTRUCCIÓN DEL MERCADO COMPETITIVO
 
-> DFM recuperó 0,2 puntos porcentuales frente a la marca inmediatamente superior.
+Para cada producto/corte analizado, el motor DEBE construir o recibir un conjunto comparable respaldado por evidencia.
 
-## Cortes posibles
+Evidencia potencial de comparabilidad:
 
-- mercado total;
-- segmento;
+- segmento/tipo validado;
+- modelo/familia comparable;
+- rango o posicionamiento cuando exista fuente válida;
+- geografía;
+- patrones históricos de participación/desplazamiento;
+- otras dimensiones certificadas disponibles en `fact_mercado`.
+
+Compartir una etiqueta nominal NO basta para declarar competencia.
+
+## MÉTRICAS / EVIDENCIA MÍNIMA
+
+Por mercado competitivo relevante:
+
+- unidades Cidef/marca/producto;
+- unidades del mercado comparable;
+- participación relativa;
+- cambio de participación;
+- trayectoria temporal;
+- magnitud del movimiento;
+- duración/persistencia;
+- consistencia por cortes;
+- participación y trayectoria de competidores comparables.
+
+Ranking puede ser evidencia auxiliar. NO define por sí solo competencia.
+
+## DESPLAZAMIENTO COMPETITIVO
+
+### CIDEF GANA TERRENO A COMPETIDOR
+
+Evidencia mínima:
+
+- Cidef gana participación relativa;
+- competidor pierde participación dentro del mismo mercado comparable;
+- movimiento coincide temporalmente;
+- magnitud y persistencia son cuantificables.
+
+OUTPUT debe indicar:
+
+- competidor;
+- magnitud;
+- período;
+- persistencia;
+- cortes donde se concentra;
+- evidencia de comparabilidad.
+
+NO afirmar causalidad de transferencia de clientes sin evidencia adicional.
+
+### COMPETIDOR GANA TERRENO A CIDEF
+
+Aplicar contrato inverso con las mismas exigencias de evidencia.
+
+## TRAYECTORIA
+
+El motor DEBE distinguir:
+
+- crecimiento absoluto del mercado;
+- crecimiento absoluto de Cidef;
+- mejora competitiva relativa;
+- deterioro competitivo relativo;
+- movimiento puntual;
+- trayectoria persistente.
+
+Un aumento de unidades NO implica mejora competitiva si el mercado comparable crece más rápido.
+
+## CORTES
+
+Usar SOLO dimensiones validadas por contrato de mercado.
+
+Candidatos:
+
 - región;
 - comuna;
-- modelo;
-- otros cortes disponibles en RVM.
+- segmento;
+- marca;
+- familia/modelo;
+- versión cuando el mapping sea confiable;
+- período.
 
-## Preguntas de negocio
+NO usar cortes cuya nomenclatura o mapping no esté resuelto.
 
-- ¿Estamos ganando o perdiendo participación?
-- ¿Nos acercamos a la marca inmediatamente superior?
-- ¿La marca inferior nos está recortando?
-- ¿En qué segmentos o territorios cambia la tendencia?
-- ¿La posición competitiva está mejorando aunque el ranking todavía no cambie?
+## OUTPUT MÍNIMO
+
+- producto/entidad analizada;
+- mercado competitivo relevante;
+- competidores comparables;
+- evidencia de comparabilidad;
+- penetración relativa;
+- trayectoria;
+- competidores a los que Cidef gana terreno;
+- competidores que ganan terreno a Cidef;
+- magnitud/persistencia;
+- cortes relevantes;
+- gaps/incertidumbre.
+
+## REGLAS
+
+- NO consumir RVM RAW directamente.
+- NO convertir competencia en atributo MASTER.
+- NO usar ranking vecino como definición de competidor.
+- NO usar mercado total como denominador por defecto.
+- NO inferir causalidad desde correlación temporal.
+- NO forzar mapping producto Cidef ↔ producto RVM ambiguo.
+- Si falta evidencia para definir mercado comparable, devolver GAP.
+
+## DEPENDENCIAS
+
+```text
+RVM / ANAC
+→ auditoría + normalización
+→ fact_mercado
+→ métricas certificadas de mercado
+→ cube_mercado opcional
+→ motor Familia 2
+```
+
+## CRITERIO DE CIERRE V0.1
+
+El contrato está implementable cuando existen:
+
+- grain `fact_mercado` congelado;
+- mappings mínimos validados;
+- definición determinista de mercado comparable;
+- métricas certificadas requeridas;
+- validaciones históricas para distinguir movimiento puntual de trayectoria.
