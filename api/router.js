@@ -13,6 +13,7 @@ const TENANTS = {
       'import_estadisticas_venta',
       'import_notas_venta',
       'import_lista_precios',
+      'import_rvm',
       'patch_inventario_modelo',
     ],
   },
