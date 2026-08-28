@@ -1,80 +1,154 @@
-# DÍA DE EXPLICACIÓN DEL CIERRE — DEC V0.1
+# DEC_V0.1
 
-## Definición
+## OBJETIVO
 
-El Día de Explicación del Cierre (DEC) busca determinar desde qué día del mes la información observada permite explicar o anticipar de manera suficientemente confiable el cierre mensual.
+Definir el Día de Explicación del Cierre (DEC) como indicador/capacidad especializada de Familia 1 — Expectativa de cierre.
 
-Debe ser estimado empíricamente.
+Contrato superior: `docs/business-agent/QUESTION_FAMILIES_V0.1.md`.
 
-No debe definirse un día arbitrario.
+DEC NO es una familia ni un motor independiente.
 
-## Pregunta principal
+## PREGUNTA
 
-> ¿Desde qué día del mes las ventas acumuladas permiten anticipar el resultado final con un nivel objetivo de precisión?
+¿Desde qué día del mes la evidencia observada permite anticipar o explicar el cierre mensual con un nivel de precisión suficientemente estable?
 
-Umbral inicial candidato:
+## PRINCIPIO
 
-**90%**
+DEC DEBE estimarse empíricamente.
 
-El umbral definitivo debe validarse con datos.
+NO fijar un día arbitrario.
 
-## Nivel 1: Cidef tiendas propias
+NO asumir que ventas acumuladas son la única evidencia válida. Familia 1 puede incorporar historia, estacionalidad, ritmo intra-mes y otras señales certificadas disponibles.
 
-Primero se debe calcular el DEC histórico de Cidef tiendas propias como conjunto.
+## UMBRAL DE PRECISIÓN
 
-Esto entrega la línea base de la compañía.
+El umbral forma parte del contrato del indicador y DEBE validarse con historia.
 
-## Nivel 2: tienda
+`90%` es una hipótesis inicial de diseño. NO es un parámetro V0.1 congelado.
 
-Luego se debe calcular el mismo indicador por tienda.
+La implementación debe definir explícitamente:
 
-La comparación relevante es:
+- variable objetivo;
+- error/métrica de precisión;
+- horizonte histórico;
+- tamaño mínimo de muestra;
+- threshold aceptado;
+- estabilidad del threshold.
 
-**DEC tienda vs DEC Cidef**
+## NIVELES DE ANÁLISIS
 
-## Nivel 3: vendedor
+### NIVEL 1 — CIDEF TIENDAS PROPIAS
 
-En una etapa posterior puede calcularse por vendedor, siempre que exista suficiente historia y tamaño de muestra.
+Calcular línea base corporativa sobre universo certificado de tiendas propias.
 
-## Indicadores derivados
+### NIVEL 2 — SUCURSAL
 
-### DEC absoluto
+Calcular DEC por sucursal cuando exista historia suficiente.
 
-Día del mes en que se alcanza el umbral definido de capacidad explicativa.
+Comparación principal:
 
-### DEC relativo
+```text
+DEC_sucursal - DEC_Cidef
+```
 
-Diferencia entre el DEC de la unidad analizada y el DEC de Cidef.
+### NIVEL 3 — VENDEDOR
 
-Ejemplo:
+Calcular SOLO si existe historia y tamaño de muestra suficientes.
 
-- Cidef: día 18
-- Tienda A: día 15
-- DEC relativo: -3 días
+Si no se cumplen mínimos estadísticos, devolver `INSUFICIENTE_EVIDENCIA`.
 
-La tienda construye su resultado antes que la compañía.
+## INDICADORES
 
-### Estabilidad del DEC
+### `dec_absoluto`
 
-No basta con conocer el promedio.
+Primer día del mes en que la capacidad de anticipar/explicar el cierre cumple el threshold validado.
 
-Debe medirse qué tan variable es el DEC entre meses.
+### `dec_relativo`
 
-Una tienda con DEC promedio aceptable pero muy inestable sigue siendo difícil de gestionar.
+```text
+dec_unidad - dec_Cidef
+```
 
-## Interpretación de negocio
+Interpretación:
 
-El DEC mide algo distinto de cuánto se vende.
+- valor negativo = resultado se vuelve explicable antes que Cidef;
+- valor positivo = resultado se vuelve explicable después que Cidef.
 
-Mide **qué tan temprano y consistentemente se construye el resultado mensual**.
+### `estabilidad_dec`
 
-Puede revelar tiendas o vendedores que:
+Variabilidad del DEC entre períodos comparables.
 
-- dependen demasiado del cierre de fin de mes;
-- parecen sanos por resultado final, pero son frágiles;
-- construyen ventas de manera más predecible que el resto de la compañía;
-- se están deteriorando respecto de su propia historia.
+DEC promedio sin estabilidad NO implica alta predictibilidad.
 
-## Pregunta de negocio resultante
+## RELACIÓN CON FAMILIA 1
 
-> ¿Qué tan temprano y consistentemente construye cada tienda su resultado mensual?
+DEC ayuda a responder:
+
+- ¿Cuándo el cierre comienza a ser estadísticamente explicable?
+- ¿Qué unidades construyen su resultado antes o después de lo esperable?
+- ¿Cuándo una proyección comienza a tener precisión suficiente para gestión?
+
+DEC es evidencia derivada del motor de Expectativa de cierre. NO reemplaza la proyección de cierre.
+
+## RELACIÓN CON FAMILIA 3
+
+DEC puede ser señal auxiliar de Deterioro y red flags cuando existe cambio persistente respecto de la propia historia.
+
+Ejemplo conceptual:
+
+```text
+DEC histórico estable
+→ DEC comienza a desplazarse hacia fin de mes
+→ patrón persiste
+→ posible señal de fragilidad
+```
+
+Familia 3 debe aplicar su propio contrato de persistencia/clasificación. DEC por sí solo NO declara deterioro.
+
+## INPUT REQUERIDO
+
+- `fact_venta` y/o hechos canónicos requeridos por el modelo de Familia 1;
+- métricas certificadas de venta;
+- calendario/día del mes;
+- MASTER de sucursal/persona;
+- historia suficiente;
+- universo certificado de tiendas propias cuando corresponda.
+
+Motores NO consumen RAW directamente.
+
+## OUTPUT MÍNIMO
+
+- nivel analizado;
+- entidad;
+- período histórico;
+- `dec_absoluto`;
+- `dec_relativo` cuando corresponda;
+- `estabilidad_dec`;
+- threshold utilizado;
+- métrica de precisión;
+- tamaño de muestra;
+- evidencia de validación;
+- gaps/incertidumbre.
+
+## REGLAS
+
+- NO crear motor DEC independiente.
+- NO fijar día o threshold sin validación empírica.
+- NO asumir que acumulado de ventas es el único predictor.
+- NO comparar unidades con universos incompatibles.
+- NO calcular nivel vendedor sin muestra suficiente.
+- NO interpretar DEC tardío automáticamente como mal desempeño.
+- NO usar DEC aislado para declarar deterioro.
+
+## CRITERIO DE CIERRE V0.1
+
+DEC es implementable cuando estén definidos y validados:
+
+- variable objetivo;
+- métrica de precisión;
+- threshold;
+- historia mínima;
+- tamaño mínimo de muestra;
+- algoritmo para determinar primer día válido;
+- estabilidad entre períodos;
+- universo de comparación.
