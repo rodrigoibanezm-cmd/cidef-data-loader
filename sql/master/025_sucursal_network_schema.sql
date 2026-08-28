@@ -1,7 +1,5 @@
 BEGIN;
 
--- sucursales_master is the conformed commercial point dimension.
--- It contains CIDEF stores and dealer branches without collapsing dealer legal identity.
 ALTER TABLE sucursales_master ALTER COLUMN id_sucursal_vta DROP NOT NULL;
 ALTER TABLE sucursales_master ADD COLUMN IF NOT EXISTS sucursal_key text;
 ALTER TABLE sucursales_master ADD COLUMN IF NOT EXISTS tipo_canal text;
@@ -23,7 +21,6 @@ ON sucursales_master(tipo_canal,vigente);
 CREATE INDEX IF NOT EXISTS idx_sucursales_master_dealer_group
 ON sucursales_master(dealer_group_id);
 
--- Legacy ERP identities remain addressable but are not assumed current.
 UPDATE sucursales_master
 SET sucursal_key='ERP:'||id_sucursal_vta,
     tipo_canal=CASE
@@ -36,5 +33,23 @@ SET sucursal_key='ERP:'||id_sucursal_vta,
     fuente=COALESCE(fuente,'ventas_raw'),
     updated_at=now()
 WHERE sucursal_key IS NULL AND id_sucursal_vta IS NOT NULL;
+
+ALTER TABLE sucursales_master ALTER COLUMN sucursal_key SET NOT NULL;
+ALTER TABLE sucursales_master ALTER COLUMN tipo_canal SET NOT NULL;
+ALTER TABLE sucursales_master ALTER COLUMN estatus SET NOT NULL;
+ALTER TABLE sucursales_master ALTER COLUMN vigente SET NOT NULL;
+ALTER TABLE sucursales_master ALTER COLUMN fuente SET NOT NULL;
+
+ALTER TABLE sucursales_master DROP CONSTRAINT IF EXISTS sucursales_master_tipo_canal_check;
+ALTER TABLE sucursales_master ADD CONSTRAINT sucursales_master_tipo_canal_check
+CHECK (tipo_canal IN ('CIDEF','DEALER','DEALER_AGREGADO','NO_COMERCIAL'));
+
+ALTER TABLE sucursales_master DROP CONSTRAINT IF EXISTS sucursales_master_cidef_without_dealer_check;
+ALTER TABLE sucursales_master ADD CONSTRAINT sucursales_master_cidef_without_dealer_check
+CHECK (tipo_canal <> 'CIDEF' OR (dealer_id IS NULL AND dealer_group_id IS NULL));
+
+ALTER TABLE sucursales_master DROP CONSTRAINT IF EXISTS sucursales_master_dealer_legal_requires_group_check;
+ALTER TABLE sucursales_master ADD CONSTRAINT sucursales_master_dealer_legal_requires_group_check
+CHECK (dealer_id IS NULL OR dealer_group_id IS NOT NULL);
 
 COMMIT;
