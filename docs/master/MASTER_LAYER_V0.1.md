@@ -1,381 +1,303 @@
 # MASTER_LAYER_V0.1
 
-## Objetivo
+## OBJETIVO
 
-Definir la primera capa MASTER construida sobre:
+Definir contrato lógico de MASTER V0.1 sobre:
 
-- `vehiculos_raw`
-- `ventas_raw`
-- `notas_venta_raw`
+- `vehiculos_raw`;
+- `ventas_raw`;
+- `notas_venta_raw`.
 
-La capa MASTER resuelve identidad canónica y aliases. No reemplaza las RAW, no contiene hechos comerciales y no debe depender de interpretación LLM en tiempo de consulta.
+MASTER resuelve identidad canónica + aliases.
 
-## Principios
+MASTER NO contiene hechos comerciales, stock, ventas, trayectoria operacional ni métricas.
+
+Implementación física: `docs/master/MASTER_IMPLEMENTATION_V0.1.md`.
+
+## PRINCIPIOS
 
 1. RAW conserva evidencia fuente.
 2. MASTER resuelve identidad estable.
-3. Los IDs MASTER deben persistir entre cargas diarias.
-4. Una carga RAW nueva puede descubrir aliases o entidades nuevas, pero no debe renumerar identidades existentes.
-5. No se fuerza una equivalencia ambigua.
-6. Toda normalización debe ser determinística y auditable.
-7. Los casos no resolubles automáticamente quedan pendientes de validación explícita.
+3. IDs MASTER persisten entre refresh.
+4. Nueva evidencia puede agregar entidades/aliases; NO renumera identidades existentes.
+5. Equivalencias ambiguas NO se fuerzan.
+6. Matching/normalización DEBE ser determinista y auditable.
+7. Conflictos quedan explícitos para revisión.
+8. Ausencia en snapshot actual NO elimina identidad histórica.
+9. Estado `activo` requiere regla de dominio explícita.
 
----
+## 1. PRODUCTO
 
-# 1. Producto
+### JERARQUÍA
 
-La evidencia muestra tres niveles distintos:
+```text
+marca
+→ modelo comercial
+→ versión / SKU técnico
+```
 
-- marca;
-- nombre comercial;
-- código técnico/SKU.
+### EVIDENCIA
 
-`vehiculos_raw.modelo`, `ventas_raw.articulo` y `notas_venta_raw.modelo` representan casi siempre el mismo código técnico.
+**SKU técnico:**
+- `vehiculos_raw.modelo`;
+- `ventas_raw.articulo`;
+- `notas_venta_raw.modelo`.
 
-`ventas_raw.desc_articulo` y `notas_venta_raw.modelo_comercial` representan el nombre comercial.
+**Nombre comercial:**
+- `ventas_raw.desc_articulo`;
+- `notas_venta_raw.modelo_comercial`.
 
-## `marcas_master`
+SKU/código técnico es la identidad más fuerte disponible para versión.
 
-**Propósito:** identidad canónica de marca.
+### `marcas_master`
 
-**PK:** `marca_id`
+**PK:** `marca_id`.
 
-Campos mínimos:
+**IDENTIDAD:** nombre de marca normalizado.
 
-- `marca_id`
-- `nombre_canonico`
-- `activo`
-- `created_at`
-- `updated_at`
+**FUENTES:**
+- `vehiculos_raw.marca`;
+- `ventas_raw.desc_mae_marca`;
+- `notas_venta_raw.desc_mae_marca`.
 
-Fuente:
+### `modelos_master`
 
-- `vehiculos_raw.marca`
-- `ventas_raw.desc_mae_marca`
-- `notas_venta_raw.desc_mae_marca`
+**PK:** `modelo_id`.
 
-Regla:
+**FK:** `marca_id`.
 
-- normalizar espacios/case para comparar;
-- preservar nombre canónico elegido;
-- no eliminar una marca histórica porque desaparezca de un snapshot.
+**IDENTIDAD:** modelo comercial dentro de marca.
 
-## `modelos_master`
+Una etiqueta comercial puede agrupar múltiples SKU.
 
-**Propósito:** identidad del modelo comercial.
+### `versiones_master`
 
-**PK:** `modelo_id`
+**PK:** `version_id`.
 
-**FK:** `marca_id`
+**FK:** `modelo_id` cuando exista asociación resuelta.
 
-Campos mínimos:
+**IDENTIDAD:** SKU/código técnico normalizado.
 
-- `modelo_id`
-- `marca_id`
-- `nombre_canonico`
-- `activo`
-- `created_at`
-- `updated_at`
+### `producto_aliases`
 
-Fuente principal:
+Conserva valores fuente y equivalencias observadas sin destruir identidad original.
 
-- `ventas_raw.desc_articulo`
-- `notas_venta_raw.modelo_comercial`
+DEBE registrar, según implementación:
 
-Regla:
+- nivel;
+- entidad MASTER;
+- fuente;
+- valor raw;
+- valor normalizado;
+- método de match;
+- confianza/validación cuando corresponda.
 
-- una misma etiqueta comercial puede agrupar varios SKU;
-- el modelo comercial no identifica una versión de forma suficiente.
+### REGLAS
 
-## `versiones_master`
+- Coincidencia exacta normalizada y SKU compartido entre RAW son evidencia fuerte.
+- Asociación SKU → modelo comercial requiere evidencia compatible.
+- SKU con asociaciones comerciales incompatibles → conflicto.
+- Renombres históricos/cambios de código NO se resuelven por similitud semántica.
+- SKUs distintos NO se fusionan solo porque compartan VIN histórico.
 
-**Propósito:** identidad técnica/SKU de producto.
+### EVIDENCIA DE IMPLEMENTACIÓN
 
-**PK:** `version_id`
+Auditoría previa registrada:
 
-**FK:** `modelo_id`
+- 241 SKU normalizados;
+- 0 SKU con múltiples marcas observadas;
+- 0 SKU con múltiples nombres comerciales observados;
+- 22 SKU sin evidencia de nombre comercial.
 
-Campos mínimos:
+## 2. SUCURSAL
 
-- `version_id`
-- `modelo_id`
-- `codigo_canonico`
-- `descripcion_canonica`
-- `activo`
-- `created_at`
-- `updated_at`
+### `sucursales_master`
 
-Fuente principal:
+**PK:** `sucursal_id`.
 
-- `vehiculos_raw.modelo`
-- `ventas_raw.articulo`
-- `notas_venta_raw.modelo`
+**ANCLA FUENTE:** `ventas_raw.id_sucursal_vta`.
 
-Regla:
+**NOMBRE FUENTE:** `ventas_raw.desc_sucursal_vta`.
 
-- el SKU/código técnico es la identidad más fuerte disponible;
-- asociación SKU → modelo comercial se construye con evidencia repetida y cruces por VIN;
-- si un SKU aparece asociado a más de un modelo comercial incompatible, no resolver automáticamente.
+`notas_venta_raw.desc_sucursal_vta` puede resolverse SOLO contra nombre normalizado único ya anclado por ventas.
 
-## `producto_aliases`
+### `sucursal_aliases`
 
-**Propósito:** conservar equivalencias históricas y variantes entre fuentes sin destruir la identidad original.
+Conserva variantes fuente de nombres vinculadas a identidad canónica.
 
-**PK:** `producto_alias_id`
+### REGLAS
 
-**FK posibles:** `marca_id`, `modelo_id`, `version_id`
+- `id_sucursal_vta` es identidad fuente más fuerte disponible.
+- Normalizar whitespace/caracteres de control para matching.
+- `vehiculos_raw.bodega` NO identifica sucursal comercial.
+- Mapping bodega → sucursal queda fuera hasta disponer de catálogo/evidencia formal.
+- Nombre sin ID y sin match único → conflicto.
 
-Campos mínimos:
+### EVIDENCIA DE IMPLEMENTACIÓN
 
-- `producto_alias_id`
-- `nivel` (`marca`, `modelo`, `version`)
-- `marca_id` nullable
-- `modelo_id` nullable
-- `version_id` nullable
-- `fuente`
-- `valor_raw`
-- `valor_normalizado`
-- `match_method`
-- `confidence`
-- `validated`
-- `created_at`
-- `updated_at`
+- 22 IDs fuente auditados con un nombre normalizado cada uno.
+- `Sucursal Chacabuco` observada sin ID fuente → conflicto explícito.
 
-Reglas automáticas fuertes:
+## 3. DEALER
 
-- coincidencia exacta normalizada;
-- SKU coincidente entre RAWs;
-- asociación SKU/modelo comercial respaldada repetidamente por VIN.
+### `dealers_master`
 
-Requieren validación:
+**PK:** `dealer_id`.
 
-- cambios históricos de código;
-- renombres como `MAGE EV` ↔ `AEOLUS SKY 01 EV`;
-- un modelo comercial asociado a múltiples variantes técnicas.
+**IDENTIDAD PREFERIDA:** RUT normalizado.
 
----
+Orden de fuerza:
 
-# 2. Sucursales
+```text
+RUT validado
+> cuerpo RUT observado estructuradamente
+> razón social normalizada
+> alias textual
+```
 
-## `sucursales_master`
+### FUENTES
 
-**Propósito:** identidad canónica de sucursal comercial.
+- evidencia dealer estructurada en RAW actuales;
+- contexto `FÓRUM DISTRIBUIDORA S.A.` + comentario cuando cumpla regla determinista;
+- catálogo histórico SOLO como seed si el RUT también está observado en RAW actual.
 
-**PK:** `sucursal_id`
-
-Campos mínimos:
-
-- `sucursal_id`
-- `id_origen`
-- `nombre_canonico`
-- `activo`
-- `created_at`
-- `updated_at`
-
-Fuente ancla:
-
-- `ventas_raw.id_sucursal_vta`
-- `ventas_raw.desc_sucursal_vta`
-
-Fuentes auxiliares:
-
-- `notas_venta_raw.desc_sucursal_vta`
-
-Regla:
-
-- `id_sucursal_vta` es la identidad fuente más fuerte disponible;
-- normalizar whitespace y caracteres de control para comparar nombres;
-- no inferir sucursal comercial desde `vehiculos_raw.bodega`.
-
-`bodega` describe ubicación física/logística y pertenece a otro dominio.
-
-## `sucursal_aliases`
-
-Campos mínimos:
-
-- `sucursal_alias_id`
-- `sucursal_id`
-- `fuente`
-- `valor_raw`
-- `valor_normalizado`
-- `match_method`
-- `validated`
-
-Puede resolver automáticamente diferencias de formato como `Casa Matriz\r\r\n`.
-
-Mappings bodega → sucursal deben quedar fuera hasta disponer de un catálogo formal o evidencia suficiente.
-
----
-
-# 3. Dealers
-
-## `dealers_master`
-
-**Propósito:** identidad canónica del dealer real del canal indirecto.
-
-**PK:** `dealer_id`
-
-Campos mínimos:
-
-- `dealer_id`
-- `rut_normalizado`
-- `razon_social_canonica`
-- `nombre_comercial` nullable
-- `activo`
-- `created_at`
-- `updated_at`
-
-Identidad preferida:
-
-`RUT normalizado > razón social normalizada > alias textual`.
-
-Fuente principal:
-
-- `notas_venta_raw.comentario`
-- `notas_venta_raw.razon_social`
-- `notas_venta_raw.cliente`
-
-Patrón relevante:
-
-`razon_social = FÓRUM DISTRIBUIDORA S.A.`
-→ `comentario`
-→ RUT + dealer real.
-
-Este patrón es distinto de `entidad_financiera = FORUM`.
-
-Regla determinística:
+### REGLA FORUM DISTRIBUIDORA
 
 1. detectar contexto Forum Distribuidora;
-2. extraer RUT del inicio/componente estructurado del comentario;
-3. normalizar RUT;
-4. asociar nombres observados al mismo RUT;
-5. crear o reutilizar `dealer_id` estable.
+2. extraer RUT completo solo desde componente esperado del comentario;
+3. validar dígito verificador;
+4. si RUT corresponde a dealer observado, enriquecer identidad existente;
+5. RUT válido pero desconocido → conflicto; NO crear dealer silenciosamente desde texto libre.
 
-## `dealer_aliases`
+`entidad_financiera = FORUM` NO es regla de identidad dealer.
 
-Campos mínimos:
+### `dealer_aliases`
 
-- `dealer_alias_id`
-- `dealer_id`
-- `fuente`
-- `valor_raw`
-- `valor_normalizado`
-- `tipo_alias`
-- `match_method`
-- `validated`
+Conserva razón social, nombre comercial y variantes textuales observadas.
 
-Ejemplos de aliases esperables:
+Nombre compuesto como `VALDEPEZ SPA // CARPOINT` permanece alias; NO implica dos dealers.
 
-- razón social con/sin punto;
-- RUT con/sin dígito verificador o guion;
-- tab/espacios;
-- razón social + nombre comercial (`VALDEPEZ SPA // CARPOINT`).
+### REGLAS
 
-No todo comentario debe interpretarse como dealer.
+- No todo comentario representa dealer.
+- Identidad histórica persiste.
+- Evidencia ambigua → `master_conflicts`.
 
----
+## 4. PERSONA
 
-# 4. Personas
+### `personas_master`
 
-## `personas_master`
+**PK:** `persona_id`.
 
-**Propósito:** identidad canónica de personas comerciales.
+**IDENTIDAD OBSERVADA PERSISTENTE V0.1:** login/código normalizado.
 
-**PK:** `persona_id`
+### FUENTES
 
-Campos mínimos:
+**Login/código:**
+- `ventas_raw.nombre_usuario`;
+- `notas_venta_raw.vendedor`.
 
-- `persona_id`
-- `nombre_canonico`
-- `usuario_canonico` nullable
-- `estado` nullable
-- `created_at`
-- `updated_at`
+**Nombre completo:**
+- `vehiculos_raw.vendedor`.
 
-Fuentes disponibles:
+### MATCH LOGIN → NOMBRE V0.1
 
-- `ventas_raw.nombre_usuario`
-- `notas_venta_raw.vendedor`
-- `vehiculos_raw.vendedor`
+La implementación admite mapping determinista cuando existe igualdad simultánea entre `notas_venta_raw` y `vehiculos_raw` de:
 
-Gap crítico:
+```text
+VIN
++
+nota_de_venta
+```
 
-`ventas_raw` y `notas_venta_raw` usan login/código; `vehiculos_raw` usa nombre completo. Las tres RAW no contienen una llave corporativa estable que permita unir ambos dominios con seguridad.
+La coincidencia de VIN por sí sola NO es suficiente.
 
-Por lo tanto, el master puede poblar inicialmente identidades de usuario observadas, pero la asociación login ↔ nombre completo debe venir de:
+Para cada login:
 
-- catálogo corporativo;
-- RRHH/usuarios ERP;
-- validación manual explícita.
+- evidencia concordante única → mapping candidato;
+- múltiples nombres incompatibles → conflicto;
+- sin evidencia suficiente → login persiste sin nombre resuelto.
 
-No usar `VIN compartido => misma persona`.
+Confianza/validación depende de cantidad y consistencia de observaciones según contrato físico.
 
-## `persona_aliases`
+### EVIDENCIA DE IMPLEMENTACIÓN
 
-Campos mínimos:
+Auditoría previa registrada:
 
-- `persona_alias_id`
-- `persona_id`
-- `fuente`
-- `valor_raw`
-- `valor_normalizado`
-- `tipo_alias` (`login`, `nombre`)
-- `match_method`
-- `confidence`
-- `validated`
+- 237 logins;
+- 235 mappings únicos login → nombre;
+- 206 con al menos 5 observaciones concordantes;
+- 29 con 1–4 observaciones;
+- `DDROGUETT` y `FMALDONADO` sin nombre verificado.
 
-Los aliases ambiguos permanecen sin asignar.
+Mappings débiles pueden conservarse con confianza explícita; NO deben marcarse validados sin cumplir threshold definido.
 
----
+### `persona_aliases`
 
-# 5. Persistencia y refresco
+Conserva login/nombre observado + método de match + confianza/validación.
 
-La capa MASTER no debe reconstruirse mediante `DROP + CREATE` diario.
+### NO INFERIR
 
-Flujo esperado después de cada refresh RAW:
+- estado laboral activo/inactivo;
+- rol actual;
+- sucursal actual;
+- equivalencia de personas por VIN compartido sin NV concordante.
 
-1. leer valores observados;
-2. normalizar solo para matching;
-3. reutilizar IDs MASTER existentes;
-4. insertar entidades nuevas únicamente cuando la identidad sea determinística;
-5. insertar aliases nuevos;
-6. marcar conflictos o casos ambiguos;
-7. nunca renumerar entidades existentes;
-8. nunca borrar identidad histórica por ausencia en el snapshot actual.
+Catálogo corporativo/RRHH sigue siendo fuente superior futura para validar identidad persona.
 
-`activo` debe derivarse de una regla explícita del dominio, no simplemente de “aparece/no aparece hoy”.
+## 5. PERSISTENCIA Y REFRESH
 
----
+MASTER NO se reconstruye mediante `DROP + CREATE` diario.
 
-# 6. Orden de implementación sugerido
+Flujo:
 
-Este documento no fija prioridad operativa. Técnicamente las unidades implementables son independientes:
+```text
+leer evidencia RAW
+→ normalizar para matching
+→ reutilizar IDs existentes
+→ insertar identidades nuevas deterministas
+→ insertar/enriquecer aliases
+→ registrar conflictos
+→ preservar historia
+```
 
-- MASTER producto;
-- MASTER sucursales;
-- MASTER dealers;
-- MASTER personas.
+### REGLAS
 
-Dependencias internas:
+- NO `TRUNCATE` como estrategia de refresh.
+- NO renumerar IDs.
+- NO borrar identidad por ausencia temporal.
+- Updates SOLO para evidencia nueva validada.
+- `master_conflicts` es superficie común para casos pendientes.
 
-`marcas_master` → `modelos_master` → `versiones_master` → `producto_aliases`.
+## 6. DEPENDENCIAS INTERNAS
 
-`dealers_master` → `dealer_aliases`.
+```text
+marcas_master
+→ modelos_master
+→ versiones_master
+→ producto_aliases
 
-`sucursales_master` → `sucursal_aliases`.
+dealers_master → dealer_aliases
+sucursales_master → sucursal_aliases
+personas_master → persona_aliases
+```
 
-`personas_master` → `persona_aliases`.
+Las cuatro áreas MASTER pueden implementarse dentro de una misma caja operativa.
 
----
+## 7. GAPS VIGENTES
 
-# 7. Gaps abiertos
+- catálogo corporativo login ↔ persona;
+- estado laboral activo/inactivo;
+- jerarquía comercial oficial producto;
+- validación de renombres/cambios históricos de SKU;
+- catálogo formal bodega ↔ sucursal;
+- resolución legal/comercial de aliases dealer compuestos;
+- dealers sin RUT estructurado suficiente;
+- `Sucursal Chacabuco` sin ID fuente;
+- `DDROGUETT` y `FMALDONADO` sin nombre verificado.
 
-1. Catálogo corporativo login ↔ nombre completo de personas.
-2. Estado laboral activo/inactivo de vendedores.
-3. Jerarquía comercial oficial modelo/versión de Cidef.
-4. Validación de renombres históricos/cambios de SKU.
-5. Catálogo formal bodega ↔ sucursal.
-6. Dealer legal vs nombre comercial en aliases compuestos.
-7. Dealers observados sin RUT suficientemente estructurado.
+## NO BLOQUEAN MASTER V0.1
 
-Estos gaps no bloquean el diseño de MASTER; bloquean únicamente resoluciones específicas que deben quedar explícitamente pendientes.
+Los gaps anteriores NO bloquean identidades deterministas ya resueltas.
+
+DEBEN permanecer explícitos y NO completarse mediante inferencia LLM.
