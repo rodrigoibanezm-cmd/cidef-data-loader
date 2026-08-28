@@ -14,42 +14,57 @@ INSERT INTO dealer_seed VALUES
 ('88867500','COMERCIAL GRASS & ARUESTE LTDA.',NULL),('76296863','AUTOMOTRIZ PORTILLO SUR LIMITADA',NULL),
 ('79853470','AUTOMOTRIZ CORDILLERA S.A.',NULL),('85234600','ROMANINI','ROMANINI'),('76719932','CITY MOTOR SPA.','CITY MOTOR');
 
-WITH observed AS (
- SELECT DISTINCT s.* FROM dealer_seed s JOIN notas_venta_raw n ON master_rut(n.cliente)=s.rut
+WITH direct AS (
+ SELECT DISTINCT s.rut,s.canonical,s.commercial,
+        master_rut((regexp_match(n.cliente,'([0-9]{1,2}\\.?[0-9]{3}\\.?[0-9]{3}-?[0-9Kk])'))[1]) full_rut
+ FROM dealer_seed s
+ JOIN notas_venta_raw n ON left(master_rut(n.cliente),8)=s.rut
+ WHERE master_rut_valid((regexp_match(n.cliente,'([0-9]{1,2}\\.?[0-9]{3}\\.?[0-9]{3}-?[0-9Kk])'))[1])
+), valid_direct AS (
+ SELECT rut,canonical,commercial,min(right(full_rut,1)) dv
+ FROM direct GROUP BY rut,canonical,commercial HAVING count(DISTINCT right(full_rut,1))=1
 )
-INSERT INTO dealers_master(rut_normalizado,razon_social_canonica,nombre_comercial,identity_status)
-SELECT rut,canonical,commercial,'body_only' FROM observed ON CONFLICT(rut_normalizado) DO NOTHING;
+INSERT INTO dealers_master(rut_normalizado,rut_dv,razon_social_canonica,nombre_comercial,identity_status)
+SELECT rut,dv,canonical,commercial,'rut_validated' FROM valid_direct
+ON CONFLICT(rut_normalizado) DO UPDATE SET rut_dv=excluded.rut_dv,identity_status='rut_validated',updated_at=now();
 
 INSERT INTO dealer_aliases(dealer_id,fuente,valor_raw,valor_normalizado,tipo_alias,match_method,validated)
-SELECT d.dealer_id,'notas_venta_raw',min(n.razon_social),master_norm(n.razon_social),'razon_social','known_rut_body',true
-FROM notas_venta_raw n JOIN dealers_master d ON d.rut_normalizado=master_rut(n.cliente)
+SELECT d.dealer_id,'notas_venta_raw',min(n.razon_social),master_norm(n.razon_social),'razon_social','validated_direct_rut',true
+FROM notas_venta_raw n
+JOIN dealers_master d ON d.identity_status='rut_validated' AND left(master_rut(n.cliente),8)=d.rut_normalizado
 WHERE master_norm(n.razon_social) IS NOT NULL AND master_norm(n.razon_social) <> 'FÓRUM DISTRIBUIDORA S.A.'
+  AND master_rut_valid((regexp_match(n.cliente,'([0-9]{1,2}\\.?[0-9]{3}\\.?[0-9]{3}-?[0-9Kk])'))[1])
 GROUP BY d.dealer_id,master_norm(n.razon_social)
 ON CONFLICT(fuente,tipo_alias,valor_normalizado) DO NOTHING;
 
 WITH forum AS (
  SELECT comentario,
-        master_rut((regexp_match(comentario,'([0-9]{1,2}\.?[0-9]{3}\.?[0-9]{3}-?[0-9Kk])'))[1]) full_rut
+        master_rut((regexp_match(comentario,'([0-9]{1,2}\\.?[0-9]{3}\\.?[0-9]{3}-?[0-9Kk])'))[1]) full_rut
  FROM notas_venta_raw WHERE master_norm(razon_social)='FÓRUM DISTRIBUIDORA S.A.' AND comentario IS NOT NULL
 ), valid AS (
  SELECT comentario,full_rut,left(full_rut,-1) body,right(full_rut,1) dv FROM forum WHERE master_rut_valid(full_rut)
+), known AS (
+ SELECT v.body,min(v.dv) dv,min(s.canonical) canonical,min(s.commercial) commercial
+ FROM valid v JOIN dealer_seed s ON s.rut=v.body
+ GROUP BY v.body HAVING count(DISTINCT v.dv)=1
 )
-UPDATE dealers_master d SET rut_dv=v.dv,identity_status='rut_validated',updated_at=now()
-FROM (SELECT body,min(dv) dv FROM valid GROUP BY body HAVING count(DISTINCT dv)=1) v WHERE d.rut_normalizado=v.body;
+INSERT INTO dealers_master(rut_normalizado,rut_dv,razon_social_canonica,nombre_comercial,identity_status)
+SELECT body,dv,canonical,commercial,'rut_validated' FROM known
+ON CONFLICT(rut_normalizado) DO UPDATE SET rut_dv=excluded.rut_dv,identity_status='rut_validated',updated_at=now();
 
 WITH forum AS (
- SELECT comentario,master_rut((regexp_match(comentario,'([0-9]{1,2}\.?[0-9]{3}\.?[0-9]{3}-?[0-9Kk])'))[1]) full_rut
+ SELECT comentario,master_rut((regexp_match(comentario,'([0-9]{1,2}\\.?[0-9]{3}\\.?[0-9]{3}-?[0-9Kk])'))[1]) full_rut
  FROM notas_venta_raw WHERE master_norm(razon_social)='FÓRUM DISTRIBUIDORA S.A.' AND comentario IS NOT NULL
 ), valid AS (
  SELECT comentario,left(full_rut,-1) body FROM forum WHERE master_rut_valid(full_rut)
 )
 INSERT INTO dealer_aliases(dealer_id,fuente,valor_raw,valor_normalizado,tipo_alias,match_method,validated)
 SELECT d.dealer_id,'notas_venta_raw.forum',min(v.comentario),master_norm(min(v.comentario)),'forum_comment','validated_rut_in_comment',true
-FROM valid v JOIN dealers_master d ON d.rut_normalizado=v.body GROUP BY d.dealer_id
+FROM valid v JOIN dealers_master d ON d.rut_normalizado=v.body AND d.identity_status='rut_validated' GROUP BY d.dealer_id
 ON CONFLICT(fuente,tipo_alias,valor_normalizado) DO NOTHING;
 
 WITH forum AS (
- SELECT comentario,master_rut((regexp_match(comentario,'([0-9]{1,2}\.?[0-9]{3}\.?[0-9]{3}-?[0-9Kk])'))[1]) full_rut
+ SELECT comentario,master_rut((regexp_match(comentario,'([0-9]{1,2}\\.?[0-9]{3}\\.?[0-9]{3}-?[0-9Kk])'))[1]) full_rut
  FROM notas_venta_raw WHERE master_norm(razon_social)='FÓRUM DISTRIBUIDORA S.A.' AND comentario IS NOT NULL
 ), valid AS (
  SELECT full_rut,left(full_rut,-1) body,count(*) obs FROM forum WHERE master_rut_valid(full_rut) GROUP BY full_rut
