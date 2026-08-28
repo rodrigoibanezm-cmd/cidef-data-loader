@@ -1,87 +1,116 @@
 # SUCURSAL_NETWORK_V0.1
 
-## Objetivo
+## CONTRATO
 
-`sucursales_master` es la dimensión conformada de **puntos comerciales** de la red Cidef.
+- `sucursales_master` = dimensión conformada de puntos comerciales.
+- `sucursal` = punto físico/comercial.
+- `dealer` = entidad legal.
+- `dealer_group` = red comercial.
+- Hechos canónicos referencian `sucursal_id` cuando exista identidad resuelta.
+- MASTER NO contiene ventas, stock, desempeño, participación ni trayectoria.
 
-Debe permitir que hechos, métricas y motores usen una sola `sucursal_id` para analizar tiendas propias y puntos dealer, sin confundir la identidad física del punto con la identidad legal del dealer.
+## TIPOS DE CANAL
 
-## Separación de identidades
+Valores admitidos en `tipo_canal`:
 
-```text
-sucursal = punto físico/comercial
-dealer = entidad legal
-dealer_group = red comercial
-```
+- `CIDEF`
+- `DEALER`
+- `DEALER_AGREGADO`
+- `NO_COMERCIAL`
 
-Una sucursal dealer puede referenciar `dealer_id` cuando la entidad legal está determinada y `dealer_group_id` para la red comercial. No se fuerza un `dealer_id` cuando la fuente solo identifica la red.
+## RELACIONES DEALER
 
-## Fuentes vigentes
+- Punto `DEALER`: asignar `dealer_group_id` cuando la red esté resuelta.
+- Asignar `dealer_id` solo con evidencia suficiente de entidad legal.
+- NO inferir `dealer_id` desde `dealer_group_id` cuando el grupo contiene múltiples RUT.
+- `dealer_id` y `dealer_group_id` son nullable.
 
-- `Sucursales DFM`, recibido 2026-08-28: catálogo actual de red Dongfeng.
-- `respaldo.locales_master`: evidencia de bodega ↔ tienda propia, revalidada contra la red actual.
-- `ventas_raw`: IDs ERP y aliases históricos.
+## FUENTES
 
-## Contrato físico
+Prioridad vigente:
 
-Campos principales:
+1. `Sucursales DFM`, recibido 2026-08-28: red comercial actual.
+2. `respaldo.locales_master`: evidencia histórica de bodega ↔ tienda CIDEF; requiere revalidación.
+3. `ventas_raw`: `id_sucursal_vta`, nombres ERP y aliases históricos.
 
-- `sucursal_id`: identidad técnica compartida.
-- `sucursal_key`: clave estable de fuente/identidad.
-- `id_sucursal_vta`: ID ERP cuando existe.
+`respaldo` es solo lectura.
+
+## CAMPOS
+
+- `sucursal_id`: PK técnica.
+- `sucursal_key`: clave estable de identidad/fuente.
+- `id_sucursal_vta`: ID ERP nullable.
 - `nombre_canonico`.
-- `tipo_canal`: `CIDEF`, `DEALER`, `DEALER_AGREGADO` o `NO_COMERCIAL`.
-- `dealer_id`: entidad legal, nullable.
-- `dealer_group_id`: red dealer, nullable.
-- `comuna`, `region`, `direccion`.
-- `estatus`, `vigente`.
-- `bodega_codigo`, `bodega_nombre`: aplicable a tiendas CIDEF cuando existe evidencia.
+- `tipo_canal`.
+- `dealer_id`: nullable.
+- `dealer_group_id`: nullable.
+- `comuna`.
+- `region`.
+- `direccion`.
+- `estatus`.
+- `vigente`.
+- `bodega_codigo`: nullable.
+- `bodega_nombre`: nullable.
 - `fuente`.
 
-## Estado verificado 2026-08-28
+## ESTADO VALIDADO — 2026-08-28
 
-- 61 identidades totales conservando historia ERP.
-- 51 puntos comerciales vigentes:
-  - 13 CIDEF;
-  - 38 Dealer.
-- 1 punto CIDEF futuro: Mall Cenco Florida.
-- 7 identidades CIDEF históricas ERP no vigentes.
-- 1 agrupador ERP histórico de concesionarios.
-- 1 identidad ERP no comercial (`Vehiculos Restringidos`).
+- identidades totales: 61
+- puntos vigentes: 51
+- CIDEF vigentes: 13
+- DEALER vigentes: 38
+- CIDEF futuro: 1 — Mall Cenco Florida
+- CIDEF históricos ERP: 7
+- DEALER_AGREGADO histórico ERP: 1
+- NO_COMERCIAL histórico ERP: 1
+- CIDEF vigentes con bodega: 13/13
+- DEALER vigentes con `dealer_group_id`: 37/38
+- DEALER vigentes con `dealer_id`: 35/38
 
-Las 13 tiendas CIDEF vigentes tienen correspondencia de bodega revalidada.
+## GAPS
 
-De los 38 puntos dealer vigentes:
+### AUTOS OGAZ — MACUL / BILBAO
 
-- 37 tienen `dealer_group_id` resuelto;
-- 35 tienen además `dealer_id` legal resuelto.
+- `dealer_group_id`: resuelto a `AUTOS OGAZ`.
+- `dealer_id`: NULL.
+- causa: grupo con 2 entidades legales/RUT; fuente no identifica operador legal del punto.
+- regla: NO inferir entidad legal.
 
-## Gaps explícitos
+### MEGACENTER — PUNTA ARENAS
 
-### Autos Ogaz
+- punto comercial: válido y vigente.
+- `dealer_group_id`: NULL.
+- `dealer_id`: NULL.
+- causa: MEGACENTER no existe en universo validado de `dealers_master`/`dealer_groups`.
+- conflicto: `dealer_not_resolved`, pendiente.
 
-Macul y Bilbao se asignan al grupo `AUTOS OGAZ`, pero `dealer_id` queda NULL porque el grupo contiene dos entidades legales/RUT y el catálogo de sucursales no indica cuál opera cada punto. No se adivina la entidad legal.
+### PORTILLO SUR — OSORNO
 
-### Megacenter Punta Arenas
+- nombre canónico: `PORTILLO SUR Osorno`.
+- comuna: Osorno.
+- fuente contiene nombre `PORTILLO SUR Temuco`.
+- regla aplicada: comuna + dirección identifican Osorno.
+- conflicto: `source_branch_name_inconsistent`, pendiente.
 
-El catálogo actual contiene `MEGACENTER`, pero esa identidad no existe todavía en el universo validado de `dealers_master`. El punto se conserva y queda conflicto pendiente de resolución dealer.
+## CONSUMO
 
-### Portillo Sur Osorno
+Dimensiones soportadas desde `sucursal_id`:
 
-La fuente rotula la sucursal de Osorno como `PORTILLO SUR Temuco`, pero comuna y dirección corresponden a Osorno. Se canoniza el punto como `PORTILLO SUR Osorno` y se registra la inconsistencia de fuente.
+- punto comercial
+- canal
+- tienda CIDEF
+- punto dealer
+- dealer legal
+- dealer group
+- comuna
+- región
+- persona mediante `persona_sucursal`
 
-## Consumo analítico
+## REGLAS DE INTEGRIDAD
 
-`fact_venta` y otros hechos canónicos deben referenciar `sucursal_id` cuando exista evidencia suficiente.
-
-Esto permite que los motores calculen por:
-
-- punto de venta;
-- tienda CIDEF;
-- punto dealer;
-- dealer legal;
-- red dealer;
-- comuna/región;
-- vendedor/supervisor mediante relaciones de persona.
-
-MASTER resuelve estas identidades. No contiene ventas, stock, desempeño, participación ni trayectoria analítica.
+- Una identidad física/comercial corresponde a una `sucursal_id`.
+- Historia ERP no se elimina por ausencia en red vigente.
+- `vigente` representa vigencia del punto según fuente actual; no elimina identidad histórica.
+- Alias de fuente se conservan en `sucursal_aliases`.
+- Gaps de identidad se registran en `master_conflicts`.
+- Motores NO redefinen sucursal, dealer ni dealer group.
