@@ -1,23 +1,21 @@
 # QUESTION FAMILIES V0.1
 
-## Principio
+## CONTRATO
 
-La unidad de diseño es:
+- 1 familia de preguntas = 1 motor determinista.
+- Las preguntas definen requisitos de datos y cálculo.
+- Los motores de negocio NO consumen RAW.
+- Evidencia RAW debe llegar auditada, normalizada y procesada.
+- Auditores y validadores pueden ser transversales.
+- Cubos/marts entregan evidencia; NO definen verdad ni lógica de negocio.
+- Las familias NO son reportes BI. Deben resolver inferencia, comparación, trayectoria o diagnóstico.
 
-**1 familia de preguntas → 1 motor determinista**
+## FAMILIA 1 — EXPECTATIVA DE CIERRE
 
-Los motores pueden consumir auditores y validadores transversales de libre uso.
+### OBJETIVO
+Estimar cierre esperado y desviación respecto del comportamiento esperable.
 
-El cubo semántico entrega la evidencia común.
-
-Las familias no son reportes descriptivos ni equivalen a páginas de BI. Deben agrupar preguntas de negocio que requieren inferencia determinista, comparación, trayectoria o diagnóstico.
-
-Las fuentes RAW no deben ser consumidas directamente por estos motores de negocio. La evidencia debe llegar previamente auditada, normalizada y procesada por las capas y motores correspondientes.
-
-## Familia 1: expectativa de cierre
-
-Preguntas:
-
+### PREGUNTAS GUÍA
 - ¿Cuánto debería vender Cidef este mes?
 - ¿Cuánto debería vender cada tienda?
 - ¿Cuánto debería vender cada vendedor?
@@ -26,73 +24,115 @@ Preguntas:
 - ¿La desviación todavía es recuperable?
 - ¿Cuándo comienza a ser estadísticamente explicable el cierre del mes?
 
-Esta familia debe usar historia, estacionalidad, ritmo intra-mes y comportamiento relativo.
+### REGLAS
+- Usar historia, estacionalidad, ritmo intra-mes y comportamiento relativo.
+- Separar resultado observado, esperado y proyección.
 
-## Familia 2: posición competitiva
+## FAMILIA 2 — POSICIÓN COMPETITIVA
 
-Esta familia no debe limitarse a calcular participación de mercado. Debe reconstruir la posición competitiva relevante para Cidef y cómo esa posición cambia en el tiempo.
+### OBJETIVO
+Determinar competencia real, penetración relativa y trayectoria competitiva de Cidef.
 
-Preguntas:
+### PREGUNTAS GUÍA
+- ¿Quién compite realmente con cada producto Cidef?
+- ¿Contra qué marcas/modelos debe compararse y con qué evidencia?
+- ¿Cuál es nuestra penetración dentro del mercado competitivo relevante?
+- ¿Nuestra penetración competitiva mejora o empeora?
+- ¿A quién le estamos quitando mercado?
+- ¿Quién nos está quitando mercado?
+- ¿Dónde ocurre el desplazamiento competitivo?
+- ¿El movimiento es persistente o ruido?
+- ¿Qué movimientos son relevantes para marketing, fuerza de venta o portafolio?
 
-- ¿Quiénes son realmente nuestros competidores para cada familia o conjunto comparable de productos?
-- ¿Contra qué marcas o productos debe compararse cada producto Cidef y con qué evidencia se sostiene esa comparación?
-- ¿Cuál es nuestra penetración dentro del mercado competitivo relevante, en vez de solo dentro del mercado total?
-- ¿Cómo está variando nuestra penetración respecto de nuestros competidores reales?
-- ¿A qué competidores les estamos ganando terreno?
-- ¿Qué competidores nos están quitando terreno?
-- Cuando ganamos participación, ¿qué competidores pierden simultáneamente y con qué persistencia ocurre ese desplazamiento?
-- Cuando perdemos participación, ¿hacia qué competidores parece desplazarse el mercado?
-- ¿El desplazamiento competitivo es general o está concentrado en determinadas regiones, segmentos, familias o modelos?
-- ¿Un cambio de participación parece coyuntural o constituye una trayectoria competitiva persistente?
-- ¿Qué movimientos competitivos podrían convertirse en evidencia accionable para marketing, fuerza de venta o gestión de portafolio?
+### RESPUESTAS ESPERADAS
 
-La definición de competencia no debe fijarse como un atributo estático de MASTER. Es una relación analítica que debe poder recalcularse con evidencia procesada de mercado y producto.
+**¿Quién es realmente la competencia de un producto Cidef?**
+- Identificar conjunto competitivo con evidencia de producto y mercado.
+- Exponer comparables y evidencia de comparabilidad.
+- NO asumir competencia solo por compartir segmento nominal.
 
-La evidencia de mercado —incluida RVM— debe pasar primero por sus procesos de auditoría, normalización y preparación. El motor de posición competitiva no debe consultar directamente una RAW.
+**¿A quién le estamos quitando mercado?**
+- Detectar competidores que pierden participación mientras Cidef gana dentro del mismo mercado comparable.
+- Cuantificar magnitud, persistencia y concentración del desplazamiento.
+- NO presentar simultaneidad como causalidad demostrada.
 
-## Familia 3: deterioro y red flags
+**¿Quién nos está quitando mercado?**
+- Detectar competidores que ganan participación mientras Cidef pierde.
+- Cuantificar magnitud y localizar el desplazamiento.
 
-El objetivo no es solamente constatar que una unidad ya cayó. Debe detectar señales tempranas de cambio de trayectoria antes de que el deterioro sea evidente en el resultado final.
+**¿Estamos penetrando mejor o peor que hace seis meses?**
+- Medir trayectoria dentro del mercado competitivo relevante.
+- Comparar contra períodos anteriores.
+- Distinguir crecimiento absoluto de mejora competitiva.
 
-Preguntas:
+**¿Dónde le ganamos a un competidor y dónde nos gana?**
+- Descomponer por cortes soportados: región, segmento, familia, modelo u otros validados.
+- Identificar fortalezas y debilidades localizadas.
 
-- ¿Qué vendedores o tiendas muestran deterioro respecto de su propia historia?
-- ¿Desde cuándo comenzó el deterioro y cuál fue la primera señal observable?
-- ¿Qué cambios de trayectoria todavía son pequeños en magnitud pero estadísticamente anormales para esa unidad?
+**¿Este cambio competitivo es real o ruido?**
+- Evaluar magnitud, duración, consistencia y comportamiento histórico.
+- Distinguir fluctuación puntual de trayectoria persistente.
+
+### REGLAS
+- Competencia es relación analítica recalculable; NO atributo MASTER.
+- Comparar dentro de mercados competitivos relevantes; NO usar mercado total por defecto.
+- RVM y otras fuentes de mercado deben estar auditadas, normalizadas y procesadas antes del motor.
+- Correlación temporal NO implica causalidad.
+
+### OUTPUT MÍNIMO
+Competidores comparables + evidencia + penetración relativa + trayectoria + desplazamientos + cortes relevantes.
+
+## FAMILIA 3 — DETERIORO Y RED FLAGS
+
+### OBJETIVO
+Detectar cambios adversos de trayectoria antes de que el deterioro sea evidente en el resultado final.
+
+### PREGUNTAS GUÍA
+- ¿Qué vendedores o tiendas se deterioran respecto de su propia historia?
+- ¿Desde cuándo y cuál fue la primera señal?
+- ¿Qué cambios pequeños son anormales para esa unidad?
 - ¿Quién depende excesivamente de los últimos días del mes?
 - ¿Quién presenta alta volatilidad?
-- ¿Quién acumula notas de venta que no llegan a factura?
+- ¿Quién acumula notas de venta sin llegar a factura?
 - ¿Quién aumenta sus tiempos de cierre?
-- ¿Qué tiendas parecen sanas en ventas totales pero muestran señales de fragilidad?
-- ¿Qué patrones observados históricamente suelen anteceder un deterioro posterior?
+- ¿Qué tiendas parecen sanas pero muestran fragilidad?
+- ¿Qué patrones históricos suelen anteceder deterioro?
 
-Un red flag debe representar una señal que merece atención antes de que el problema quede completamente reflejado en el resultado. Puede provenir de patrones históricos validados o de reglas de negocio explícitas que luego deben contrastarse contra la evidencia.
+### REGLAS
+- Red flag = señal que merece atención antes de que el problema quede reflejado completamente en el resultado.
+- Señales deben provenir de patrones históricos validados o reglas explícitas contrastadas con evidencia.
 
-## Familia 4: desempeño relativo
+## FAMILIA 4 — DESEMPEÑO RELATIVO
 
-Preguntas:
+### OBJETIVO
+Comparar cada unidad contra un contexto comparable y contra su trayectoria esperable.
 
+### PREGUNTAS GUÍA
 - ¿Qué tan lejos está una tienda del comportamiento esperado para Cidef?
-- ¿Qué tan lejos está un vendedor del comportamiento histórico de vendedores comparables de esa tienda?
-- ¿Una mala semana es ruido o parte de un deterioro persistente?
-- ¿Qué vendedores están sistemáticamente por debajo o sobre su contexto comparable?
+- ¿Qué tan lejos está un vendedor de vendedores comparables de esa tienda?
+- ¿Una mala semana es ruido o deterioro persistente?
+- ¿Quién está sistemáticamente por debajo o sobre su contexto comparable?
 
-## Familia 5: accionabilidad
+## FAMILIA 5 — ACCIONABILIDAD
 
-Objetivo:
+### OBJETIVO
+Identificar qué requiere atención y por qué. NO inventar recomendaciones sin evidencia.
 
-No inventar recomendaciones comerciales sin evidencia suficiente.
+### OUTPUT MÍNIMO
+- desviación detectada;
+- inicio de la desviación;
+- magnitud;
+- evidencia explicativa;
+- operación, vendedor, tienda o dimensión afectada.
 
-El agente debe primero identificar:
+### REGLAS
+- La acción específica puede requerir contexto humano, CRM, Forum u otra fuente operacional.
+- Sin evidencia suficiente, emitir gap; NO completar con inferencia del LLM.
 
-- dónde existe una desviación;
-- desde cuándo;
-- cuánto mide;
-- qué evidencia la explica;
-- qué operación, vendedor, tienda o dimensión requiere atención.
+## PRINCIPIO DE DISEÑO POSTERIOR
 
-Ejemplo:
+MASTER, hechos canónicos, métricas y cubos deben habilitar estas preguntas.
 
-> “Hay que gestionar a este vendedor esta semana porque su ritmo está bajo su rango histórico y además mantiene varias notas de venta envejecidas sin factura.”
+NO convertir respuestas analíticas en atributos estáticos para simplificar motores futuros.
 
-La acción específica puede requerir contexto humano, CRM o Forum.
+Toda nueva capa debe justificar su existencia por preguntas que habilita, identidad que resuelve, hecho que representa o métrica que certifica.
