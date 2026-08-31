@@ -8,6 +8,8 @@ Los principios de identidad de este documento siguen vigentes. Cada dominio debe
 
 `respaldo` es índice de identidades candidatas. NO es autoridad. NO copiar tablas históricas como verdad.
 
+Dealer + sucursal: saneamiento implementado y validado en Neon `main` al 2026-08-31.
+
 ## OBJETIVO
 
 Definir contrato lógico de MASTER V0.1.
@@ -321,28 +323,87 @@ Esto permite que motores comparen CIDEF y mercado sin redefinir identidad.
 
 ## 2. SUCURSAL / LOCAL
 
-### EVIDENCIA ACTUAL CONOCIDA
+### CONTRATO
+
+```text
+dealer_group = identidad comercial
+dealers_master = identidad jurídica / RUT
+sucursales_master = punto físico/comercial
+```
+
+Grain:
+
+```text
+sucursales_master
+1 fila = 1 punto físico/comercial identificable
+```
+
+Relaciones:
+
+```text
+dealer_group 1:N dealers_master
+dealer_group 1:N sucursales_master
+```
+
+NO asumir:
+
+```text
+sucursal 1:1 entidad legal
+```
+
+Cuando existe grupo comercial resuelto pero no evidencia jurídica suficiente:
+
+```text
+dealer_group_id = conocido
+dealer_id = NULL
+```
+
+es estado válido y preferible a inferir RUT.
+
+Contrato detallado y estado validado: `docs/master/SUCURSAL_NETWORK_V0.1.md`.
+
+### EVIDENCIA
 
 - `ventas_raw.id_sucursal_vta`;
 - `ventas_raw.desc_sucursal_vta`;
 - `notas_venta_raw.desc_sucursal_vta`;
 - catálogo corporativo vigente;
-- evidencia histórica de local/bodega revalidada.
+- evidencia histórica revalidada.
 
 ### REGLAS
 
 - `sucursales_master` es dimensión conformada de puntos comerciales CIDEF + dealer;
-- `sucursal` = punto físico/comercial;
-- `dealer` = entidad legal;
-- `dealer_group` = red comercial;
 - `id_sucursal_vta` es ancla fuerte cuando existe;
 - nombre normalizado puede actuar como alias, NO necesariamente como identidad suficiente;
 - `bodega` NO se equipara automáticamente a sucursal comercial;
-- mapping local/bodega ↔ sucursal requiere evidencia determinista.
+- mapping local/bodega ↔ sucursal requiere evidencia determinista;
+- ausencia en red vigente NO elimina identidad histórica;
+- `vigente` y existencia de identidad son conceptos distintos.
+
+### ALIASES
+
+```text
+RAW/source representation
+→ alias
+→ canonical identity
+```
+
+- alias conserva valor observado en fuente;
+- corrección del nombre canónico NO reescribe evidencia raw;
+- `alias_raw != nombre_canonico` es válido y esperado.
 
 ## 3. DEALER
 
 ### IDENTIDAD
+
+```text
+dealer_groups
+→ identidad comercial del dealer
+
+dealers_master
+→ identidad jurídica
+→ 1 fila = 1 entidad legal / RUT
+```
 
 RUT normalizado es ancla fuerte cuando existe.
 
@@ -357,13 +418,31 @@ RUT validado
 
 ### REGLAS
 
-- `dealers_master` = 1 entidad legal/RUT;
-- `dealer_groups` = red comercial;
+- múltiples `dealers_master` pueden pertenecer al mismo `dealer_group`;
+- RUT distintos NO se fusionan aunque compartan identidad comercial;
 - supervisor es relación temporal, NO atributo de identidad;
-- RUT distintos NO se fusionan;
 - `entidad_financiera = FORUM` NO identifica dealer por sí sola;
 - no todo comentario representa dealer;
-- toda exclusión de candidato histórico debe quedar explicada por evidencia.
+- toda exclusión de candidato histórico debe quedar explicada por evidencia;
+- NO inventar entidad legal para completar una jerarquía comercial conocida parcialmente.
+
+### CASOS VALIDADOS
+
+```text
+MELHUISH
+├── AUTOMOTORA MELHUISH SPA
+└── AUTOMOTORA MELHUISH RETAIL SPA
+
+AUTOS OGAZ
+├── AUTOMOTRIZ PEDRO ANDRES OGAZ SANTELICES E I R L
+└── COMERCIALIZADORA OGAZ Y OGAZ SPA
+
+COLON
+├── COMERCIAL COLON LIMITADA
+└── AUTOMECANICA COLON LIMITADA
+```
+
+`MEGACENTER` existe como `dealer_group`; no existe evidencia jurídica suficiente para crear/asignar `dealers_master`.
 
 ## 4. PERSONA
 
@@ -428,7 +507,16 @@ MASTER histórica respaldo
 → validación de cobertura
 ```
 
-MASTER V0.1 NO se cierra hasta completar reconciliación de producto, sucursal, persona y dealer.
+Estado:
+
+```text
+dealer   = saneado / validado
+sucursal = saneado / validado
+producto = revisión pendiente
+persona  = validación integral pendiente dentro del cierre MASTER
+```
+
+MASTER V0.1 NO se cierra hasta completar reconciliación de todos los dominios pendientes.
 
 ## NO HACER
 
@@ -436,5 +524,5 @@ MASTER V0.1 NO se cierra hasta completar reconciliación de producto, sucursal, 
 - NO considerar `main` correcto porque SQL ejecutó sin error.
 - NO validar solo duplicados.
 - NO ocultar identidades sin mapping eliminándolas del universo.
-- NO iniciar capa canónica sobre MASTER no validada.
+- NO iniciar capa canónica sobre MASTER no validada integralmente.
 - NO almacenar competencia como atributo estático de producto.
