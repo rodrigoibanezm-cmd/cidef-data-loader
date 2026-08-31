@@ -46,18 +46,30 @@ FUENTES
 
 ## 2. MASTER / DIMENSIONES CONFORMADAS
 
+### ESTADO
+
+**MASTER V0.1 CERRADA / VALIDADA — 2026-08-31.**
+
 ### OBJETIVO
 Resolver identidad estable compartida.
 
-### V0.1
+### V0.1 FÍSICA CERRADA
 
 - producto;
 - sucursal;
 - persona;
-- dealer;
-- tiempo.
+- dealer.
 
 Contrato detallado: `docs/master/MASTER_LAYER_V0.1.md`.
+Implementación validada: `docs/master/MASTER_IMPLEMENTATION_V0.1.md`.
+
+### TIEMPO
+
+La dimensión tiempo forma parte de la arquitectura dimensional general, pero NO fue requisito físico para cerrar la caja MASTER V0.1 de identidad.
+
+Su contrato físico se define cuando la capa canónica/métricas lo requiera.
+
+NO inventar `dim_tiempo` como dependencia retroactiva del cierre MASTER.
 
 ### REGLAS
 
@@ -200,14 +212,6 @@ Optimizar consultas sobre hechos canónicos + métricas certificadas.
 
 Contrato vigente: `docs/business-agent/QUESTION_FAMILIES_V0.1.md`.
 
-### FAMILIAS V0.1
-
-1. Expectativa de cierre.
-2. Posición competitiva.
-3. Deterioro y red flags.
-4. Desempeño relativo.
-5. Accionabilidad.
-
 ### REGLAS
 
 - 1 familia de preguntas → 1 motor determinista.
@@ -242,6 +246,8 @@ LLM = selección + explicación
 10. V0.1 NO persiste snapshots diarios de estado de vehículo por defecto.
 11. Motores de negocio NO consumen RAW.
 12. Preguntas de negocio gobiernan requisitos de capas analíticas posteriores.
+13. MASTER V0.1 cerrada = producto + sucursal + persona + dealer.
+14. Dimensión tiempo se define físicamente cuando sea requerida por hechos/métricas; no reabre MASTER V0.1.
 
 ## 10. CONTRATO FÍSICO PENDIENTE
 
