@@ -9,12 +9,6 @@ export default async function handler(req, res) {
     return res.status(405).json({ ok: false, error: 'POST required' });
   }
 
-  const expected = process.env.OPS_WRITE_TOKEN;
-  const supplied = req.headers['x-ops-write-token'];
-  if (!expected || supplied !== expected) {
-    return res.status(401).json({ ok: false, error: 'Unauthorized' });
-  }
-
   const operation = req.body?.operation;
   const run = OPERATIONS[operation];
   if (!run) {
