@@ -2,12 +2,28 @@
 
 ## CONTRATO
 
-- `sucursales_master` = dimensión conformada de puntos comerciales.
-- `sucursal` = punto físico/comercial.
-- `dealer` = entidad legal.
-- `dealer_group` = red comercial.
+- `sucursales_master` = dimensión conformada de puntos físicos/comerciales.
+- `sucursal` = punto físico/comercial identificable.
+- `dealer` = entidad legal/RUT.
+- `dealer_group` = identidad comercial del dealer.
+- `dealer_group` 1:N `dealers_master`.
+- `dealer_group` 1:N `sucursales_master`.
+- NO asumir `sucursal` 1:1 entidad legal.
 - Hechos canónicos referencian `sucursal_id` cuando exista identidad resuelta.
 - MASTER NO contiene ventas, stock, desempeño, participación ni trayectoria.
+
+## GRAIN
+
+```text
+sucursales_master
+1 fila = 1 punto físico/comercial identificable
+
+dealers_master
+1 fila = 1 entidad legal / RUT
+
+dealer_groups
+1 fila = 1 identidad comercial de dealer
+```
 
 ## TIPOS DE CANAL
 
@@ -20,20 +36,184 @@ Valores admitidos en `tipo_canal`:
 
 ## RELACIONES DEALER
 
-- Punto `DEALER`: asignar `dealer_group_id` cuando la red esté resuelta.
+- Punto `DEALER`: asignar `dealer_group_id` cuando la identidad comercial esté resuelta.
 - Asignar `dealer_id` solo con evidencia suficiente de entidad legal.
 - NO inferir `dealer_id` desde `dealer_group_id` cuando el grupo contiene múltiples RUT.
-- `dealer_id` y `dealer_group_id` son nullable.
+- `dealer_group_id` conocido + `dealer_id = NULL` es estado válido cuando falta evidencia jurídica suficiente.
+- Múltiples `dealers_master` pueden pertenecer al mismo `dealer_group`.
+- RUT distintos NO se fusionan aunque pertenezcan al mismo grupo comercial.
+
+Casos validados:
+
+```text
+MELHUISH
+├── AUTOMOTORA MELHUISH SPA
+└── AUTOMOTORA MELHUISH RETAIL SPA
+
+AUTOS OGAZ
+├── AUTOMOTRIZ PEDRO ANDRES OGAZ SANTELICES E I R L
+└── COMERCIALIZADORA OGAZ Y OGAZ SPA
+
+COLON
+├── COMERCIAL COLON LIMITADA
+└── AUTOMECANICA COLON LIMITADA
+```
+
+## DEALER GROUPS — ESTADO VALIDADO 2026-08-31
+
+```text
+22 dealer_groups
+```
+
+Normalizaciones comerciales implementadas:
+
+```text
+AUTOMOTRIZ FOR CENTER -> FORCENTER
+AUTOMOTRIZ PORTILLO SUR -> PORTILLO SUR
+COMERCIAL COLON / AUTOMECANICA COLON -> COLON
+AUTOMOTRIZ AUSTRAL -> AUSTRAL
+AUTOMOTRIZ CARMONA -> CARMONA
+COMERCIAL GRASS & ARUESTE -> GRASS Y ARUESTE
+AUTOMOTRIZ ROSSELOT -> ROSSELOT
+```
+
+Preservar identidad histórica aunque no figure en red vigente.
+
+Ejemplos:
+
+- `CITY MOTOR`
+- `AUTOMOTRIZ CORDILLERA`
 
 ## FUENTES
 
-Prioridad vigente:
+- catálogo corporativo vigente: autoridad de red comercial actual;
+- RAW: aliases y evidencia de matching;
+- evidencia histórica revalidada: preservación de identidad;
+- `respaldo`: índice histórico/candidatos; NO autoridad.
 
-1. `Sucursales DFM`, recibido 2026-08-28: red comercial actual.
-2. `respaldo.locales_master`: evidencia histórica de bodega ↔ tienda CIDEF; requiere revalidación.
-3. `ventas_raw`: `id_sucursal_vta`, nombres ERP y aliases históricos.
+## RED COMERCIAL VIGENTE — ESTADO VALIDADO 2026-08-31
 
-`respaldo` es solo lectura.
+Catálogo oficial:
+
+```text
+55 puntos
+= 13 CIDEF vigentes
++ 41 DEALER vigentes
++ 1 CIDEF futuro
+```
+
+```text
+54 puntos actualmente abiertos
++ 1 futuro
+= 55 puntos del catálogo
+```
+
+Validado en Neon `main`:
+
+```text
+CIDEF vigentes  = 13
+DEALER vigentes = 41
+```
+
+Identidades históricas permanecen con `vigente = false`.
+
+## ALTAS INCORPORADAS
+
+```text
+MELHUISH Las Condes
+ROSSELOT Guanaco
+ROSSELOT Ossa
+```
+
+Estado:
+
+```text
+vigente = true
+tipo_canal = DEALER
+dealer_group_id resuelto
+```
+
+`MELHUISH Las Condes`:
+
+```text
+dealer_id = NULL
+```
+
+Causa: MELHUISH contiene múltiples entidades legales y no existe evidencia suficiente para asignar una entidad jurídica específica.
+
+## MEGACENTER — PUNTA ARENAS
+
+```text
+dealer_group = MEGACENTER
+sucursal = MEGACENTER Punta Arenas
+dealer_id = NULL
+```
+
+No existe evidencia validada de RUT/razón social suficiente para crear o asignar una entidad jurídica.
+
+Regla:
+
+```text
+NO inventar entidad legal para completar jerarquía.
+```
+
+## NORMALIZACIONES VALIDADAS
+
+```text
+KLASSIK CAR Vitacua
+-> KLASSIK CAR Vitacura
+```
+
+```text
+ROSSELOT Huechuraba
+-> ROSSELOT Movicenter
+```
+
+```text
+Hechuraba
+-> Huechuraba
+```
+
+`PORTILLO SUR Osorno` mantiene identidad propia y `sucursal_key` corregida; Osorno y Temuco quedan diferenciados.
+
+## SUCURSAL ALIASES — ESTADO VALIDADO 2026-08-31
+
+```text
+98 aliases
+0 huérfanos
+0 no validados
+0 conflictos/duplicados por fuente + valor_normalizado
+```
+
+Altas con alias:
+
+```text
+MELHUISH Las Condes -> 1
+ROSSELOT Guanaco    -> 1
+ROSSELOT Ossa       -> 1
+```
+
+Contrato:
+
+```text
+RAW/source representation
+-> alias
+-> canonical identity
+```
+
+- Alias conserva el valor observado en la fuente.
+- Corrección de nombre canónico NO reescribe automáticamente el alias raw.
+- `alias_raw != nombre_canonico` es válido y esperado.
+
+Ejemplos:
+
+```text
+alias raw: KLASSIK CAR Vitacua
+-> canonical: KLASSIK CAR Vitacura
+
+alias raw: ROSSELOT Huechuraba
+-> canonical: ROSSELOT Movicenter
+```
 
 ## CAMPOS
 
@@ -53,45 +233,6 @@ Prioridad vigente:
 - `bodega_nombre`: nullable.
 - `fuente`.
 
-## ESTADO VALIDADO — 2026-08-28
-
-- identidades totales: 61
-- puntos vigentes: 51
-- CIDEF vigentes: 13
-- DEALER vigentes: 38
-- CIDEF futuro: 1 — Mall Cenco Florida
-- CIDEF históricos ERP: 7
-- DEALER_AGREGADO histórico ERP: 1
-- NO_COMERCIAL histórico ERP: 1
-- CIDEF vigentes con bodega: 13/13
-- DEALER vigentes con `dealer_group_id`: 37/38
-- DEALER vigentes con `dealer_id`: 35/38
-
-## GAPS
-
-### AUTOS OGAZ — MACUL / BILBAO
-
-- `dealer_group_id`: resuelto a `AUTOS OGAZ`.
-- `dealer_id`: NULL.
-- causa: grupo con 2 entidades legales/RUT; fuente no identifica operador legal del punto.
-- regla: NO inferir entidad legal.
-
-### MEGACENTER — PUNTA ARENAS
-
-- punto comercial: válido y vigente.
-- `dealer_group_id`: NULL.
-- `dealer_id`: NULL.
-- causa: MEGACENTER no existe en universo validado de `dealers_master`/`dealer_groups`.
-- conflicto: `dealer_not_resolved`, pendiente.
-
-### PORTILLO SUR — OSORNO
-
-- nombre canónico: `PORTILLO SUR Osorno`.
-- comuna: Osorno.
-- fuente contiene nombre `PORTILLO SUR Temuco`.
-- regla aplicada: comuna + dirección identifican Osorno.
-- conflicto: `source_branch_name_inconsistent`, pendiente.
-
 ## CONSUMO
 
 Dimensiones soportadas desde `sucursal_id`:
@@ -109,8 +250,8 @@ Dimensiones soportadas desde `sucursal_id`:
 ## REGLAS DE INTEGRIDAD
 
 - Una identidad física/comercial corresponde a una `sucursal_id`.
-- Historia ERP no se elimina por ausencia en red vigente.
-- `vigente` representa vigencia del punto según fuente actual; no elimina identidad histórica.
+- Historia no se elimina por ausencia en red vigente.
+- `vigente` representa vigencia del punto; no elimina identidad histórica.
 - Alias de fuente se conservan en `sucursal_aliases`.
-- Gaps de identidad se registran en `master_conflicts`.
+- NO inventar entidad jurídica para completar una jerarquía conocida parcialmente.
 - Motores NO redefinen sucursal, dealer ni dealer group.
