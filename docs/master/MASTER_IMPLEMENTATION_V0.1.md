@@ -2,209 +2,307 @@
 
 ## ESTADO
 
-**MASTER V0.1 ABIERTA — DEALER + SUCURSAL SANEADOS Y VALIDADOS.**
+**MASTER V0.1 CERRADA / VALIDADA — 2026-08-31.**
 
-Dealer y sucursal fueron revisados directamente contra Neon `main` y su estado actual se considera válido para identidad MASTER.
+Neon `main` fue auditado integralmente después del saneamiento final de PRODUCTO y PERSONA.
 
-Producto permanece en revisión final. Persona requiere validación integral dentro del cierre MASTER.
+```text
+producto = APROBADO
+sucursal = APROBADO
+dealer   = APROBADO
+persona  = APROBADO
 
-La capa canónica NO debe considerarse habilitada hasta cerrar MASTER V0.1 completa.
+blockers conocidos = 0
+```
 
-## OBJETIVO
-
-Documentar implementación física y estado validado de MASTER V0.1.
+La capa canónica puede usar MASTER V0.1 como identidad compartida.
 
 Contrato lógico: `docs/master/MASTER_LAYER_V0.1.md`.
-Contrato dealer/sucursal: `docs/master/SUCURSAL_NETWORK_V0.1.md`.
 
-## DEALER + SUCURSAL — ESTADO VALIDADO 2026-08-31
+## INVENTARIO FÍSICO VIGENTE
 
-### Jerarquía
+### PRODUCTO
+
+```text
+marcas_master_v01
+modelos_master_v01
+versiones_master_v01
+producto_aliases_v01
+producto_clasificacion_v01
+producto_portafolio_v01
+```
+
+Las tablas sin sufijo `_v01` son legacy y NO forman parte del contrato final de PRODUCTO V0.1.
+
+### SUCURSAL
+
+```text
+sucursales_master
+sucursal_aliases
+```
+
+### DEALER
 
 ```text
 dealer_groups
-→ identidad comercial
-
 dealers_master
-→ identidad jurídica
-→ 1 fila = 1 entidad legal / RUT
-
-sucursales_master
-→ identidad del punto físico/comercial
-→ 1 fila = 1 punto identificable
+dealer_aliases
+dealer_supervisor
 ```
 
-Relaciones:
+### PERSONA
 
 ```text
-dealer_group 1:N dealers_master
-dealer_group 1:N sucursales_master
+personas_master
+persona_aliases
+persona_roles
+persona_sucursal
+persona_estado_comercial
 ```
 
-NO asumir:
+### TRANSVERSAL
 
 ```text
-sucursal 1:1 dealer legal
+master_conflicts
 ```
 
-Estado válido ante evidencia jurídica insuficiente:
+## PRODUCTO — VALIDACIÓN FINAL
 
 ```text
-dealer_group_id = conocido
-dealer_id = NULL
+marcas_master_v01                = 102
+modelos_master_v01               = 779
+versiones_master_v01             = 11546
+producto_aliases_v01             = 1117
+producto_clasificacion_v01       = 3235
+producto_portafolio_v01 vigente  = 61
+DONGFENG vigente                 = 23
+FOTON vigente                    = 38
+VERSION internos RESUELTO        = 50
+mappings SKU→VERSION lógicos     = 17
 ```
 
-### Dealer groups
+Controles finales:
 
 ```text
-22 dealer_groups
+duplicados jerárquicos                 = 0
+huérfanos                              = 0
+versiones extra en modelos vigentes    = 0
+RESUELTO multi-destino                 = 0
+alias internos a versión no vigente    = 0
+métodos internos no autorizados        = 0
+falsos merges EV/no-EV                 = 0
 ```
 
-Normalizaciones implementadas:
+Métodos VERSION internos permitidos:
 
 ```text
-AUTOMOTRIZ FOR CENTER -> FORCENTER
-AUTOMOTRIZ PORTILLO SUR -> PORTILLO SUR
-COMERCIAL COLON / AUTOMECANICA COLON -> COLON
-AUTOMOTRIZ AUSTRAL -> AUSTRAL
-AUTOMOTRIZ CARMONA -> CARMONA
-COMERCIAL GRASS & ARUESTE -> GRASS Y ARUESTE
-AUTOMOTRIZ ROSSELOT -> ROSSELOT
+SKU_VERSION_EXACTO
+COMERCIAL_VERSION_EXACTO
+COMERCIAL_RVM_MODELO_UNICO_VERSION_UNICA
+VIN_EQUIVALENCIA_COMPLETA
 ```
 
-Identidad histórica se preserva aunque no figure en la red vigente.
-
-### Red comercial vigente
-
-Fuente oficial:
+Reglas cerradas:
 
 ```text
-55 puntos
-= 13 CIDEF vigentes
-+ 41 DEALER vigentes
-+ 1 CIDEF futuro
+MAGE != MAGE EV
+S50 != S50 EV
+G7 != G7 EV
+TM3 != MIDI != TM5
+ZNA NO se fusiona globalmente
+RICH 6 solo por evidencia contextual determinista
 ```
 
-Validado en Neon `main`:
+Cobertura histórica incompleta de SKU NO bloquea cierre. SKU no demostrables permanecen abiertos.
+
+## SUCURSAL — VALIDACIÓN FINAL
 
 ```text
-CIDEF vigentes  = 13
-DEALER vigentes = 41
+sucursales_master = 64
+vigentes          = 54
+CIDEF vigentes    = 13
+DEALER vigentes   = 41
+CIDEF futuro      = 1
+sucursal_aliases  = 98
 ```
 
-Históricos permanecen con `vigente = false`.
-
-### Altas incorporadas
+Controles:
 
 ```text
-MELHUISH Las Condes
-ROSSELOT Guanaco
-ROSSELOT Ossa
+sucursal_key duplicado                   = 0
+id_sucursal_vta duplicado                = 0
+aliases huérfanos                        = 0
+aliases no validados                     = 0
+dealer/group incompatibles               = 0
+FK rotas                                 = 0
 ```
 
-Todas:
+Estado válido:
 
 ```text
-vigente = true
-tipo_canal = DEALER
-dealer_group_id resuelto
+dealer_group_id conocido + dealer_id = NULL
 ```
 
-`MELHUISH Las Condes` mantiene `dealer_id = NULL` por ambigüedad jurídica entre entidades legales del grupo.
+cuando falta evidencia jurídica suficiente.
 
-### MEGACENTER
+Casos validados:
 
 ```text
-dealer_group = MEGACENTER
-sucursal = MEGACENTER Punta Arenas
-dealer_id = NULL
+MEGACENTER Punta Arenas -> dealer_group resuelto, dealer_id NULL
+MELHUISH Las Condes     -> dealer_group resuelto, dealer_id NULL
+ROSSELOT Guanaco        -> vigente
+ROSSELOT Ossa           -> vigente
+PORTILLO SUR Osorno     -> separado de Temuco
+KLASSIK CAR Vitacura    -> normalizado
+ROSSELOT Movicenter     -> normalizado
 ```
 
-No existe evidencia validada suficiente para crear/asignar entidad legal.
-
-### Normalizaciones sucursal
+## DEALER — VALIDACIÓN FINAL
 
 ```text
-KLASSIK CAR Vitacua -> KLASSIK CAR Vitacura
-ROSSELOT Huechuraba -> ROSSELOT Movicenter
-Hechuraba -> Huechuraba
+dealer_groups      = 22
+dealers_master     = 24
+dealer_aliases     = 24
+dealer_supervisor  = 19 vigentes
 ```
 
-`PORTILLO SUR Osorno`: `sucursal_key` corregida; Osorno y Temuco quedan diferenciados.
-
-### Aliases sucursal
+Controles:
 
 ```text
-98 aliases
-0 huérfanos
-0 no validados
-0 conflictos/duplicados por fuente + valor_normalizado
-```
-
-Altas con alias:
-
-```text
-MELHUISH Las Condes -> 1
-ROSSELOT Guanaco    -> 1
-ROSSELOT Ossa       -> 1
+dealer_group duplicado                   = 0
+RUT-body duplicado                       = 0
+aliases conflictivos/huérfanos           = 0
+dealer legal ↔ dealer_group incompatible = 0
 ```
 
 Contrato:
 
 ```text
-RAW/source representation
-→ alias
-→ canonical identity
+dealer_groups  = identidad comercial
+dealers_master = identidad jurídica / RUT
 ```
 
-Alias conserva evidencia de origen y NO se reescribe para igualar nombre canónico.
+MELHUISH, AUTOS OGAZ y COLON preservan entidades legales distintas.
 
-## REGLAS IMPLEMENTADAS / VALIDADAS
+MEGACENTER conserva identidad comercial sin inventar entidad jurídica.
 
-- MASTER resuelve identidad; NO hechos.
-- RUT distintos NO se fusionan.
-- `dealer_group` NO equivale a entidad legal.
-- Múltiples razones sociales pueden pertenecer al mismo grupo comercial.
-- NO inferir `dealer_id` solo porque `dealer_group_id` esté resuelto.
-- NO inventar entidad legal para completar jerarquía.
-- Identidad histórica NO se elimina por ausencia en red vigente.
-- Alias raw y nombre canónico pueden diferir legítimamente.
-- Validación requiere cobertura + unicidad + ausencia de conflictos no explicitados.
-
-## SQL MASTER
-
-1. `sql/010_master_schema.sql`
-2. `sql/master/020_refresh_producto.sql`
-3. `sql/master/021_refresh_sucursal_persona.sql`
-4. `sql/master/022_refresh_dealer.sql`
-5. `sql/master/023_validate_master.sql`
-
-La existencia del SQL NO certifica por sí sola cierre de un dominio.
-
-## ESTADO POR DOMINIO
+## PERSONA — VALIDACIÓN FINAL
 
 ```text
-dealer   = SANEADO / VALIDADO
-sucursal = SANEADO / VALIDADO
-producto = REVISIÓN FINAL PENDIENTE
-persona  = VALIDACIÓN INTEGRAL PENDIENTE DENTRO DEL CIERRE MASTER
+personas_master                 = 237
+personas validadas              = 212
+personas no validadas           = 25
+persona_aliases                 = 313
+aliases validados               = 284
+VENDEDOR_TIENDA vigentes        = 70
+SUPERVISOR_TIENDA vigentes      = 7
+SUPERVISOR_DEALER vigentes      = 2
+fuerza de venta vigente         = 79
+históricas/no vigentes          = 158
+persona_sucursal vigentes       = 82
+persona_sucursal históricas     = 1
+RUT completos informados        = 75
+RUT válidos                     = 75
+RUT inválidos                   = 0
 ```
 
-## VALIDACIÓN FINAL REQUERIDA PARA CERRAR MASTER V0.1
+Integridad final:
 
-- producto reconciliado y validado;
-- persona incluida en validación integral final;
-- cobertura reconciliada contra fuentes relevantes;
-- claves naturales sin duplicados;
-- aliases resueltos o explicitados;
-- conflictos registrados;
-- reglas de refresh aditivo verificadas;
-- evidencia de población real en Neon `main`.
+```text
+duplicados usuario_canonico              = 0
+duplicados RUT no nulos                  = 0
+duplicados email                         = 0
+aliases validados multi-persona          = 0
+FK rotas                                 = 0
+personas no validadas con rol vigente    = 0
+duplicados vigentes persona+rol          = 0
+múltiples sucursales vigentes inválidas  = 0
+asignaciones vigentes sin rol            = 0
+dealer_supervisor sin rol correspondiente= 0
+```
 
-## BLOQUEO
+### JENIFFER
 
-MASTER V0.1 permanece abierta.
+```text
+JVARGAS / JENIFFER VARGAS
+= identidad histórica validada por VIN/NV cross-source
+= no vigente
 
-Dealer + sucursal NO son pendientes.
+alias JENIFFER VARGAS
+= validated=true
+= match_method=vin_nv_exact_cross_source
 
-La capa canónica permanece bloqueada hasta cierre integral MASTER.
+alias JENIFFER
+= validated=false
+= roster_identity_unresolved
+
+JENIFFER|ANTOFAGASTA
+= master_conflicts
+= roster_identity_unresolved
+= rejected
+```
+
+No existe rol, sucursal vigente ni fuerza comercial vigente derivada de la fila ambigua de nómina.
+
+### KCABALLOS / VLEYTON
+
+RUT fuente inválido NO se corrige por inferencia.
+
+```text
+rut_normalizado = NULL
+rut_dv          = NULL
+```
+
+Conflicto explícito:
+
+```text
+persona_rut_invalid_source
+status = rejected
+```
+
+Constraint vigente:
+
+```text
+ck_personas_master_rut_valid
+```
+
+impide persistir un RUT completo inválido.
+
+## MASTER_CONFLICTS
+
+Conflicto explícito NO equivale automáticamente a blocker.
+
+Regla de cierre:
+
+```text
+ambiguo/no demostrable -> abierto o rejected explícito
+identidad RESUELTA contradictoria -> blocker
+```
+
+Los pendientes remanentes no producen identidades resueltas falsas.
+
+## PERSISTENCIA
+
+MASTER conserva identidad histórica y reutiliza IDs.
+
+Reglas:
+
+```text
+NO DROP/TRUNCATE como refresh normal
+NO renumerar IDs
+NO borrar identidad por ausencia temporal
+agregar/reconciliar aliases por evidencia
+conflictos explícitos
+```
+
+Los scripts de saneamiento de 2026-08-31 fueron operaciones excepcionales de cierre, no contrato de refresh periódico.
+
+## DECISIÓN
+
+```text
+MASTER V0.1 = CERRADA
+blockers conocidos = 0
+siguiente capa = HECHOS CANÓNICOS
+```
+
+La dimensión tiempo NO fue requisito físico para cerrar esta caja de identidad. Su contrato físico se define en la capa dimensional/canónica cuando corresponda.
