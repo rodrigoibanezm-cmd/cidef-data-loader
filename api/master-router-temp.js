@@ -17,6 +17,10 @@ import {
   sanitizePersonaFinal,
   summarizePersonaFinal,
 } from '../lib/master/persona-sanitize-final.js';
+import {
+  refreshVehiculoSalidaV01,
+  summarizeVehiculoSalidaV01,
+} from '../lib/canonical/vehiculo-salida-v01.js';
 
 const OPERATIONS = {
   refresh_producto_aliases_v01: refreshProductAliasesV01,
@@ -32,6 +36,8 @@ const OPERATIONS = {
   refresh_producto_aliases_final_summary: refreshProductAliasesFinalSummary,
   sanitize_persona_final: sanitizePersonaFinal,
   summarize_persona_final: summarizePersonaFinal,
+  refresh_vehiculo_salida_v01: refreshVehiculoSalidaV01,
+  summarize_vehiculo_salida_v01: summarizeVehiculoSalidaV01,
 };
 
 export default async function handler(req, res) {
@@ -50,7 +56,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const result = await run();
+    const result = await run(req.body ?? {});
     return res.status(200).json({
       ok: true,
       router: 'master-router-temp',
