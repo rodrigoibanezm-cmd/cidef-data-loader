@@ -22,6 +22,10 @@ import {
   summarizeVehiculoSalidaV01,
 } from '../lib/canonical/vehiculo-salida-v01.js';
 import { diagnoseVehiculoSalidaV01 } from '../lib/canonical/vehiculo-salida-diagnose-v01.js';
+import {
+  refreshFactOperacionV01,
+  summarizeFactOperacionV01,
+} from '../lib/canonical/fact-operacion-v01.js';
 
 const OPERATIONS = {
   refresh_producto_aliases_v01: refreshProductAliasesV01,
@@ -40,6 +44,8 @@ const OPERATIONS = {
   refresh_vehiculo_salida_v01: refreshVehiculoSalidaV01,
   summarize_vehiculo_salida_v01: summarizeVehiculoSalidaV01,
   diagnose_vehiculo_salida_v01: diagnoseVehiculoSalidaV01,
+  refresh_fact_operacion_v01: refreshFactOperacionV01,
+  summarize_fact_operacion_v01: summarizeFactOperacionV01,
 };
 
 export default async function handler(req, res) {
