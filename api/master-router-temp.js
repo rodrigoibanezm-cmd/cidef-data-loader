@@ -13,6 +13,10 @@ import {
   refreshProductAliasesFinalVin,
   refreshProductAliasesFinalSummary,
 } from '../lib/master/product-aliases-final.js';
+import {
+  sanitizePersonaFinal,
+  summarizePersonaFinal,
+} from '../lib/master/persona-sanitize-final.js';
 
 const OPERATIONS = {
   refresh_producto_aliases_v01: refreshProductAliasesV01,
@@ -26,6 +30,8 @@ const OPERATIONS = {
   refresh_producto_aliases_final_exact: refreshProductAliasesFinalExact,
   refresh_producto_aliases_final_vin: refreshProductAliasesFinalVin,
   refresh_producto_aliases_final_summary: refreshProductAliasesFinalSummary,
+  sanitize_persona_final: sanitizePersonaFinal,
+  summarize_persona_final: summarizePersonaFinal,
 };
 
 export default async function handler(req, res) {
