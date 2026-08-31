@@ -6,6 +6,13 @@ import {
   refreshProductAliasesV02Vehiculos,
   refreshProductAliasesV02Summary,
 } from '../lib/master/product-aliases-v02.js';
+import {
+  refreshProductAliasesFinal,
+  refreshProductAliasesFinalReset,
+  refreshProductAliasesFinalExact,
+  refreshProductAliasesFinalVin,
+  refreshProductAliasesFinalSummary,
+} from '../lib/master/product-aliases-final.js';
 
 const OPERATIONS = {
   refresh_producto_aliases_v01: refreshProductAliasesV01,
@@ -14,6 +21,11 @@ const OPERATIONS = {
   refresh_producto_aliases_v02_notas: refreshProductAliasesV02Notas,
   refresh_producto_aliases_v02_vehiculos: refreshProductAliasesV02Vehiculos,
   refresh_producto_aliases_v02_summary: refreshProductAliasesV02Summary,
+  refresh_producto_aliases_final: refreshProductAliasesFinal,
+  refresh_producto_aliases_final_reset: refreshProductAliasesFinalReset,
+  refresh_producto_aliases_final_exact: refreshProductAliasesFinalExact,
+  refresh_producto_aliases_final_vin: refreshProductAliasesFinalVin,
+  refresh_producto_aliases_final_summary: refreshProductAliasesFinalSummary,
 };
 
 export default async function handler(req, res) {
