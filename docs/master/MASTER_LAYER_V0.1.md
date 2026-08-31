@@ -2,343 +2,138 @@
 
 ## ESTADO
 
-**CONTRATO EN REVISIÓN DE COBERTURA.**
+**MASTER V0.1 CERRADA / VALIDADA — 2026-08-31.**
 
-Los principios de identidad de este documento siguen vigentes. Cada dominio debe reconciliarse contra todas las fuentes relevantes antes del cierre V0.1.
+Dominios cerrados:
 
-`respaldo` es índice de identidades candidatas. NO es autoridad. NO copiar tablas históricas como verdad.
+```text
+producto
+sucursal
+dealer
+persona
+```
 
-Dealer + sucursal: saneamiento implementado y validado en Neon `main` al 2026-08-31.
+`respaldo` = evidencia histórica / índice de candidatos. NO autoridad.
+
+Implementación física: `docs/master/MASTER_IMPLEMENTATION_V0.1.md`.
 
 ## OBJETIVO
 
-Definir contrato lógico de MASTER V0.1.
+MASTER resuelve identidad estable compartida + aliases + relaciones organizacionales necesarias para referenciar esa identidad.
 
-MASTER resuelve identidad canónica + aliases.
+MASTER NO contiene:
 
-MASTER NO contiene hechos comerciales, stock, ventas, trayectoria operacional ni métricas.
-
-Implementación física: `docs/master/MASTER_IMPLEMENTATION_V0.1.md`.
+```text
+ventas
+stock
+hechos comerciales
+trayectoria operacional
+métricas
+competencia como atributo estático
+```
 
 ## PRINCIPIOS
 
 1. RAW conserva evidencia fuente.
 2. MASTER resuelve identidad estable.
 3. IDs MASTER persisten entre refresh.
-4. Nueva evidencia puede agregar entidades/aliases; NO renumera identidades existentes.
-5. Equivalencias ambiguas NO se fuerzan.
-6. Matching/normalización DEBE ser determinista y auditable.
-7. Conflictos quedan explícitos para revisión.
-8. Ausencia en snapshot actual NO elimina identidad histórica.
-9. Estado activo/vigente requiere contrato temporal explícito; NO se deriva de existencia en MASTER.
-10. Validación MASTER requiere cobertura + unicidad.
-11. Una fuente relevante NO puede excluirse por conveniencia de implementación.
+4. Nueva evidencia puede agregar identidad/alias; NO renumera identidad existente.
+5. Equivalencia ambigua NO se fuerza.
+6. Matching debe ser determinista y auditable.
+7. Conflictos quedan explícitos.
+8. Ausencia actual NO elimina identidad histórica.
+9. Vigencia requiere contrato temporal explícito.
+10. Cobertura se audita, pero cobertura histórica incompleta NO obliga a inventar equivalencias.
+11. Identidad RESUELTA contradictoria es blocker.
+12. Pendiente no demostrable puede permanecer abierto/rejected sin bloquear.
 
-## 1. PRODUCTO
+# 1. PRODUCTO
 
-### CONTRATO
-
-Producto se divide en seis piezas:
+## CONTRATO FÍSICO V0.1
 
 ```text
 IDENTIDAD
-marcas_master
-→ modelos_master
-→ versiones_master
+marcas_master_v01
+→ modelos_master_v01
+→ versiones_master_v01
 
 EVIDENCIA
-producto_aliases
+producto_aliases_v01
 
 CLASIFICACIÓN
-producto_clasificacion
+producto_clasificacion_v01
 
-RELACIÓN COMERCIAL TEMPORAL
-producto_portafolio
+PORTAFOLIO TEMPORAL
+producto_portafolio_v01
 ```
 
-Competencia NO pertenece a MASTER. Es una relación analítica recalculable por motores sobre hechos y métricas.
+Las tablas producto sin sufijo `_v01` son legacy y NO forman parte del contrato final.
 
-### 1.1 `marcas_master`
-
-**GRAIN:** 1 fila por marca canónica.
-
-Campos mínimos:
+## GRAIN
 
 ```text
-marca_id
-nombre_canonico
-nombre_normalizado
-created_at
-updated_at
+marcas_master_v01
+1 fila = 1 marca canónica
+
+modelos_master_v01
+1 fila = 1 modelo canónico dentro de una marca
+
+versiones_master_v01
+1 fila = 1 versión canónica dentro de un modelo
+
+producto_aliases_v01
+1 fila = 1 nomenclatura observada contextualizada a identidad
 ```
 
-Reglas:
+## REGLAS
 
-- marca persiste aunque deje de estar activa;
-- `DFM` y `DFLM` son aliases de fuente de `DONGFENG` cuando la evidencia validada lo soporte;
-- `ZNA` permanece identidad separada salvo evidencia determinista de equivalencia;
-- NO almacenar `vigente`, `es_cidef`, `es_competencia` ni fuente única como atributos de identidad.
+- lista de precios vigente CIDEF = autoridad de portafolio CIDEF actual;
+- RVM = universo/evidencia de mercado, NO autoridad de portafolio CIDEF;
+- `DFM` / `DFLM` pueden ser aliases de DONGFENG cuando la evidencia validada lo soporte;
+- ZNA permanece identidad separada salvo equivalencia contextual determinista;
+- SKU técnico puede ser alias/evidencia; NO se fuerza a VERSION sin prueba;
+- fuzzy/substring/majority NO cierran identidad;
+- VIN individual aislado NO basta;
+- cobertura histórica incompleta NO es blocker si lo no resuelto permanece explícito.
 
-### 1.2 `modelos_master`
-
-**GRAIN:** 1 modelo canónico dentro de una marca.
-
-Campos mínimos:
+## VERSION INTERNA — MÉTODOS RESUELTOS PERMITIDOS
 
 ```text
-modelo_id
-marca_id
-nombre_canonico
-nombre_normalizado
-created_at
-updated_at
+SKU_VERSION_EXACTO
+COMERCIAL_VERSION_EXACTO
+COMERCIAL_RVM_MODELO_UNICO_VERSION_UNICA
+VIN_EQUIVALENCIA_COMPLETA
 ```
 
-Clave lógica:
+## FRONTERAS DE IDENTIDAD
 
 ```text
-UNIQUE (marca_id, nombre_normalizado)
+MAGE != MAGE EV
+S50 != S50 EV
+G7 != G7 EV
+TM3 != MIDI != TM5
 ```
 
-Reglas:
+RICH 6 solo converge desde RVM bajo evidencia contextual validada.
 
-- nombre observado en RVM NO implica modelo canónico distinto;
-- equivalencias de nomenclatura se resuelven mediante `producto_aliases`;
-- modelo persiste aunque deje de comercializarse.
+# 2. SUCURSAL
 
-### 1.3 `versiones_master`
-
-**GRAIN:** 1 versión canónica dentro de un modelo.
-
-Campos mínimos:
+## CONTRATO
 
 ```text
-version_id
-modelo_id
-nombre_canonico
-nombre_normalizado
-created_at
-updated_at
-```
-
-Clave lógica:
-
-```text
-UNIQUE (modelo_id, nombre_normalizado)
-```
-
-Reglas:
-
-- NO usar unicidad global de `nombre_normalizado`;
-- SKU/código técnico de una fuente es alias/evidencia cuando no constituye el nombre canónico;
-- combustible, electrificación u otros atributos técnicos solo ingresan a clasificación cuando exista normalización certificada.
-
-### 1.4 `producto_aliases`
-
-**GRAIN:** 1 nomenclatura observada en una fuente asociada a identidad canónica.
-
-Campos mínimos:
-
-```text
-alias_id
-nivel
-fuente
-valor_raw
-valor_normalizado
-contexto_marca_raw
-contexto_modelo_raw
-marca_id
-modelo_id
-version_id
-evidencia_tipo
-evidencia_count
-primera_observacion
-ultima_observacion
-estado
-created_at
-updated_at
-```
-
-`nivel`:
-
-```text
-MARCA | MODELO | VERSION
-```
-
-`estado`:
-
-```text
-RESUELTO | AMBIGUO | RECHAZADO
-```
-
-Reglas:
-
-- alias se contextualiza por fuente + jerarquía observada; NO asumir unicidad global del texto;
-- VIN exacto puede aportar evidencia de equivalencia;
-- VIN individual permanece fuera de MASTER;
-- fuzzy match NO resuelve identidad automáticamente;
-- conflictos permanecen explícitos.
-
-### 1.5 `producto_clasificacion`
-
-**OBJETIVO:** almacenar taxonomías y atributos normalizados necesarios para comparación analítica sin convertirlos en identidad.
-
-**GRAIN:** 1 clasificación vigente/observada de una identidad de producto bajo una taxonomía definida.
-
-Debe soportar, según evidencia certificada:
-
-```text
-segmento
-familia
-tipo
-combustible
-electrificacion
-otras taxonomias validadas
-```
-
-Campos conceptuales mínimos:
-
-```text
-clasificacion_id
-marca_id
-modelo_id
-version_id
-taxonomia
-valor
-fuente
-valid_from
-valid_to
-estado
-created_at
-updated_at
-```
-
-Reglas:
-
-- clasificación NO cambia identidad;
-- clasificación de una fuente NO se transforma automáticamente en verdad canónica;
-- competencia NO se almacena aquí;
-- debe permitir que hechos/marts soporten cortes por segmento, familia, modelo u otras taxonomías certificadas.
-
-### 1.6 `producto_portafolio`
-
-**OBJETIVO:** relación comercial temporal entre producto y organización/portafolio.
-
-**GRAIN:** 1 relación temporal de una identidad de producto con un portafolio.
-
-Campos conceptuales mínimos:
-
-```text
-portafolio_id
-marca_id
-modelo_id
-version_id
-organizacion
-valid_from
-valid_to
-vigente
-fuente
-documento_origen
-created_at
-updated_at
-```
-
-Reglas:
-
-- V0.1 carga CIDEF; el contrato NO queda limitado estructuralmente a CIDEF;
-- lista de precios vigente es autoridad para portafolio CIDEF actual;
-- nueva lista cierra vigencia anterior y abre nueva relación cuando corresponda;
-- ausencia de portafolio vigente NO elimina identidad MASTER;
-- RVM NO define portafolio CIDEF.
-
-### FUENTES Y AUTORIDAD
-
-```text
-RVM
-→ universo de mercado
-→ aliases/evidencia de mercado
-→ actividad de mercado
-→ NO autoridad de portafolio CIDEF
-
-lista de precios vigente CIDEF
-→ autoridad de portafolio CIDEF actual
-
-vehiculos_raw / ventas_raw / notas_venta_raw
-→ aliases CIDEF
-→ evidencia histórica
-→ matching
-
-respaldo
-→ candidatos/mappings históricos
-→ NO autoridad
-```
-
-### ORDEN DE RESOLUCIÓN
-
-```text
-1. evidencia exacta por VIN
-2. identidad explícita de fuente autoritativa del dominio
-3. mapping determinista validado
-4. alias textual contextualizado
-5. evidencia insuficiente → AMBIGUO
-```
-
-Fuzzy match puede proponer candidatos. NO puede cerrar equivalencia.
-
-### CASOS VALIDADOS
-
-```text
-DFM / DFLM
-→ aliases de fuente de DONGFENG bajo mappings validados
-
-MAGE EV
-!= S50 EV
-
-RVM S50 observado sobre VIN CIDEF MAGE EV
-→ evidencia/alias histórico RVM
-→ NO fusionar identidades
-
-RICH 6
-→ identidad CIDEF
-
-RVM ZNA / NEW RICH
-RVM DFM / DF6
-→ aliases RVM de RICH 6 cuando el cruce VIN/version lo valide
-```
-
-### ALINEACIÓN ANALÍTICA
-
-Las mismas `marca_id`, `modelo_id` y `version_id` deben poder ser referenciadas por:
-
-```text
-fact_venta
-fact_operacion
-vehiculo_canonico
-fact_mercado
-```
-
-Esto permite que motores comparen CIDEF y mercado sin redefinir identidad.
-
-`producto_clasificacion` entrega cortes comparables. `producto_portafolio` determina relación comercial temporal. Ninguna de ambas define competencia.
-
-## 2. SUCURSAL / LOCAL
-
-### CONTRATO
-
-```text
-dealer_group = identidad comercial
-dealers_master = identidad jurídica / RUT
+dealer_group      = identidad comercial
+dealers_master    = identidad jurídica / RUT
 sucursales_master = punto físico/comercial
 ```
 
-Grain:
+## GRAIN
 
 ```text
 sucursales_master
 1 fila = 1 punto físico/comercial identificable
 ```
 
-Relaciones:
+## RELACIONES
 
 ```text
 dealer_group 1:N dealers_master
@@ -348,181 +143,215 @@ dealer_group 1:N sucursales_master
 NO asumir:
 
 ```text
-sucursal 1:1 entidad legal
+sucursal 1:1 dealer legal
 ```
 
-Cuando existe grupo comercial resuelto pero no evidencia jurídica suficiente:
+Estado válido:
 
 ```text
 dealer_group_id = conocido
-dealer_id = NULL
+dealer_id       = NULL
 ```
 
-es estado válido y preferible a inferir RUT.
+cuando falta evidencia jurídica suficiente.
 
-Contrato detallado y estado validado: `docs/master/SUCURSAL_NETWORK_V0.1.md`.
+## REGLAS
 
-### EVIDENCIA
-
-- `ventas_raw.id_sucursal_vta`;
-- `ventas_raw.desc_sucursal_vta`;
-- `notas_venta_raw.desc_sucursal_vta`;
-- catálogo corporativo vigente;
-- evidencia histórica revalidada.
-
-### REGLAS
-
-- `sucursales_master` es dimensión conformada de puntos comerciales CIDEF + dealer;
 - `id_sucursal_vta` es ancla fuerte cuando existe;
-- nombre normalizado puede actuar como alias, NO necesariamente como identidad suficiente;
-- `bodega` NO se equipara automáticamente a sucursal comercial;
-- mapping local/bodega ↔ sucursal requiere evidencia determinista;
+- nombre normalizado puede ser alias, no identidad suficiente por sí solo;
+- bodega NO equivale automáticamente a sucursal;
 - ausencia en red vigente NO elimina identidad histórica;
-- `vigente` y existencia de identidad son conceptos distintos.
+- alias conserva representación RAW;
+- corrección de nombre canónico NO reescribe evidencia raw.
 
-### ALIASES
+Contrato detallado: `docs/master/SUCURSAL_NETWORK_V0.1.md`.
 
-```text
-RAW/source representation
-→ alias
-→ canonical identity
-```
+# 3. DEALER
 
-- alias conserva valor observado en fuente;
-- corrección del nombre canónico NO reescribe evidencia raw;
-- `alias_raw != nombre_canonico` es válido y esperado.
-
-## 3. DEALER
-
-### IDENTIDAD
+## IDENTIDAD
 
 ```text
 dealer_groups
-→ identidad comercial del dealer
+= identidad comercial
 
 dealers_master
-→ identidad jurídica
-→ 1 fila = 1 entidad legal / RUT
+= identidad jurídica
+= 1 fila por entidad legal / RUT
 ```
 
-RUT normalizado es ancla fuerte cuando existe.
-
-Orden de evidencia:
+## ORDEN DE EVIDENCIA
 
 ```text
 RUT validado
-> cuerpo RUT observado estructuradamente
-> razón social/nombre canónico con evidencia RAW
+> cuerpo RUT estructurado
+> razón social con evidencia RAW
 > alias textual
 ```
 
-### REGLAS
+## REGLAS
 
-- múltiples `dealers_master` pueden pertenecer al mismo `dealer_group`;
-- RUT distintos NO se fusionan aunque compartan identidad comercial;
-- supervisor es relación temporal, NO atributo de identidad;
-- `entidad_financiera = FORUM` NO identifica dealer por sí sola;
-- no todo comentario representa dealer;
-- toda exclusión de candidato histórico debe quedar explicada por evidencia;
-- NO inventar entidad legal para completar una jerarquía comercial conocida parcialmente.
+- RUT distintos NO se fusionan;
+- múltiples entidades legales pueden pertenecer al mismo dealer_group;
+- supervisor es relación temporal;
+- `entidad_financiera=FORUM` NO identifica dealer;
+- NO inventar entidad legal para completar jerarquía comercial.
 
-### CASOS VALIDADOS
+Casos cerrados:
 
 ```text
-MELHUISH
-├── AUTOMOTORA MELHUISH SPA
-└── AUTOMOTORA MELHUISH RETAIL SPA
-
-AUTOS OGAZ
-├── AUTOMOTRIZ PEDRO ANDRES OGAZ SANTELICES E I R L
-└── COMERCIALIZADORA OGAZ Y OGAZ SPA
-
-COLON
-├── COMERCIAL COLON LIMITADA
-└── AUTOMECANICA COLON LIMITADA
+MELHUISH -> múltiples entidades legales
+AUTOS OGAZ -> múltiples entidades legales
+COLON -> múltiples entidades legales
+MEGACENTER -> dealer_group válido sin entidad jurídica demostrada
 ```
 
-`MEGACENTER` existe como `dealer_group`; no existe evidencia jurídica suficiente para crear/asignar `dealers_master`.
+# 4. PERSONA
 
-## 4. PERSONA
+## CONTRATO
 
-### IDENTIDAD
+```text
+personas_master
+= identidad persistente
 
-Separar identidad persistente de rol, vigencia y asignación organizacional.
+persona_aliases
+= evidencia operacional / nombres / logins
 
-### FUENTES
+persona_roles
+= rol temporal
 
-- `ventas_raw.nombre_usuario`;
-- `notas_venta_raw.vendedor`;
-- `vehiculos_raw.vendedor`;
-- nómina corporativa vigente;
-- evidencia histórica revalidada.
+persona_sucursal
+= asignación temporal
 
-### REGLAS
+persona_estado_comercial
+= pertenencia vigente a fuerza comercial
+```
 
-- login/código es evidencia operacional; NO equivale automáticamente a persona física;
-- VIN + nota_de_venta simultáneos entre fuentes constituyen evidencia determinista para relacionar login con nombre observado;
-- VIN solo NO basta;
-- no inferir equivalencia por nombre similar;
-- no inferir activo/inactivo desde ausencia de ventas;
-- históricos permanecen en `personas_master`.
+## ROLES SOPORTADOS
 
-## 5. PERSISTENCIA Y REFRESH
+```text
+VENDEDOR_TIENDA
+SUPERVISOR_TIENDA
+SUPERVISOR_DEALER
+```
+
+## REGLAS
+
+- login NO equivale automáticamente a persona física;
+- nombre parecido NO resuelve identidad;
+- ventas NO determinan por sí solas rol organizacional;
+- ausencia de ventas NO determina inactividad;
+- históricos permanecen;
+- VIN + evidencia cross-source puede resolver login↔nombre cuando la correspondencia sea determinista;
+- RUT fuente inválido NO se corrige inventando DV;
+- RUT inválido puede quedar como conflicto explícito, no como identificador canónico.
+
+## CASOS CERRADOS
+
+### JENIFFER
+
+```text
+JVARGAS ↔ JENIFFER VARGAS
+= identidad histórica demostrada por VIN/NV cross-source
+
+JENIFFER | Antofagasta
+= fila de nómina no demostrada
+= NO rol vigente
+= NO sucursal vigente
+= NO fuerza comercial vigente
+= conflicto rejected
+```
+
+### KCABALLOS / VLEYTON
+
+```text
+RUT fuente inválido
+→ rut_normalizado = NULL
+→ rut_dv = NULL
+→ persona_rut_invalid_source / rejected
+```
+
+Constraint:
+
+```text
+ck_personas_master_rut_valid
+```
+
+## FUENTES ORGANIZACIONALES
+
+- nómina corporativa vigente = autoridad para vendedores/supervisores tienda vigentes;
+- `dealer_supervisor` = autoridad para supervisores dealer vigentes;
+- RAW = evidencia de identidad/historia, NO autoridad automática de rol.
+
+Contrato detallado: `docs/master/PERSONA_ORGANIZATION_V0.1.md`.
+
+# 5. MASTER_CONFLICTS
+
+`master_conflicts` registra deuda o rechazo de reconciliación.
+
+Estados:
+
+```text
+pending
+validated
+rejected
+```
+
+Regla:
+
+```text
+conflicto explícito no demostrado
+!= blocker automático
+
+identidad RESUELTA contradictoria
+= blocker
+```
+
+# 6. PERSISTENCIA / REFRESH
 
 MASTER NO se reconstruye mediante `DROP + CREATE` diario.
 
 ```text
-leer fuentes relevantes
-→ normalizar para matching
-→ reconciliar contra identidad persistente
-→ reutilizar IDs existentes
-→ insertar identidades nuevas deterministas
-→ insertar/enriquecer aliases
+leer fuentes
+→ normalizar
+→ reconciliar
+→ reutilizar IDs
+→ agregar identidades nuevas deterministas
+→ agregar/enriquecer aliases
 → registrar conflictos
-→ validar cobertura
+→ validar
 → preservar historia
 ```
 
-### REGLAS
+Reglas:
 
-- NO `TRUNCATE` como estrategia de refresh;
+- NO `TRUNCATE` como refresh normal;
 - NO renumerar IDs;
 - NO borrar identidad por ausencia temporal;
-- updates SOLO para evidencia nueva validada;
-- conflictos explícitos;
-- validación detecta identidades fuente no cubiertas por MASTER.
+- updates solo con evidencia validada;
+- saneamientos excepcionales no definen contrato de refresh periódico.
 
-## 6. MÉTODO DE CIERRE V0.1
+# 7. CIERRE V0.1
 
-Para cada dominio:
-
-```text
-MASTER histórica respaldo
-→ identidades candidatas
-→ búsqueda en fuentes actuales
-→ regla/fuente de descubrimiento
-→ comparación con main
-→ contrato final
-→ implementación
-→ validación de cobertura
-```
-
-Estado:
+Validación integral final 2026-08-31:
 
 ```text
-dealer   = saneado / validado
-sucursal = saneado / validado
-producto = revisión pendiente
-persona  = validación integral pendiente dentro del cierre MASTER
+PRODUCTO = APROBADO
+SUCURSAL = APROBADO
+DEALER   = APROBADO
+PERSONA  = APROBADO
+
+blockers conocidos = 0
 ```
 
-MASTER V0.1 NO se cierra hasta completar reconciliación de todos los dominios pendientes.
+MASTER V0.1 puede ser consumida por la capa canónica.
 
-## NO HACER
+La dimensión tiempo NO fue requisito físico de esta caja de identidad. Su contrato físico se define cuando corresponda en la capa dimensional/canónica posterior.
 
-- NO copiar tablas antiguas ciegamente.
-- NO considerar `main` correcto porque SQL ejecutó sin error.
-- NO validar solo duplicados.
-- NO ocultar identidades sin mapping eliminándolas del universo.
-- NO iniciar capa canónica sobre MASTER no validada integralmente.
-- NO almacenar competencia como atributo estático de producto.
+# NO HACER
+
+- NO copiar `respaldo` ciegamente.
+- NO asumir que SQL ejecutado = identidad correcta.
+- NO cerrar equivalencias por fuzzy/substring/majority.
+- NO ocultar identidad no resuelta eliminándola del universo.
+- NO almacenar hechos o métricas en MASTER.
+- NO redefinir persona/producto/sucursal/dealer dentro de hechos, marts o motores.
