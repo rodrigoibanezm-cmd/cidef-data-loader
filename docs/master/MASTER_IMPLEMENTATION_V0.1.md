@@ -2,83 +2,176 @@
 
 ## ESTADO
 
-**EN REVISIÓN — IMPLEMENTACIÓN ACTUAL NO VALIDADA.**
+**MASTER V0.1 ABIERTA — DEALER + SUCURSAL SANEADOS Y VALIDADOS.**
 
-Las tablas MASTER desplegadas en Neon `main` NO deben considerarse contrato físico correcto ni base habilitante para la capa canónica.
+Dealer y sucursal fueron revisados directamente contra Neon `main` y su estado actual se considera válido para identidad MASTER.
 
-La revisión 2026-08-28 detectó pérdida material de cobertura respecto de identidades que sí están presentes en las RAW.
+Producto permanece en revisión final. Persona requiere validación integral dentro del cierre MASTER.
+
+La capa canónica NO debe considerarse habilitada hasta cerrar MASTER V0.1 completa.
 
 ## OBJETIVO
 
-Documentar implementación física de MASTER V0.1 una vez corregida y validada.
+Documentar implementación física y estado validado de MASTER V0.1.
 
-Contrato lógico, también bajo revisión de cobertura: `docs/master/MASTER_LAYER_V0.1.md`.
+Contrato lógico: `docs/master/MASTER_LAYER_V0.1.md`.
+Contrato dealer/sucursal: `docs/master/SUCURSAL_NETWORK_V0.1.md`.
 
-## IMPLEMENTACIÓN ACTUAL — EVIDENCIA, NO ESTADO OBJETIVO
+## DEALER + SUCURSAL — ESTADO VALIDADO 2026-08-31
 
-Conteos observados en Neon `main`:
-
-- `marcas_master`: 6;
-- `modelos_master`: 193;
-- `versiones_master`: 241;
-- `sucursales_master`: 22;
-- `personas_master`: 237;
-- `dealers_master`: 7;
-- `master_conflicts`: 27.
-
-Estos conteos NO certifican completitud.
-
-La ausencia de duplicados en claves naturales tampoco certifica cobertura del universo RAW.
-
-## HALLAZGO DE COBERTURA
-
-La comparación con MASTER histórica de branch `respaldo` mostró identidades ausentes en la implementación nueva que siguen teniendo evidencia directa en RAW.
-
-Caso confirmado: dealers.
-
-- `respaldo.dealers_master`: 24 identidades.
-- 23 de esas 24 tienen match directo por nombre normalizado contra `inventario_vehiculos_global_raw.dealer_venta`.
-- Ejemplos con evidencia masiva: Rosselot, For Center, Comercial Colón, Grass & Arueste, Gellona, Carmona, Valdepez, Melhuish Retail, Automecánica Colón, City Motor, Klassik Car.
-- `main.dealers_master`: 7 identidades.
-
-Conclusión: la implementación nueva utilizó reglas/fuentes insuficientes para descubrir el universo disponible.
-
-La MASTER histórica NO se considera correcta por definición. Se usa como índice de identidades candidatas para buscar evidencia nuevamente en RAW.
-
-## MÉTODO DE REVISIÓN
-
-Para cada dominio:
+### Jerarquía
 
 ```text
-MASTER histórica respaldo
-→ enumerar identidades candidatas
-→ buscar evidencia directa en RAW
-→ identificar regla/fuente que permite descubrirlas
-→ comparar cobertura con MASTER main
-→ definir contrato correcto
-→ reconstruir/refrescar MASTER
-→ validar exhaustividad + unicidad + conflictos
+dealer_groups
+→ identidad comercial
+
+dealers_master
+→ identidad jurídica
+→ 1 fila = 1 entidad legal / RUT
+
+sucursales_master
+→ identidad del punto físico/comercial
+→ 1 fila = 1 punto identificable
 ```
 
-Dominios:
+Relaciones:
 
-1. producto;
-2. sucursal/local;
-3. persona;
-4. dealer.
+```text
+dealer_group 1:N dealers_master
+dealer_group 1:N sucursales_master
+```
 
-## REGLAS
+NO asumir:
 
-- NO copiar tablas de `respaldo` ciegamente.
-- `respaldo` es evidencia histórica y pista de cobertura.
-- Toda identidad incorporada DEBE poder justificarse contra fuente vigente o evidencia histórica aceptada explícitamente.
-- Validar cobertura, NO solo unicidad.
-- No declarar MASTER terminada por ejecución exitosa del SQL.
-- No iniciar capa canónica usando MASTER actual mientras esta revisión siga abierta.
+```text
+sucursal 1:1 dealer legal
+```
 
-## SQL ACTUAL
+Estado válido ante evidencia jurídica insuficiente:
 
-Implementación bajo revisión:
+```text
+dealer_group_id = conocido
+dealer_id = NULL
+```
+
+### Dealer groups
+
+```text
+22 dealer_groups
+```
+
+Normalizaciones implementadas:
+
+```text
+AUTOMOTRIZ FOR CENTER -> FORCENTER
+AUTOMOTRIZ PORTILLO SUR -> PORTILLO SUR
+COMERCIAL COLON / AUTOMECANICA COLON -> COLON
+AUTOMOTRIZ AUSTRAL -> AUSTRAL
+AUTOMOTRIZ CARMONA -> CARMONA
+COMERCIAL GRASS & ARUESTE -> GRASS Y ARUESTE
+AUTOMOTRIZ ROSSELOT -> ROSSELOT
+```
+
+Identidad histórica se preserva aunque no figure en la red vigente.
+
+### Red comercial vigente
+
+Fuente oficial:
+
+```text
+55 puntos
+= 13 CIDEF vigentes
++ 41 DEALER vigentes
++ 1 CIDEF futuro
+```
+
+Validado en Neon `main`:
+
+```text
+CIDEF vigentes  = 13
+DEALER vigentes = 41
+```
+
+Históricos permanecen con `vigente = false`.
+
+### Altas incorporadas
+
+```text
+MELHUISH Las Condes
+ROSSELOT Guanaco
+ROSSELOT Ossa
+```
+
+Todas:
+
+```text
+vigente = true
+tipo_canal = DEALER
+dealer_group_id resuelto
+```
+
+`MELHUISH Las Condes` mantiene `dealer_id = NULL` por ambigüedad jurídica entre entidades legales del grupo.
+
+### MEGACENTER
+
+```text
+dealer_group = MEGACENTER
+sucursal = MEGACENTER Punta Arenas
+dealer_id = NULL
+```
+
+No existe evidencia validada suficiente para crear/asignar entidad legal.
+
+### Normalizaciones sucursal
+
+```text
+KLASSIK CAR Vitacua -> KLASSIK CAR Vitacura
+ROSSELOT Huechuraba -> ROSSELOT Movicenter
+Hechuraba -> Huechuraba
+```
+
+`PORTILLO SUR Osorno`: `sucursal_key` corregida; Osorno y Temuco quedan diferenciados.
+
+### Aliases sucursal
+
+```text
+98 aliases
+0 huérfanos
+0 no validados
+0 conflictos/duplicados por fuente + valor_normalizado
+```
+
+Altas con alias:
+
+```text
+MELHUISH Las Condes -> 1
+ROSSELOT Guanaco    -> 1
+ROSSELOT Ossa       -> 1
+```
+
+Contrato:
+
+```text
+RAW/source representation
+→ alias
+→ canonical identity
+```
+
+Alias conserva evidencia de origen y NO se reescribe para igualar nombre canónico.
+
+## REGLAS IMPLEMENTADAS / VALIDADAS
+
+- MASTER resuelve identidad; NO hechos.
+- RUT distintos NO se fusionan.
+- `dealer_group` NO equivale a entidad legal.
+- Múltiples razones sociales pueden pertenecer al mismo grupo comercial.
+- NO inferir `dealer_id` solo porque `dealer_group_id` esté resuelto.
+- NO inventar entidad legal para completar jerarquía.
+- Identidad histórica NO se elimina por ausencia en red vigente.
+- Alias raw y nombre canónico pueden diferir legítimamente.
+- Validación requiere cobertura + unicidad + ausencia de conflictos no explicitados.
+
+## SQL MASTER
 
 1. `sql/010_master_schema.sql`
 2. `sql/master/020_refresh_producto.sql`
@@ -86,15 +179,22 @@ Implementación bajo revisión:
 4. `sql/master/022_refresh_dealer.sql`
 5. `sql/master/023_validate_master.sql`
 
-Estos scripts pueden requerir cambios. NO asumir que representan el contrato final.
+La existencia del SQL NO certifica por sí sola cierre de un dominio.
 
-## VALIDACIÓN FINAL REQUERIDA
+## ESTADO POR DOMINIO
 
-Antes de cerrar MASTER V0.1:
+```text
+dealer   = SANEADO / VALIDADO
+sucursal = SANEADO / VALIDADO
+producto = REVISIÓN FINAL PENDIENTE
+persona  = VALIDACIÓN INTEGRAL PENDIENTE DENTRO DEL CIERRE MASTER
+```
 
-- cobertura reconciliada contra todas las RAW relevantes;
-- comparación contra identidades históricas de `respaldo`;
-- explicación de toda identidad histórica omitida;
+## VALIDACIÓN FINAL REQUERIDA PARA CERRAR MASTER V0.1
+
+- producto reconciliado y validado;
+- persona incluida en validación integral final;
+- cobertura reconciliada contra fuentes relevantes;
 - claves naturales sin duplicados;
 - aliases resueltos o explicitados;
 - conflictos registrados;
@@ -105,4 +205,6 @@ Antes de cerrar MASTER V0.1:
 
 MASTER V0.1 permanece abierta.
 
-La capa canónica NO debe considerarse habilitada hasta cerrar esta revisión.
+Dealer + sucursal NO son pendientes.
+
+La capa canónica permanece bloqueada hasta cierre integral MASTER.
