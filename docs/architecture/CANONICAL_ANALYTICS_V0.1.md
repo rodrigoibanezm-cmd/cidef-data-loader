@@ -81,22 +81,54 @@ NO inventar `dim_tiempo` como dependencia retroactiva del cierre MASTER.
 
 ### `vehiculo_canonico`
 
+**ESTADO: IMPLEMENTADO / VALIDADO / CERRADO V0.1 — 2026-08-31.**
+
 **GRAIN:** 1 estado actual por VIN.
 
 **REPRESENTA:** entidad operacional actual del vehículo.
 
-**DEBE SOPORTAR:**
-- producto;
+**IMPLEMENTADO:**
+- producto MASTER nullable;
 - stock/estado actual;
 - hitos temporales relevantes;
 - ubicación logística fuente;
-- referencias NV/factura cuando correspondan.
+- referencias NV/factura;
+- venta actual;
+- canal de salida actual;
+- sucursal propia de venta cuando corresponde;
+- dealer/dealer group cuando existe resolución determinista.
 
 **REGLAS:**
 - NO mantener snapshot diario por defecto.
 - Aging debe derivarse prioritariamente desde hitos temporales + estado actual.
+- Estado actual proviene de `vehiculos_raw`.
+- Contexto comercial actual se vincula por VIN + factura actual; NO por historial arbitrario del VIN.
+- Forum nunca es dealer final.
+- `entidad_financiera=FORUM` por sí sola NO convierte una venta en dealer.
+- Para comprador actual Forum, el dealer real se resuelve desde comentario de la misma operación/NV con precedencia RUT → razón social → nombre comercial.
+- Ambigüedad o conflicto se conserva como `NO_RESUELTO`; no se inventa precedencia de negocio.
+
+**VALIDACIÓN FINAL:**
+
+```text
+universo                    = 46.373
+vendidos                    = 43.239
+tienda_propia               = 25.432
+dealer                      = 17.357
+dealer_directo              = 13.730
+dealer_via_forum            = 3.448
+dealer_sin_resolver         = 179
+dealer_id_resuelto          = 17.178
+dealer_group_resuelto       = 17.179
+integridad_tienda_fallida   = 0
+integridad_dealer_fallida   = 0
+```
+
+Contrato detallado: `docs/canonical/VEHICULO_CANONICO_V0.1.md`.
 
 ### `fact_operacion`
+
+**ESTADO: SIGUIENTE HECHO CANÓNICO A IMPLEMENTAR.**
 
 **GRAIN:** 1 unidad dentro de un proceso comercial.
 
@@ -119,8 +151,11 @@ nota_de_venta + nro_operacion + VIN
 **REGLAS:**
 - NO definir como 1 fila por NV.
 - NV y `nro_operacion` son agrupadores; NO sustituyen grain unidad.
+- Antes de DDL debe fijarse contrato físico y reconciliación fuente por fuente.
 
 ### `fact_venta`
+
+**ESTADO: NO INICIADO.**
 
 **GRAIN:** 1 unidad vendida reconocida por negocio.
 
@@ -248,6 +283,8 @@ LLM = selección + explicación
 12. Preguntas de negocio gobiernan requisitos de capas analíticas posteriores.
 13. MASTER V0.1 cerrada = producto + sucursal + persona + dealer.
 14. Dimensión tiempo se define físicamente cuando sea requerida por hechos/métricas; no reabre MASTER V0.1.
+15. `vehiculo_canonico` V0.1 queda cerrado con resolución determinista de canal/dealer actual.
+16. El siguiente hecho canónico es `fact_operacion`; no iniciar `fact_venta` antes de cerrar `fact_operacion`.
 
 ## 10. CONTRATO FÍSICO PENDIENTE
 
@@ -263,4 +300,5 @@ Antes de implementar cada hecho canónico DEBE fijarse:
 - métricas soportadas;
 - validaciones de integridad.
 
+`fact_operacion` es el próximo contrato físico pendiente.
 `fact_mercado` requiere contrato propio antes de `cube_mercado`.
