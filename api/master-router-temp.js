@@ -1,9 +1,19 @@
 import { refreshProductAliasesV01 } from '../lib/master/product-aliases-v01.js';
-import { refreshProductAliasesV02 } from '../lib/master/product-aliases-v02.js';
+import {
+  refreshProductAliasesV02,
+  refreshProductAliasesV02Ventas,
+  refreshProductAliasesV02Notas,
+  refreshProductAliasesV02Vehiculos,
+  refreshProductAliasesV02Summary,
+} from '../lib/master/product-aliases-v02.js';
 
 const OPERATIONS = {
   refresh_producto_aliases_v01: refreshProductAliasesV01,
   refresh_producto_aliases_v02: refreshProductAliasesV02,
+  refresh_producto_aliases_v02_ventas: refreshProductAliasesV02Ventas,
+  refresh_producto_aliases_v02_notas: refreshProductAliasesV02Notas,
+  refresh_producto_aliases_v02_vehiculos: refreshProductAliasesV02Vehiculos,
+  refresh_producto_aliases_v02_summary: refreshProductAliasesV02Summary,
 };
 
 export default async function handler(req, res) {
