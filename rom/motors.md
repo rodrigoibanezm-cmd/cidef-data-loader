@@ -343,6 +343,90 @@ has_evaluable_months
 
 Este motor **no** calcula todavía la proyección del mes en curso ni la brecha real versus expectativa. Su responsabilidad única es seleccionar y demostrar históricamente la regla base de EXPECTATIVA mensual.
 
+### `expected_monthly_stability_v01`
+
+Motor determinista de **estabilidad temporal del ranking** para Familia 1.
+
+Pregunta:
+
+> ¿La superioridad reciente de un candidato de EXPECTATIVA persiste al ampliar gradualmente la ventana histórica, o aparece sólo en una cohorte reciente demasiado corta?
+
+Input:
+
+```json
+{}
+```
+
+No define candidatos nuevos ni modifica ninguna fórmula. Reutiliza exactamente `expected_monthly_backtest_v01` y sus mismos cuatro candidatos:
+
+```text
+last_year
+moving_average_3
+moving_average_6
+adjusted_last_year
+```
+
+Dependencia compartida:
+
+```text
+ventas_context_v01
+expected_monthly_backtest_v01
+```
+
+Ventanas de estabilidad predefinidas:
+
+```text
+2023 -> último mes evaluable
+2024 -> último mes evaluable
+2025 -> último mes evaluable
+```
+
+Además devuelve ranking separado por cada año calendario evaluable.
+
+Para cada ventana aplica sin cambios:
+
+```text
+WAPE
+bias_pct
+MAE
+worst_month
+```
+
+Y rankea con la misma regla certificada:
+
+```text
+1. WAPE ascendente
+2. |bias| ascendente
+3. MAE ascendente
+4. candidate name ascendente
+```
+
+Devuelve:
+
+```text
+engine
+version
+status
+policy
+global_winner
+rolling_windows[]
+calendar_years[]
+validation
+```
+
+Cada elemento de `rolling_windows[]` y `calendar_years[]` incluye:
+
+```text
+label
+months_evaluated
+first_month
+last_month
+winner
+ranking[]
+```
+
+Este motor responde sólo la prueba acotada de régimen. **No selecciona automáticamente EXPECTED V0.1** y no introduce ponderaciones, ventanas móviles nuevas ni modelos adicionales. La decisión posterior debe comparar persistencia temporal versus desempeño global.
+
 ## NOT AVAILABLE
 
 No forman parte de la superficie actual del agente:
