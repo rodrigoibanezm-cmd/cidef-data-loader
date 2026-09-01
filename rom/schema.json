@@ -2,13 +2,11 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.6.0",
-    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation backtest and stability analysis. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
+    "version": "1.7.0",
+    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation stability and runtime competitive_context_v01. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
-    {
-      "url": "https://cidef-data-loader.vercel.app"
-    }
+    { "url": "https://cidef-data-loader.vercel.app" }
   ],
   "paths": {
     "/api/custom-gpt": {
@@ -18,11 +16,7 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CustomGptRequest"
-              }
-            }
+            "application/json": { "schema": { "$ref": "#/components/schemas/CustomGptRequest" } }
           }
         },
         "responses": {
@@ -51,12 +45,11 @@
               "ventas_hybrid_unresolved_sensitivity_v01",
               "ventas_unresolved_recognition_evidence_v01",
               "expected_monthly_backtest_v01",
-              "expected_monthly_stability_v01"
+              "expected_monthly_stability_v01",
+              "competitive_context_v01"
             ]
           },
-          "input": {
-            "$ref": "#/components/schemas/ActionInput"
-          }
+          "input": { "$ref": "#/components/schemas/ActionInput" }
         },
         "additionalProperties": false
       },
@@ -104,51 +97,39 @@
         "type": "object",
         "required": ["op"],
         "properties": {
-          "op": {
-            "type": "string",
-            "enum": ["count", "sum", "avg", "min", "max"]
-          },
+          "op": { "type": "string", "enum": ["count", "sum", "avg", "min", "max"] },
           "column": { "type": "string" },
           "as": { "type": "string" }
         },
         "additionalProperties": false
       },
+      "Geography": {
+        "type": "object",
+        "required": ["level", "values"],
+        "properties": {
+          "level": { "type": "string", "enum": ["region", "comuna"] },
+          "values": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "uniqueItems": true,
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      },
       "ActionInput": {
         "type": "object",
-        "description": "Action-specific input. expected_monthly_backtest_v01 and expected_monthly_stability_v01 require no external parameters and should be called with an empty object.",
+        "description": "Action-specific input. expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. competitive_context_v01 requires target_model_ids, date_from and date_to; geography is optional. Pareto coverage is intentionally not an input of the shared context.",
         "properties": {
           "table": { "$ref": "#/components/schemas/AllowedTable" },
-          "tables": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/AllowedTable" }
-          },
-          "operation": {
-            "type": "string",
-            "enum": ["select", "aggregate"]
-          },
-          "columns": {
-            "type": "array",
-            "items": { "type": "string" }
-          },
-          "filters": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/Filter" }
-          },
-          "group_by": {
-            "type": "array",
-            "maxItems": 4,
-            "items": { "type": "string" }
-          },
-          "metrics": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/Metric" }
-          },
-          "limit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 1000,
-            "default": 200
-          },
+          "tables": { "type": "array", "items": { "$ref": "#/components/schemas/AllowedTable" } },
+          "operation": { "type": "string", "enum": ["select", "aggregate"] },
+          "columns": { "type": "array", "items": { "type": "string" } },
+          "filters": { "type": "array", "items": { "$ref": "#/components/schemas/Filter" } },
+          "group_by": { "type": "array", "maxItems": 4, "items": { "type": "string" } },
+          "metrics": { "type": "array", "items": { "$ref": "#/components/schemas/Metric" } },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 200 },
           "start_month": {
             "type": "string",
             "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
@@ -166,7 +147,18 @@
             "items": { "type": "string" },
             "default": ["77050575", "96800910", "96726670"],
             "description": "FIRST customer codes treated as resolved-to-LAST by residual Family 1 motors"
-          }
+          },
+          "target_model_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "uniqueItems": true,
+            "items": { "type": "integer", "minimum": 1 },
+            "description": "Current CIDEF modelo_id values used to derive observable runtime competitive universes"
+          },
+          "date_from": { "type": "string", "format": "date" },
+          "date_to": { "type": "string", "format": "date" },
+          "geography": { "$ref": "#/components/schemas/Geography" }
         },
         "additionalProperties": false
       }
