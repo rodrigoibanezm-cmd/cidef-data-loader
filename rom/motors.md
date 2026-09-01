@@ -100,6 +100,39 @@ Devuelve serie mensual FIRST/LAST, deltas, YoY, matriz agregada de redistribuci�
 
 Este motor mide sensibilidad. No decide si FIRST o LAST es la regla comercial correcta.
 
+### `ventas_cross_month_first_last_audit_v01`
+
+Motor determinista de auditoría para cerrar el grain temporal de Familia 1.
+
+Pregunta:
+
+> ¿Qué atributos cambian entre FIRST y LAST para los VIN cuyo mes de primera factura es distinto del mes de última factura?
+
+Input:
+
+```text
+start_month: YYYY-MM
+end_month: YYYY-MM
+```
+
+Fuente única:
+
+```text
+ventas_raw
+```
+
+Reglas:
+
+- reutiliza exactamente el parser de `fecha_factura` del motor de sensibilidad;
+- universo principal: VIN no nulo con FIRST y LAST en meses distintos;
+- compara FIRST vs LAST en cliente, razón social, factura, operación, tipo de operación, propuesta, sucursal, vendedor y precio;
+- calcula matrices direccionales y frecuencia de cambios;
+- reporta explícitamente `FK SPA` y `CIDEF S.A.` sin atribuirles significado comercial;
+- si varias filas comparten la misma fecha extrema, usa el menor `id` solo como desempate técnico estable y reporta el VIN como ambiguo por empate;
+- no decide qué evento es comercialmente correcto.
+
+Devuelve agregados exhaustivos del universo, transiciones de mes, comparación por atributo, clientes FIRST/LAST, precios, combinaciones frecuentes, ejemplos y auditoría de empates.
+
 ## NOT AVAILABLE
 
 No forman parte de la superficie actual del Custom GPT:
