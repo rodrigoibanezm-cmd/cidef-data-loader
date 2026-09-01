@@ -321,6 +321,131 @@ seller_master_key_unique
 
 `status=warning` si existe cualquier gap de cobertura, ambigüedad o falla de reconciliación. El motor no define un umbral de materialidad: devuelve la cobertura exacta observada para que el consumidor decida si es suficiente para su uso.
 
+### `ventas_organizational_context_v01`
+
+Contexto runtime determinista común para **Familia 4 — DESEMPEÑO RELATIVO** y otros consumidores organizacionales.
+
+Pregunta base:
+
+> ¿Cuál es la serie histórica mensual canónica de ventas reconocidas de CIDEF por sucursal y, dentro de cada sucursal, por persona, preservando la sucursal observada en el evento histórico?
+
+Inputs:
+
+```text
+start_month: YYYY-MM
+end_month: YYYY-MM
+```
+
+Fuentes:
+
+```text
+ventas_raw
+sucursales_master
+personas_master
+```
+
+Dependencias compartidas:
+
+```text
+ventas_context_v01
+recognizedSales[]
+parser temporal vigente
+reglas exactas de identidad certificadas por ventas_identity_coverage_v01
+```
+
+Política:
+
+- no cuenta filas RAW como ventas: reutiliza exactamente las ventas reconocidas por `ventas_context_v01`;
+- el contexto base se construye sobre toda la evidencia disponible;
+- `start_month` y `end_month` filtran la salida **después** del reconocimiento; `end_month` no es un cutoff temporal;
+- cada evento reconocido conserva las llaves fuente exactas `id_sucursal_vta` y `nombre_usuario` antes de cualquier `trim` usado para campos descriptivos;
+- identidad tienda = igualdad exacta de la llave fuente del evento contra `sucursales_master.id_sucursal_vta`;
+- identidad vendedor = igualdad exacta de la llave fuente del evento contra `personas_master.usuario_canonico`;
+- la sucursal histórica sale del mismo evento reconocido y nunca se reasigna mediante `persona_sucursal` vigente;
+- una persona puede aparecer en sucursales distintas a través del tiempo o dentro del mismo mes si así lo observa la venta reconocida;
+- persistencia exclusivamente runtime; no crea tabla, fact, mart ni cubo.
+
+Grains:
+
+```text
+base runtime:
+  recognized sale
+
+CIDEF:
+  month
+
+CIDEF -> TIENDA:
+  month + sucursal_id
+
+TIENDA -> VENDEDOR:
+  month + sucursal_id + persona_id
+```
+
+Devuelve:
+
+```text
+engine
+version
+status
+policy
+context
+scope
+cidef_monthly[]:
+  month
+  sales
+store_monthly[]:
+  month
+  sucursal_id
+  sales
+  cidef_sales
+  share_of_cidef
+seller_monthly[]:
+  month
+  sucursal_id
+  persona_id
+  sales
+  store_sales
+  share_of_store
+identity_metadata
+coverage
+validation
+warnings
+```
+
+Cobertura principal:
+
+```text
+recognized_sales_total
+recognized_sales_available_total
+recognized_sales_with_store_identity
+recognized_sales_with_seller_identity
+recognized_sales_with_both_identities
+unresolved_store
+unresolved_seller
+ambiguous_store
+ambiguous_seller
+resolved_to_unvalidated_person
+```
+
+Validaciones principales:
+
+```text
+ventas_context_reconciles
+monthly_cidef_reconciles_with_ventas_context
+sum(store_sales) por mes = cidef_sales
+sum(seller_sales) por tienda/mes = store_sales
+no_seller_without_store
+uses_observed_store_only
+store_identity_keys_unique
+seller_identity_keys_unique
+shares_in_bounds
+has_scoped_sales
+```
+
+Los gaps futuros de identidad no se ocultan: permanecen en el denominador CIDEF o tienda correspondiente y rompen explícitamente la reconciliación del nivel inferior. `personas_master.validated=false` se reporta como warning sin cambiar una identidad exacta resuelta.
+
+Este contexto **no define** todavía benchmark, peer group, expectativa por unidad, score, ranking, deterioro ni umbral de desempeño. Su única responsabilidad es producir una base organizacional mensual reconciliada y reusable.
+
 ### `expected_monthly_backtest_v01`
 
 Motor determinista de selección de regla de **EXPECTATIVA mensual** para Familia 1.
