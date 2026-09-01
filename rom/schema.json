@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.13.1",
+    "version": "1.13.2",
     "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, cutoff-safe actual and product sales, canonical sales identity coverage, shared runtime competitive context, and organization sales deterioration backtesting. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
@@ -209,7 +209,7 @@
             "uniqueItems": true,
             "items": {
               "type": "string",
-              "pattern": "^(consecutive_[2-9][0-9]*|frequency_[1-9][0-9]*_of_[1-9][0-9]*|deepening_[2-9][0-9]*)$"
+              "pattern": "^(consecutive_([2-9]|[1-9][0-9]+)|frequency_[1-9][0-9]*_of_[1-9][0-9]*|deepening_([2-9]|[1-9][0-9]+))$"
             },
             "description": "Caller-provided persistence candidates, e.g. consecutive_2, frequency_2_of_3 or deepening_2. The motor rejects frequency rules where required hits exceed window size."
           }
