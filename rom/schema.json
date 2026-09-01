@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Motor Lab",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "Read-only Custom GPT Action for exploring current RAW + MASTER evidence and running deterministic business motors. No free SQL, no DDL/DML, no legacy dealer_analytics router."
   },
   "servers": [
@@ -48,7 +48,8 @@
               "query_table",
               "ventas_monthly_dedup_sensitivity_v01",
               "ventas_cross_month_first_last_audit_v01",
-              "ventas_hybrid_unresolved_sensitivity_v01"
+              "ventas_hybrid_unresolved_sensitivity_v01",
+              "ventas_unresolved_recognition_evidence_v01"
             ]
           },
           "input": {
@@ -161,7 +162,7 @@
             "uniqueItems": true,
             "items": { "type": "string" },
             "default": ["77050575", "96800910", "96726670"],
-            "description": "FIRST customer codes treated as resolved-to-LAST by the hybrid residual sensitivity motor"
+            "description": "FIRST customer codes treated as resolved-to-LAST by residual Family 1 motors"
           }
         },
         "additionalProperties": false
