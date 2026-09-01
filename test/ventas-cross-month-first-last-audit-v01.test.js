@@ -42,6 +42,51 @@ test('special customer transitions are directional', () => {
   assert.equal(result.customer_analysis.special_customers['CIDEF S.A.'].transitions_from_other_customer, 1);
 });
 
+test('special customers are recognized through razon_social when cliente is a code', () => {
+  const rows = [
+    { id: 1, nro_vin_chasis: 'A', fecha_factura: '09/01/25 0:00', cliente: '77050575', razon_social: 'FK SPA' },
+    { id: 2, nro_vin_chasis: 'A', fecha_factura: '10/01/25 0:00', cliente: '11111111', razon_social: 'AUTOMOTRIZ ROSSELOT S.A.' },
+    { id: 3, nro_vin_chasis: 'B', fecha_factura: '12/01/25 0:00', cliente: '96800910', razon_social: 'CIDEF S.A.' },
+    { id: 4, nro_vin_chasis: 'B', fecha_factura: '01/01/26 0:00', cliente: '22222222', razon_social: 'COMERCIAL COLON LIMITADA' },
+  ];
+  const result = calculateVentasCrossMonthFirstLastAudit(rows, { start_month: '2025-01', end_month: '2026-07' });
+  assert.equal(result.customer_analysis.special_customers['FK SPA'].first_only, 1);
+  assert.equal(result.customer_analysis.special_customers['CIDEF S.A.'].first_only, 1);
+});
+
+test('dominant FIRST audit measures transition to different LAST customer and cohorts', () => {
+  const rows = [
+    { id: 1, nro_vin_chasis: 'A', fecha_factura: '09/01/25 0:00', cliente: 'C1', nro_factura: '1' },
+    { id: 2, nro_vin_chasis: 'A', fecha_factura: '10/01/25 0:00', cliente: 'L1', nro_factura: '2' },
+    { id: 3, nro_vin_chasis: 'B', fecha_factura: '12/01/25 0:00', cliente: 'C2', nro_factura: '3' },
+    { id: 4, nro_vin_chasis: 'B', fecha_factura: '01/01/26 0:00', cliente: 'L2', nro_factura: '4' },
+    { id: 5, nro_vin_chasis: 'C', fecha_factura: '03/01/25 0:00', cliente: 'C3', nro_factura: '5' },
+    { id: 6, nro_vin_chasis: 'C', fecha_factura: '04/01/25 0:00', cliente: 'C3', nro_factura: '6' },
+    { id: 7, nro_vin_chasis: 'D', fecha_factura: '05/01/25 0:00', cliente: 'C4', nro_factura: '7' },
+    { id: 8, nro_vin_chasis: 'D', fecha_factura: '06/01/25 0:00', cliente: 'L4', nro_factura: '8' },
+  ];
+  const result = calculateVentasCrossMonthFirstLastAudit(rows, { start_month: '2025-01', end_month: '2026-07' });
+  const audit = result.customer_analysis.dominant_first_customer_audit;
+  assert.equal(audit.covered_vins, 3);
+  assert.equal(audit.transitions_to_different_last_customer, 2);
+  assert.equal(audit.stays_same_customer, 1);
+  assert.equal(result.cohort_analysis.find((row) => row.cohort === 'FIRST_2025-09').vins, 1);
+  assert.equal(result.cohort_analysis.find((row) => row.cohort === 'FIRST_2025-12').vins, 1);
+  assert.ok(result.cross_dimensions.rows.length > 0);
+});
+
+test('VIN with any bad date is excluded to match sensitivity universe policy', () => {
+  const rows = [
+    { id: 1, nro_vin_chasis: 'A', fecha_factura: 'bad' },
+    { id: 2, nro_vin_chasis: 'A', fecha_factura: '01/01/25 0:00' },
+    { id: 3, nro_vin_chasis: 'A', fecha_factura: '02/01/25 0:00' },
+  ];
+  const result = calculateVentasCrossMonthFirstLastAudit(rows, { start_month: '2025-01', end_month: '2025-12' });
+  assert.equal(result.coverage.excluded_vins_with_date_errors, 1);
+  assert.equal(result.coverage.universe_vins, 0);
+  assert.equal(result.status, 'warning');
+});
+
 test('null VINs and bad dates do not enter the audit universe', () => {
   const rows = [
     { id: 1, nro_vin_chasis: null, fecha_factura: '01/01/25 0:00' },
