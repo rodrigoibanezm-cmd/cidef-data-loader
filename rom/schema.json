@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.7.1",
-    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation stability and the shared runtime competitive_context_v01 for Family 2. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
+    "version": "1.8.0",
+    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation backtest, stability, blind forward candidates, and the shared runtime competitive_context_v01 for Family 2. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
     { "url": "https://cidef-data-loader.vercel.app" }
@@ -46,6 +46,7 @@
               "ventas_unresolved_recognition_evidence_v01",
               "expected_monthly_backtest_v01",
               "expected_monthly_stability_v01",
+              "expected_monthly_candidates_v01",
               "competitive_context_v01"
             ]
           },
@@ -120,7 +121,7 @@
       },
       "ActionInput": {
         "type": "object",
-        "description": "Action-specific input. expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. competitive_context_v01 requires target_model_ids, date_from and date_to; geography is optional. The shared context always preserves all observed target universes and does not accept a Pareto/materiality threshold; consumers may derive runtime cuts later from cumulativeShare.",
+        "description": "Action-specific input. expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. expected_monthly_candidates_v01 requires cutoff_month and the immediately following target_month. competitive_context_v01 requires target_model_ids, date_from and date_to; geography is optional. The shared competitive context preserves all observed target universes and does not accept a Pareto/materiality threshold; consumers may derive runtime cuts later from cumulativeShare.",
         "properties": {
           "table": { "$ref": "#/components/schemas/AllowedTable" },
           "tables": { "type": "array", "items": { "$ref": "#/components/schemas/AllowedTable" } },
@@ -139,6 +140,16 @@
             "type": "string",
             "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
             "description": "End month for deterministic monthly motors, format YYYY-MM"
+          },
+          "cutoff_month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "description": "Last month whose ventas_raw evidence may be used by expected_monthly_candidates_v01"
+          },
+          "target_month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "description": "Month to estimate; must be immediately after cutoff_month"
           },
           "dominant_first_customers": {
             "type": "array",
