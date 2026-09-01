@@ -66,6 +66,40 @@ Límite máximo de respuesta: 1000 filas.
 
 No acepta SQL libre.
 
+### `ventas_monthly_dedup_sensitivity_v01`
+
+Motor determinista de diagnóstico para Familia 1.
+
+Pregunta:
+
+> ¿Cuánto cambia la serie mensual de ventas si cada VIN repetido se asigna al mes de su primera factura versus al mes de su última factura?
+
+Input:
+
+```text
+start_month: YYYY-MM
+end_month: YYYY-MM
+```
+
+Fuente única:
+
+```text
+ventas_raw
+```
+
+Reglas:
+
+- VIN no nulo: una unidad por VIN;
+- FIRST: mes de la primera `fecha_factura` cronológica;
+- LAST: mes de la última `fecha_factura` cronológica;
+- VIN nulo o vacío: una unidad por fila en ambos escenarios;
+- la ventana se aplica después de calcular FIRST/LAST sobre todo el snapshot disponible;
+- no usa cliente, producto, sucursal, vendedor ni MASTER.
+
+Devuelve serie mensual FIRST/LAST, deltas, YoY, matriz agregada de redistribución, cobertura y reconciliaciones global/ventana.
+
+Este motor mide sensibilidad. No decide si FIRST o LAST es la regla comercial correcta.
+
 ## NOT AVAILABLE
 
 No forman parte de la superficie actual del Custom GPT:
