@@ -42,7 +42,7 @@ test('walk-forward row uses prior cutoff baseline and current cutoff actual', ()
   assert.equal(result.rows[0].deviations.error, -5);
 });
 
-test('persistence distinguishes one adverse row from two consecutive rows', () => {
+test('persistence requires contiguous adverse months', () => {
   const rows = [
     { month: '2026-01', deviations: { relative: -0.1, error: -1 } },
     { month: '2026-02', deviations: { relative: -0.2, error: -2 } },
@@ -51,4 +51,6 @@ test('persistence distinguishes one adverse row from two consecutive rows', () =
   assert.deepEqual(evaluatePersistence('consecutive_2', rows, 'relative'), {
     onset_month: '2026-01', evidence_months: ['2026-01', '2026-02'],
   });
+  const gap = [rows[0], { month: '2026-03', deviations: { relative: -0.2, error: -2 } }];
+  assert.equal(evaluatePersistence('consecutive_2', gap, 'relative'), null);
 });
