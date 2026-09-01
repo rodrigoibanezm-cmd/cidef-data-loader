@@ -1,18 +1,35 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildOrgBacktestRows } from '../lib/deterioration/buildOrgBacktestRows.js';
+import { calculateBaseline } from '../lib/deterioration/orgBaselines.js';
 import { parseOrgDeteriorationInput } from '../lib/deterioration/orgDeteriorationInput.js';
 import { evaluatePersistence } from '../lib/deterioration/orgPersistence.js';
 
-test('org deterioration input requires canonical grain and month range', () => {
+test('org deterioration input requires canonical grain and caller candidates', () => {
   const parsed = parseOrgDeteriorationInput({
     grain: 'tienda', start_month: '2026-03', end_month: '2026-04',
-    candidate_baselines: ['last_year'], candidate_deviation_methods: ['relative'],
-    candidate_persistence_rules: ['consecutive_2'],
+    candidate_baselines: ['moving_average_5'], candidate_deviation_methods: ['relative'],
+    candidate_persistence_rules: ['frequency_3_of_5'],
   });
-  assert.equal(parsed.grain, 'tienda');
-  assert.deepEqual(parsed.baselines, ['last_year']);
+  assert.deepEqual(parsed.baselines, ['moving_average_5']);
+  assert.deepEqual(parsed.persistence, ['frequency_3_of_5']);
   assert.throws(() => parseOrgDeteriorationInput({ grain: 'supervisor' }));
+  assert.throws(() => parseOrgDeteriorationInput({
+    grain: 'tienda', start_month: '2026-03', end_month: '2026-04',
+    candidate_baselines: ['median_0'], candidate_deviation_methods: ['relative'],
+    candidate_persistence_rules: ['consecutive_2'],
+  }));
+});
+
+test('parameterized baseline uses caller window', () => {
+  const unit = {
+    unit_id: 1, unit_label: 'Tienda A', identity_validated: true,
+    months: new Map([
+      ['2026-01', 1], ['2026-02', 2], ['2026-03', 3], ['2026-04', 4], ['2026-05', 5],
+    ]),
+  };
+  assert.equal(calculateBaseline('moving_average_3', unit, '2026-06').value, 4);
+  assert.equal(calculateBaseline('median_5', unit, '2026-06').value, 3);
 });
 
 test('walk-forward row uses prior cutoff baseline and current cutoff actual', () => {
@@ -34,15 +51,12 @@ test('walk-forward row uses prior cutoff baseline and current cutoff actual', ()
   assert.equal(result.rows[0].deviations.error, -5);
 });
 
-test('persistence requires contiguous adverse months', () => {
-  const rows = [
-    { month: '2026-01', deviations: { relative: -0.1, error: -1 } },
-    { month: '2026-02', deviations: { relative: -0.2, error: -2 } },
-  ];
-  assert.equal(evaluatePersistence('consecutive_2', rows.slice(0, 1), 'relative'), null);
-  assert.deepEqual(evaluatePersistence('consecutive_2', rows, 'relative'), {
-    onset_month: '2026-01', evidence_months: ['2026-01', '2026-02'],
-  });
+test('persistence requires contiguous adverse months and supports dynamic window', () => {
+  const rows = ['2026-01', '2026-02', '2026-03'].map((month, index) => ({
+    month, deviations: { relative: -0.1, error: -(index + 1) },
+  }));
+  assert.equal(evaluatePersistence('consecutive_3', rows.slice(0, 2), 'relative'), null);
+  assert.equal(evaluatePersistence('deepening_3', rows, 'relative').onset_month, '2026-01');
   const gap = [rows[0], { month: '2026-03', deviations: { relative: -0.2, error: -2 } }];
   assert.equal(evaluatePersistence('consecutive_2', gap, 'relative'), null);
 });
