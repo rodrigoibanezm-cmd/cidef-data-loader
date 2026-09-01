@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Motor Lab",
-    "version": "1.0.0",
-    "description": "Read-only Custom GPT Action for exploring current RAW + MASTER evidence and designing deterministic business motors. No free SQL, no DDL/DML, no legacy dealer_analytics router."
+    "version": "1.1.0",
+    "description": "Read-only Custom GPT Action for exploring current RAW + MASTER evidence and running deterministic business motors. No free SQL, no DDL/DML, no legacy dealer_analytics router."
   },
   "servers": [
     {
@@ -41,7 +41,13 @@
         "properties": {
           "action": {
             "type": "string",
-            "enum": ["list_tables", "table_schema", "profile_table", "query_table"]
+            "enum": [
+              "list_tables",
+              "table_schema",
+              "profile_table",
+              "query_table",
+              "ventas_monthly_dedup_sensitivity_v01"
+            ]
           },
           "input": {
             "$ref": "#/components/schemas/ActionInput"
@@ -136,6 +142,16 @@
             "minimum": 1,
             "maximum": 1000,
             "default": 200
+          },
+          "start_month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "description": "Start month for deterministic monthly motors, format YYYY-MM"
+          },
+          "end_month": {
+            "type": "string",
+            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+            "description": "End month for deterministic monthly motors, format YYYY-MM"
           }
         },
         "additionalProperties": false
