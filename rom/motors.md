@@ -143,6 +143,55 @@ Además de los agregados originales, la versión interna 0.2 devuelve:
 
 El objetivo sigue siendo caracterizar evidencia para una regla temporal V0.1, no inferir por sí mismo el significado comercial de FIRST o LAST.
 
+### `ventas_hybrid_unresolved_sensitivity_v01`
+
+Motor determinista de sensibilidad residual para cerrar el remanente cross-month de Familia 1.
+
+Pregunta:
+
+> ¿Cambiar de FIRST a LAST únicamente los VIN cross-month no cubiertos por la regla dominante altera materialmente la serie mensual?
+
+Inputs:
+
+```text
+start_month: YYYY-MM              default 2021-01
+end_month: YYYY-MM                default 2026-07
+dominant_first_customers: string[]
+  default [77050575, 96800910, 96726670]
+```
+
+Fuente única:
+
+```text
+ventas_raw
+```
+
+Política:
+
+- reutiliza exactamente el parser de `fecha_factura` ya certificado;
+- FIRST/LAST se determinan globalmente sobre el snapshot RAW completo;
+- VIN no cross-month: mismo mes en escenario A y B;
+- VIN cross-month cuyo FIRST `cliente` pertenece a `dominant_first_customers`: LAST en A y B;
+- VIN cross-month no cubierto: FIRST en A y LAST en B;
+- VIN nulo: una unidad por fila parseable, idéntica en A y B;
+- VIN no nulo con cualquier fecha inválida/nula se excluye completo de ambos escenarios;
+- empate exacto de fecha extrema usa menor `id` únicamente como desempate técnico;
+- la ventana se aplica después de construir las políticas globales A/B.
+
+Devuelve:
+
+- tamaño y proporción del remanente no resuelto;
+- `FIRST month → LAST month` exclusivamente para ese remanente;
+- series mensuales híbridas A/B;
+- delta firmado, absoluto y porcentual;
+- YoY A/B y cambios reales de signo;
+- meses con impacto absoluto >1% y >2%;
+- máximo impacto mensual absoluto y porcentual;
+- reconciliación global y de ventana;
+- validaciones de partición y conservación de unidades.
+
+Los valores 1.036 / 970 / 66 son evidencia observada del snapshot actual, no constantes hardcodeadas. El motor debe seguir siendo válido si RAW cambia.
+
 ## NOT AVAILABLE
 
 No forman parte de la superficie actual del Custom GPT:
