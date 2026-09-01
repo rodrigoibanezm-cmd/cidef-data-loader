@@ -427,6 +427,94 @@ ranking[]
 
 Este motor responde sólo la prueba acotada de régimen. **No selecciona automáticamente EXPECTED V0.1** y no introduce ponderaciones, ventanas móviles nuevas ni modelos adicionales. La decisión posterior debe comparar persistencia temporal versus desempeño global.
 
+### `competitive_context_v01`
+
+Contexto runtime determinista común para **Familia 2 — POSICIÓN COMPETITIVA**.
+
+Pregunta base:
+
+> ¿Cuál es el universo observable de mercado alrededor de uno o más modelos CIDEF, construido on demand desde RVM + MASTER vigente y reutilizable por motores competitivos posteriores?
+
+Inputs:
+
+```text
+target_model_ids: bigint[]
+date_from: YYYY-MM-DD
+date_to: YYYY-MM-DD
+geography?:
+  level: region | comuna
+  values: string[]
+```
+
+Fuentes:
+
+```text
+rvm_raw
+producto_aliases_v01
+modelos_master_v01
+marcas_master_v01
+producto_portafolio_v01
+```
+
+Política:
+
+- persistencia exclusivamente runtime; no crea tabla analítica ni lista materializada de competidores;
+- unidades de mercado = `SUM(rvm_raw.cantidad)`;
+- el target debe pertenecer al portafolio CIDEF vigente;
+- los universos se observan desde `descripcion_segmento + descripcion_tipo + combustible` de RVM;
+- conserva todas las combinaciones observadas del target; el builder no decide materialidad;
+- la resolución de identidad contextual `RESUELTO` tiene precedencia sobre la genérica;
+- para aliases RVM a nivel MODELO, `contexto_modelo_raw` se compara contra `rvm_raw.modeo_version`;
+- si una entidad de mercado queda ambigua o no resuelta a MASTER, sus unidades **no desaparecen**: permanecen en el denominador con identidad RAW;
+- el contexto calcula por universo `units`, `rank`, `share` y `cumulativeShare`;
+- no aplica un corte Pareto ni conoce 70/75/80 como reglas;
+- un consumidor posterior puede seleccionar cualquier `coverage_target` usando `cumulativeShare` sin releer RVM.
+
+Shape principal devuelto:
+
+```text
+engine
+version
+status
+policy
+sharedContext:
+  context
+  version
+  scope
+  targets[]
+  targetObservations[]
+  universes[]
+  identity
+  validation
+  warnings[]
+```
+
+Cada universo conserva su propia lista ordenada de modelos. Un mismo modelo RVM puede aparecer en universos distintos de combustible y no se deduplica antes del ranking.
+
+Validaciones principales:
+
+```text
+requested targets vs targets CIDEF vigentes
+filas y unidades RAW consideradas
+unidades con identidad RESUELTA / AMBIGUA / NO_RESUELTA
+correcciones negativas
+cantidad != 1
+reconciliación de unidades por universo
+ranking/share/cumulativeShare
+```
+
+Warnings relevantes incluyen targets sin portafolio/identidad y problemas de cobertura o cantidades, sin convertirlos automáticamente en exclusiones de mercado.
+
+Dependencia compartida:
+
+```text
+competitive_context_v01
+```
+
+Motores posteriores de Familia 2 deben recibir este contexto mediante `sharedContext` cuando ya fue construido y no volver a consultar `rvm_raw` salvo que el contexto no exista o sea incompatible con el scope solicitado.
+
+Este motor/contexto **no define todavía competidores reales**, no incorpora microsegmento/precio y no hace afirmaciones de desplazamiento. Su responsabilidad es construir y auditar una sola vez el universo observable reusable del request.
+
 ## NOT AVAILABLE
 
 No forman parte de la superficie actual del agente:
