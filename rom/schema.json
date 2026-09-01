@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.11.0",
-    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, cutoff-safe actual sales, canonical sales identity coverage, and shared runtime competitive context. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
+    "version": "1.12.0",
+    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, cutoff-safe actual sales, canonical sales identity coverage, shared runtime competitive context, and organization sales deterioration backtesting. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
     { "url": "https://cidef-data-loader.vercel.app" }
@@ -49,7 +49,8 @@
               "expected_monthly_backtest_v01",
               "expected_monthly_stability_v01",
               "expected_monthly_candidates_v01",
-              "competitive_context_v01"
+              "competitive_context_v01",
+              "org_sales_deterioration_backtest_v01"
             ]
           },
           "input": { "$ref": "#/components/schemas/ActionInput" }
@@ -123,7 +124,7 @@
       },
       "ActionInput": {
         "type": "object",
-        "description": "Action-specific input. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. expected_monthly_candidates_v01 requires cutoff_month plus the immediately following target_month. ventas_monthly_actual_v01 requires cutoff_month and a target_month not later than the cutoff. competitive_context_v01 requires target_model_ids, date_from and date_to; geography is optional. The shared competitive context preserves all observed target universes and does not accept a Pareto/materiality threshold; consumers may derive runtime cuts later from cumulativeShare.",
+        "description": "Action-specific input. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. expected_monthly_candidates_v01 requires cutoff_month plus the immediately following target_month. ventas_monthly_actual_v01 requires cutoff_month and a target_month not later than the cutoff. competitive_context_v01 requires target_model_ids, date_from and date_to; geography is optional. org_sales_deterioration_backtest_v01 requires grain, start_month and end_month; candidate arrays are optional and default to the full diagnostic set. All deterioration calculations are runtime and walk-forward.",
         "properties": {
           "table": { "$ref": "#/components/schemas/AllowedTable" },
           "tables": { "type": "array", "items": { "$ref": "#/components/schemas/AllowedTable" } },
@@ -171,7 +172,39 @@
           },
           "date_from": { "type": "string", "format": "date" },
           "date_to": { "type": "string", "format": "date" },
-          "geography": { "$ref": "#/components/schemas/Geography" }
+          "geography": { "$ref": "#/components/schemas/Geography" },
+          "grain": {
+            "type": "string",
+            "enum": ["tienda", "vendedor"],
+            "description": "Canonical organization grain for the deterioration backtest"
+          },
+          "candidate_baselines": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": ["last_year", "moving_average_3", "moving_average_6", "median_6", "adjusted_last_year"]
+            }
+          },
+          "candidate_deviation_methods": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": ["relative", "scaled_mad", "historical_percentile"]
+            }
+          },
+          "candidate_persistence_rules": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": ["consecutive_2", "consecutive_3", "frequency_2_of_3", "frequency_3_of_4", "deepening_2"]
+            }
+          }
         },
         "additionalProperties": false
       }
