@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "CIDEF Motor Lab",
-    "version": "1.5.0",
-    "description": "Read-only Custom GPT Action for exploring current RAW + MASTER evidence and running deterministic business motors. No free SQL, no DDL/DML, no legacy dealer_analytics router."
+    "title": "CIDEF Agent Motor Lab",
+    "version": "1.5.1",
+    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expected_monthly_backtest_v01. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
     {
@@ -14,7 +14,7 @@
     "/api/custom-gpt": {
       "post": {
         "operationId": "cidefMotorLab",
-        "summary": "Run one read-only Motor Lab action",
+        "summary": "Run one read-only deterministic action through the dedicated CIDEF agent endpoint",
         "requestBody": {
           "required": true,
           "content": {
@@ -114,6 +114,7 @@
       },
       "ActionInput": {
         "type": "object",
+        "description": "Action-specific input. expected_monthly_backtest_v01 requires no external parameters and should be called with an empty object.",
         "properties": {
           "table": { "$ref": "#/components/schemas/AllowedTable" },
           "tables": {
