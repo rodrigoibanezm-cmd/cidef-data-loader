@@ -19,9 +19,10 @@ test('identity coverage reconciles and computes row coverage', () => {
     seller_unresolved: ['OLDUSER'],
   });
 
-  assert.equal(result.coverage.store.pct, 100);
-  assert.equal(result.coverage.seller.pct, 98);
-  assert.equal(result.coverage.both.pct, 98);
+  assert.equal(result.coverage_pct.store, 100);
+  assert.equal(result.coverage_pct.seller, 98);
+  assert.equal(result.coverage_pct.both, 98);
+  assert.equal(result.rows_both_resolved, 98);
   assert.deepEqual(result.unresolved.sellers, ['OLDUSER']);
   assert.equal(result.validation.ok, true);
   assert.equal(result.warnings.length, 2);
