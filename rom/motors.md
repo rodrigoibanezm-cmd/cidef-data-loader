@@ -757,6 +757,103 @@ no_post_cutoff_evidence_used
 
 Este motor permite evaluar pronósticos históricos congelados contra el resultado que habría sido observable al cierre de cada mes, sin leakage de meses posteriores.
 
+### `ventas_product_sales_v01`
+
+Motor determinista transversal de **ventas CIDEF reconocidas por producto canónico y período**. Es una pieza de mise en place reusable para Familia 1, Familia 2 y cualquier análisis posterior que necesite comparar crecimiento interno contra mercado/share sin reconstruir identidad manualmente.
+
+Pregunta:
+
+> ¿Cuántas ventas CIDEF reconocidas corresponden a un `modelo_id` canónico dentro de un período, usando la misma política temporal certificada de ventas?
+
+Inputs:
+
+```text
+modelo_id: integer
+start_month: YYYY-MM
+end_month: YYYY-MM
+cutoff_month: YYYY-MM
+```
+
+Contrato temporal:
+
+```text
+cutoff_month = end_month
+```
+
+Fuentes:
+
+```text
+ventas_raw
+producto_aliases_v01
+```
+
+Dependencias compartidas:
+
+```text
+buildVentasContext({ cutoffMonth })
+ventas_context_v01
+recognizedSales[]
+producto_aliases_v01 RESUELTO para ventas_raw
+```
+
+Política:
+
+- primero aplica el cutoff temporal y después resuelve la venta reconocida exactamente con `ventas_context_v01`;
+- VIN no nulo conserva la regla LAST `fecha_factura` dentro de la evidencia disponible al cutoff; VIN nulo cuenta por fila parseable;
+- la identidad de producto se aplica **después** del reconocimiento de la venta, nunca antes;
+- sólo consume aliases `estado=RESUELTO`, con `modelo_id` no nulo, `fuente` asociada a `ventas_raw` y nivel `MODELO` o `VERSION`;
+- compara la evidencia de la venta contra `valor_raw` y `valor_normalizado` de MASTER mediante normalización exacta determinista;
+- no usa fuzzy, substring, majority ni similitud textual;
+- si múltiples aliases compatibles apuntan a más de un `modelo_id`, la venta queda `AMBIGUOUS` y no se asigna;
+- si no existe identidad resuelta, la venta queda `UNRESOLVED` y permanece explícita en cobertura;
+- `UNRESOLVED` no se reasigna por inferencia y genera warning, pero no invalida automáticamente las unidades ya resueltas del target;
+- persistencia exclusivamente runtime; no crea tabla, fact, mart ni cubo.
+
+Grain de salida:
+
+```text
+modelo_id + período solicitado
+```
+
+Devuelve:
+
+```text
+engine
+version
+status
+inputs
+policy
+target:
+  modelo_id
+  units
+  monthly_sales[]
+coverage:
+  period_recognized_sales
+  product_resolved
+  product_unresolved
+  product_ambiguous
+  aliases_loaded
+  target_aliases
+validation
+warnings
+```
+
+Validaciones principales:
+
+```text
+ventas_context_ok
+cutoff_context_match
+cutoff_equals_end_month
+target_model_aliases_present
+no_ambiguous_product_identity
+product_identity_complete_in_period
+no_post_cutoff_evidence_used
+```
+
+`status=warning` si el modelo solicitado no tiene aliases resueltos, existe identidad ambigua en el período o falla el contexto temporal. La cobertura no resuelta se reporta explícitamente para que el consumidor evalúe materialidad sin fabricar equivalencias.
+
+Este motor **no** calcula crecimiento, mercado, share ni efecto competitivo. Su responsabilidad única es entregar el ingrediente interno canónico `modelo_id × tiempo` para que motores superiores puedan combinarlo con `competitive_context_v01` y otros contextos del mise en place.
+
 ### `competitive_context_v01`
 
 Contexto runtime determinista común para **Familia 2 — POSICIÓN COMPETITIVA**.
