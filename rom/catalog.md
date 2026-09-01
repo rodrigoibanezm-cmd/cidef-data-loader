@@ -1,23 +1,54 @@
-# Catálogo exploratorio
+# Catálogo de datos — CIDEF Motor Lab
 
-Este catálogo define qué datos puede explorar el GPT mediante `table_schema`, `profile_table`, `query_table` y `join_tables`. Es cerrado y está sincronizado con `lib/motors/allowed-tables.js`.
+Este catálogo describe la superficie de datos que el Custom GPT puede explorar mediante `/api/custom-gpt`.
 
-## Tablas permitidas
+La allowlist real vive en backend. Si existe discrepancia, ejecutar `list_tables` y tomar esa respuesta como autoridad operacional.
 
-- `inventario_vehiculos_global_raw`: inventario operacional por VIN.
-- `rvm_raw`: inscripciones o matriculaciones RVM.
-- `dealers_master`: identidad canónica y atributos de dealers.
-- `supervisor_dealer_analytics`: relación analítica dealer-supervisor.
-- `brands_master`: maestro de marcas.
-- `vehicle_models_master`: maestro histórico de modelos.
-- `vehicle_versions_master`: maestro histórico de versiones.
-- `active_vehicle_models`: snapshot de modelos activos.
-- `active_vehicle_models_history`: historia mensual de modelos activos.
-- `market_penetration_monthly_all`: penetración mensual sobre mercado total.
-- `market_penetration_monthly_china`: penetración mensual sobre universo chino.
-- `locales_master`: maestro de locales o sucursales.
-- `persona_local`: relación persona-local.
-- `personas_master`: maestro de personas.
-- `forum_dealers_master`: maestro de dealers Forum.
+## RAW
 
-`vin_olap` no usa este catálogo como interfaz: opera sobre `VIN_SEMANTIC_CUBE_V0.1` y no expone columnas físicas libres.
+- `vehiculos_raw`: evidencia operacional de vehículos.
+- `ventas_raw`: evidencia de ventas reconocidas por la fuente.
+- `notas_venta_raw`: evidencia de notas de venta y proceso comercial disponible.
+- `rvm_raw`: inscripciones/matriculaciones de mercado.
+
+## MASTER V0.1 — Producto
+
+- `marcas_master_v01`
+- `modelos_master_v01`
+- `versiones_master_v01`
+- `producto_aliases_v01`
+- `producto_clasificacion_v01`
+- `producto_portafolio_v01`
+
+## MASTER V0.1 — Sucursal
+
+- `sucursales_master`
+- `sucursal_aliases`
+
+## MASTER V0.1 — Dealer
+
+- `dealer_groups`
+- `dealers_master`
+- `dealer_aliases`
+- `dealer_supervisor`
+
+## MASTER V0.1 — Persona
+
+- `personas_master`
+- `persona_aliases`
+- `persona_roles`
+- `persona_sucursal`
+- `persona_estado_comercial`
+
+## MASTER transversal
+
+- `master_conflicts`
+
+## Reglas
+
+- RAW = evidencia, no identidad canónica.
+- MASTER = autoridad de identidad estable compartida.
+- No usar tablas legacy fuera de esta lista como autoridad.
+- No asumir joins por parecido textual.
+- Si una relación RAW→MASTER no está demostrada, debe permanecer explícitamente abierta.
+- Antes de usar una columna desconocida, consultar `table_schema`.
