@@ -427,6 +427,79 @@ ranking[]
 
 Este motor responde sólo la prueba acotada de régimen. **No selecciona automáticamente EXPECTED V0.1** y no introduce ponderaciones, ventanas móviles nuevas ni modelos adicionales. La decisión posterior debe comparar persistencia temporal versus desempeño global.
 
+### `expected_monthly_candidates_v01`
+
+Motor determinista **forward y ciego** para Familia 1.
+
+Pregunta:
+
+> Dado un último mes de información permitido, ¿qué EXPECTATIVA produce cada candidato para el mes inmediatamente siguiente sin usar ninguna evidencia del mes objetivo ni del futuro?
+
+Inputs:
+
+```text
+cutoff_month: YYYY-MM
+target_month: YYYY-MM
+```
+
+`target_month` debe ser exactamente el mes siguiente a `cutoff_month`.
+
+Candidatos: reutiliza sin cambios los cuatro candidatos certificados del backtest:
+
+```text
+last_year
+moving_average_3
+moving_average_6
+adjusted_last_year
+```
+
+Política de ceguera:
+
+- el corte temporal se aplica **antes** de resolver LAST por VIN;
+- una fila de `ventas_raw` posterior a `cutoff_month` no puede cambiar qué fila representa al VIN dentro del corte;
+- después del corte se construye `ventas_context_v01` y su `monthlySales[]`;
+- las fórmulas sólo reciben meses `<= cutoff_month`;
+- el payload no incluye venta real del `target_month`, error observado ni ranking ganador;
+- el motor no elige todavía cuál candidato usar en producción.
+
+Dependencias reutilizables:
+
+```text
+filterVentasRowsThroughMonth()
+buildVentasContext({ cutoffMonth })
+buildExpectationInput()
+calculateExpectations()
+expectedCandidates.js
+```
+
+Devuelve:
+
+```text
+engine
+version
+status
+cutoff_month
+target_month
+expectations:
+  last_year
+  moving_average_3
+  moving_average_6
+  adjusted_last_year
+coverage
+validation
+```
+
+Validaciones principales:
+
+```text
+context_cutoff_ok
+no_target_month_used
+no_future_month_used
+all_candidates_available
+```
+
+Este motor queda como pieza persistente del runtime de EXPECTATIVA. Su primer uso es la prueba ciega histórica, pero los mismos helpers deben ser reutilizados por el motor productivo una vez certificada la regla final.
+
 ### `competitive_context_v01`
 
 Contexto runtime determinista común para **Familia 2 — POSICIÓN COMPETITIVA**.
