@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.13.0",
+    "version": "1.13.1",
     "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, cutoff-safe actual and product sales, canonical sales identity coverage, shared runtime competitive context, and organization sales deterioration backtesting. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
@@ -125,7 +125,7 @@
       },
       "ActionInput": {
         "type": "object",
-        "description": "Action-specific input. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. expected_monthly_candidates_v01 requires cutoff_month plus the immediately following target_month. ventas_monthly_actual_v01 requires cutoff_month and a target_month not later than the cutoff. ventas_product_sales_v01 requires modelo_id, start_month, end_month and cutoff_month=end_month. competitive_context_v01 requires target_model_ids, date_from and date_to; geography is optional. org_sales_deterioration_backtest_v01 requires grain, start_month and end_month; candidate arrays are optional and default to the full diagnostic set. All deterioration calculations are runtime and walk-forward.",
+        "description": "Action-specific input. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. expected_monthly_candidates_v01 requires cutoff_month plus the immediately following target_month. ventas_monthly_actual_v01 requires cutoff_month and a target_month not later than the cutoff. ventas_product_sales_v01 requires modelo_id, start_month, end_month and cutoff_month=end_month. competitive_context_v01 requires target_model_ids, date_from and date_to; geography is optional. org_sales_deterioration_backtest_v01 requires grain, start_month, end_month and the three candidate arrays. Candidate windows are caller-provided diagnostic parameters, not hardcoded business thresholds.",
         "properties": {
           "table": { "$ref": "#/components/schemas/AllowedTable" },
           "tables": { "type": "array", "items": { "$ref": "#/components/schemas/AllowedTable" } },
@@ -190,8 +190,9 @@
             "uniqueItems": true,
             "items": {
               "type": "string",
-              "enum": ["last_year", "moving_average_3", "moving_average_6", "median_6", "adjusted_last_year"]
-            }
+              "pattern": "^(last_year|adjusted_last_year|moving_average_[1-9][0-9]*|median_[1-9][0-9]*)$"
+            },
+            "description": "Baseline candidates. Moving-average and median window lengths are supplied by the caller."
           },
           "candidate_deviation_methods": {
             "type": "array",
@@ -208,8 +209,9 @@
             "uniqueItems": true,
             "items": {
               "type": "string",
-              "enum": ["consecutive_2", "consecutive_3", "frequency_2_of_3", "frequency_3_of_4", "deepening_2"]
-            }
+              "pattern": "^(consecutive_[2-9][0-9]*|frequency_[1-9][0-9]*_of_[1-9][0-9]*|deepening_[2-9][0-9]*)$"
+            },
+            "description": "Caller-provided persistence candidates, e.g. consecutive_2, frequency_2_of_3 or deepening_2. The motor rejects frequency rules where required hits exceed window size."
           }
         },
         "additionalProperties": false
