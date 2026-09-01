@@ -500,6 +500,60 @@ all_candidates_available
 
 Este motor queda como pieza persistente del runtime de EXPECTATIVA. Su primer uso es la prueba ciega histórica, pero los mismos helpers deben ser reutilizados por el motor productivo una vez certificada la regla final.
 
+### `ventas_monthly_actual_v01`
+
+Motor determinista de **venta real mensual con corte temporal** para Familia 1.
+
+Pregunta:
+
+> ¿Cuántas ventas reconocidas tenía un mes objetivo usando únicamente evidencia disponible hasta un cutoff dado?
+
+Inputs:
+
+```text
+cutoff_month: YYYY-MM
+target_month: YYYY-MM
+```
+
+`target_month` debe ser menor o igual que `cutoff_month`.
+
+Política:
+
+- reutiliza `buildVentasContext({ cutoffMonth })`;
+- el cutoff se aplica **antes** de resolver LAST por VIN;
+- ninguna fila posterior a `cutoff_month` puede alterar la venta reconocida de un VIN dentro del corte;
+- la regla de reconocimiento es la misma de `ventas_context_v01`: VIN no nulo usa LAST `fecha_factura` dentro de la evidencia disponible; VIN nulo cuenta por fila parseable;
+- devuelve sólo el real reconocido del `target_month`, no reestima candidatos ni modifica pronósticos congelados;
+- para una evaluación limpia al cierre del mes objetivo, usar `cutoff_month = target_month`.
+
+Devuelve:
+
+```text
+engine
+version
+status
+inputs
+policy
+actual:
+  month
+  sales
+coverage
+validation
+warnings
+```
+
+Validaciones principales:
+
+```text
+ventas_context_ok
+target_within_cutoff
+cutoff_context_match
+target_month_present
+no_post_cutoff_evidence_used
+```
+
+Este motor permite evaluar pronósticos históricos congelados contra el resultado que habría sido observable al cierre de cada mes, sin leakage de meses posteriores.
+
 ### `competitive_context_v01`
 
 Contexto runtime determinista común para **Familia 2 — POSICIÓN COMPETITIVA**.
