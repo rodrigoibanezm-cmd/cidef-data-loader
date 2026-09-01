@@ -17,6 +17,20 @@ ventas_raw
 
 No crea tablas, vistas, materialized views ni datos persistentes.
 
+## Convención de código
+
+Los motores y helpers runtime se separan por responsabilidad.
+
+```text
+buildVentasContext.js          -> orquestación + lectura RAW
+resolveVentasRecognition.js    -> regla VIN/fecha
+ventasContextUtils.js          -> normalización + forma de venta
+buildMonthlySales.js           -> agregado mensual
+validateVentasContext.js       -> reconciliación + warnings
+```
+
+Regla de mantenibilidad: ningún `.js` nuevo de esta capa debe superar aproximadamente 100-120 líneas. Si crece, la responsabilidad debe separarse en un helper o micro-motor reusable.
+
 ## Fuente
 
 ```text
