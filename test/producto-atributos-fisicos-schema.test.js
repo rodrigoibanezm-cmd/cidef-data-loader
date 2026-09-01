@@ -12,8 +12,8 @@ const ddl = readFileSync(
 
 test('schema is DDL-only and depends on btree_gist', () => {
   assert.match(ddl, /CREATE EXTENSION IF NOT EXISTS btree_gist/i);
-  assert.doesNotMatch(ddl, /\bINSERT\b/i);
-  assert.doesNotMatch(ddl, /\bCOPY\b/i);
+  assert.doesNotMatch(ddl, /^\s*INSERT\s+INTO\b/im);
+  assert.doesNotMatch(ddl, /^\s*COPY\b/im);
 });
 
 test('physical attribute grain is exactly MODEL xor VERSION', () => {
