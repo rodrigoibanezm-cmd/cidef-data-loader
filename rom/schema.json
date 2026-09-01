@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Dealer Data Agent Router",
-    "version": "5.1.0",
-    "description": "Single read-only analytical Action for four exploratory motors and the VIN semantic cube."
+    "title": "CIDEF Motor Lab",
+    "version": "1.0.0",
+    "description": "Read-only Custom GPT Action for exploring current RAW + MASTER evidence and designing deterministic business motors. No free SQL, no DDL/DML, no legacy dealer_analytics router."
   },
   "servers": [
     {
@@ -11,98 +11,76 @@
     }
   ],
   "paths": {
-    "/api/router": {
+    "/api/custom-gpt": {
       "post": {
-        "operationId": "dealerDataRouter",
-        "summary": "Run one public analytical motor",
+        "operationId": "cidefMotorLab",
+        "summary": "Run one read-only Motor Lab action",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RouterRequest"
+                "$ref": "#/components/schemas/CustomGptRequest"
               }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "Motor result; vin_olap may return semantic status FAIL inside a successful HTTP response."
-          },
-          "400": {
-            "description": "Invalid request"
-          },
-          "403": {
-            "description": "Tenant or motor not allowed"
-          },
-          "500": {
-            "description": "Internal error"
-          }
+          "200": { "description": "Action completed" },
+          "400": { "description": "Invalid action or input" },
+          "500": { "description": "Backend execution error" }
         }
       }
     }
   },
   "components": {
     "schemas": {
-      "RouterRequest": {
+      "CustomGptRequest": {
         "type": "object",
-        "required": ["tenant", "motor", "input"],
+        "required": ["action", "input"],
         "properties": {
-          "tenant": {
+          "action": {
             "type": "string",
-            "enum": ["dealer_analytics"],
-            "default": "dealer_analytics"
-          },
-          "motor": {
-            "type": "string",
-            "enum": [
-              "table_schema",
-              "profile_table",
-              "query_table",
-              "join_tables",
-              "vin_olap"
-            ]
+            "enum": ["list_tables", "table_schema", "profile_table", "query_table"]
           },
           "input": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/GeneralMotorInput"
-              },
-              {
-                "$ref": "#/components/schemas/VinOlapInput"
-              }
-            ]
+            "$ref": "#/components/schemas/ActionInput"
           }
         },
         "additionalProperties": false
       },
-      "AnalyticTable": {
+      "AllowedTable": {
         "type": "string",
         "enum": [
-          "active_vehicle_models",
-          "active_vehicle_models_history",
-          "brands_master",
-          "dealers_master",
-          "forum_dealers_master",
-          "inventario_vehiculos_global_raw",
-          "locales_master",
-          "market_penetration_monthly_all",
-          "market_penetration_monthly_china",
-          "persona_local",
-          "personas_master",
+          "vehiculos_raw",
+          "ventas_raw",
+          "notas_venta_raw",
           "rvm_raw",
-          "supervisor_dealer_analytics",
-          "vehicle_models_master",
-          "vehicle_versions_master"
+          "marcas_master_v01",
+          "modelos_master_v01",
+          "versiones_master_v01",
+          "producto_aliases_v01",
+          "producto_clasificacion_v01",
+          "producto_portafolio_v01",
+          "sucursales_master",
+          "sucursal_aliases",
+          "dealer_groups",
+          "dealers_master",
+          "dealer_aliases",
+          "dealer_supervisor",
+          "personas_master",
+          "persona_aliases",
+          "persona_roles",
+          "persona_sucursal",
+          "persona_estado_comercial",
+          "master_conflicts"
         ]
       },
-      "GeneralFilter": {
+      "Filter": {
         "type": "object",
         "required": ["column", "op"],
         "properties": {
-          "column": {
-            "type": "string"
-          },
+          "column": { "type": "string" },
           "op": {
             "type": "string",
             "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "in", "is_null", "not_null"]
@@ -111,18 +89,26 @@
         },
         "additionalProperties": false
       },
-      "GeneralMotorInput": {
+      "Metric": {
         "type": "object",
-        "description": "Input for table_schema, profile_table, query_table or join_tables. query_table group_by uses strings; join_tables group_by uses side/column objects.",
+        "required": ["op"],
         "properties": {
-          "table": {
-            "$ref": "#/components/schemas/AnalyticTable"
+          "op": {
+            "type": "string",
+            "enum": ["count", "sum", "avg", "min", "max"]
           },
+          "column": { "type": "string" },
+          "as": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "ActionInput": {
+        "type": "object",
+        "properties": {
+          "table": { "$ref": "#/components/schemas/AllowedTable" },
           "tables": {
             "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AnalyticTable"
-            }
+            "items": { "$ref": "#/components/schemas/AllowedTable" }
           },
           "operation": {
             "type": "string",
@@ -130,582 +116,28 @@
           },
           "columns": {
             "type": "array",
-            "items": {
-              "type": "string"
-            }
+            "items": { "type": "string" }
           },
           "filters": {
             "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/GeneralFilter"
-            }
-          },
-          "left_filters": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/GeneralFilter"
-            }
-          },
-          "right_filters": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/GeneralFilter"
-            }
+            "items": { "$ref": "#/components/schemas/Filter" }
           },
           "group_by": {
             "type": "array",
-            "maxItems": 3,
-            "items": {
-              "oneOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "object",
-                  "required": ["side", "column"],
-                  "properties": {
-                    "side": {
-                      "type": "string",
-                      "enum": ["left", "right"]
-                    },
-                    "column": {
-                      "type": "string"
-                    },
-                    "as": {
-                      "type": "string"
-                    }
-                  },
-                  "additionalProperties": false
-                }
-              ]
-            }
+            "maxItems": 4,
+            "items": { "type": "string" }
           },
           "metrics": {
             "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["op"],
-              "properties": {
-                "op": {
-                  "type": "string",
-                  "enum": ["count", "sum", "avg", "min", "max"]
-                },
-                "column": {
-                  "type": "string"
-                },
-                "as": {
-                  "type": "string"
-                },
-                "side": {
-                  "type": "string",
-                  "enum": ["left", "right"]
-                }
-              },
-              "additionalProperties": false
-            }
-          },
-          "distinct": {
-            "type": "boolean"
-          },
-          "order_by": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["column"],
-              "properties": {
-                "column": {
-                  "type": "string"
-                },
-                "direction": {
-                  "type": "string",
-                  "enum": ["asc", "desc"]
-                }
-              },
-              "additionalProperties": false
-            }
+            "items": { "$ref": "#/components/schemas/Metric" }
           },
           "limit": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 2000,
-            "default": 300
-          },
-          "force_limit": {
-            "type": "boolean"
-          },
-          "offset": {
-            "type": "integer",
-            "minimum": 0,
-            "default": 0
-          },
-          "top_limit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 20
-          },
-          "sample_limit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 10
-          },
-          "left_table": {
-            "$ref": "#/components/schemas/AnalyticTable"
-          },
-          "right_table": {
-            "$ref": "#/components/schemas/AnalyticTable"
-          },
-          "left_key": {
-            "type": "string"
-          },
-          "right_key": {
-            "type": "string"
-          },
-          "join_type": {
-            "type": "string",
-            "enum": ["inner", "left"]
-          },
-          "left_columns": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "right_columns": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "normalize_keys": {
-            "type": "boolean"
+            "maximum": 1000,
+            "default": 200
           }
         },
-        "additionalProperties": false
-      },
-      "TimeRole": {
-        "type": "string",
-        "enum": ["STOCK_ENTRY", "NV", "INVOICE", "RECEIPT", "PLANNED_DELIVERY", "ETA", "FAC_NC_DOCUMENT"]
-      },
-      "VinUniverse": {
-        "type": "object",
-        "required": ["type"],
-        "properties": {
-          "type": {
-            "type": "string",
-            "enum": ["ALL_VIN", "DEALER_STOCK", "EVENT_POPULATION"]
-          },
-          "event": {
-            "$ref": "#/components/schemas/TimeRole"
-          }
-        },
-        "allOf": [
-          {
-            "if": {
-              "properties": {
-                "type": {
-                  "const": "EVENT_POPULATION"
-                }
-              },
-              "required": ["type"]
-            },
-            "then": {
-              "required": ["event"]
-            }
-          }
-        ],
-        "additionalProperties": false
-      },
-      "VinMeasure": {
-        "type": "object",
-        "required": ["name", "aggregation"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "const": "unit_count"
-          },
-          "aggregation": {
-            "type": "string",
-            "const": "SUM"
-          },
-          "as": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "VinDerivedMetric": {
-        "type": "object",
-        "required": ["name", "aggregation", "as_of_date"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "const": "aging_days"
-          },
-          "aggregation": {
-            "type": "string",
-            "enum": ["AVG", "MIN", "MAX"]
-          },
-          "as_of_date": {
-            "type": "string",
-            "format": "date"
-          },
-          "as": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "RawNormalizedDimension": {
-        "type": "object",
-        "required": ["name"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "enum": [
-              "brand",
-              "model",
-              "version_description",
-              "vehicle_type",
-              "motorization_type",
-              "emission_standard",
-              "seller",
-              "sales_branch",
-              "dealer_supervisor",
-              "warehouse",
-              "stage"
-            ]
-          },
-          "level": {
-            "type": "string",
-            "enum": ["raw", "normalized"]
-          },
-          "as": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "DealerSaleDimension": {
-        "type": "object",
-        "required": ["name"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "const": "dealer_sale"
-          },
-          "level": {
-            "type": "string",
-            "enum": ["raw", "normalized", "canonical"]
-          },
-          "as": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "NoLevelDimension": {
-        "type": "object",
-        "required": ["name"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "enum": [
-              "model_year",
-              "manufacturing_year",
-              "is_current",
-              "is_reserved",
-              "is_in_transit",
-              "is_in_yard",
-              "pending_delivery",
-              "shipment_cancelled",
-              "shipment_pending",
-              "is_dealer"
-            ]
-          },
-          "as": {
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "VinDimension": {
-        "description": "Semantic dimension. canonical is valid only for dealer_sale.",
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/RawNormalizedDimension"
-          },
-          {
-            "$ref": "#/components/schemas/DealerSaleDimension"
-          },
-          {
-            "$ref": "#/components/schemas/NoLevelDimension"
-          }
-        ]
-      },
-      "VinTime": {
-        "type": "object",
-        "required": ["role"],
-        "properties": {
-          "role": {
-            "$ref": "#/components/schemas/TimeRole"
-          },
-          "grain": {
-            "enum": ["day", "month", "quarter", "year", null]
-          },
-          "from": {
-            "type": "string",
-            "format": "date"
-          },
-          "to": {
-            "type": "string",
-            "format": "date"
-          }
-        },
-        "additionalProperties": false
-      },
-      "VinBoundaryTime": {
-        "type": "object",
-        "required": ["role", "grain"],
-        "properties": {
-          "role": {
-            "$ref": "#/components/schemas/TimeRole"
-          },
-          "grain": {
-            "type": "string",
-            "enum": ["day", "month", "quarter", "year"]
-          }
-        },
-        "description": "TEMPORAL_BOUNDARY requires an explicit role and non-null grain.",
-        "additionalProperties": false
-      },
-      "VinFilterField": {
-        "description": "Semantic dimension only. Use the same name/level compatibility as VinDimension; physical columns and derived metrics are not accepted.",
-        "oneOf": [
-          {
-            "type": "object",
-            "required": ["type", "name"],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "dimension"
-              },
-              "name": {
-                "type": "string",
-                "enum": [
-                  "brand",
-                  "model",
-                  "version_description",
-                  "vehicle_type",
-                  "motorization_type",
-                  "emission_standard",
-                  "seller",
-                  "sales_branch",
-                  "dealer_supervisor",
-                  "warehouse",
-                  "stage"
-                ]
-              },
-              "level": {
-                "type": "string",
-                "enum": ["raw", "normalized"]
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": ["type", "name"],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "dimension"
-              },
-              "name": {
-                "type": "string",
-                "const": "dealer_sale"
-              },
-              "level": {
-                "type": "string",
-                "enum": ["raw", "normalized", "canonical"]
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": ["type", "name"],
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "dimension"
-              },
-              "name": {
-                "type": "string",
-                "enum": [
-                  "model_year",
-                  "manufacturing_year",
-                  "is_current",
-                  "is_reserved",
-                  "is_in_transit",
-                  "is_in_yard",
-                  "pending_delivery",
-                  "shipment_cancelled",
-                  "shipment_pending",
-                  "is_dealer"
-                ]
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
-      "VinFilter": {
-        "type": "object",
-        "required": ["field", "op"],
-        "properties": {
-          "field": {
-            "$ref": "#/components/schemas/VinFilterField"
-          },
-          "op": {
-            "type": "string",
-            "enum": ["eq", "neq", "in", "not_in", "gt", "gte", "lt", "lte", "between", "is_null", "not_null"]
-          },
-          "value": {}
-        },
-        "description": "Categorical/identity: eq, neq, in, not_in, is_null, not_null. Numeric: eq, neq, gt, gte, lt, lte, between, is_null, not_null. Boolean: eq, is_null, not_null.",
-        "additionalProperties": false
-      },
-      "VinOptions": {
-        "type": "object",
-        "properties": {
-          "include_totals": {
-            "type": "boolean"
-          },
-          "include_coverage": {
-            "type": "boolean"
-          },
-          "include_lineage": {
-            "type": "boolean"
-          },
-          "limit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 2000,
-            "default": 300
-          },
-          "offset": {
-            "type": "integer",
-            "minimum": 0,
-            "default": 0
-          },
-          "snapshot_semantics": {
-            "type": "string",
-            "const": "current"
-          },
-          "identity_semantics": {
-            "type": "string",
-            "const": "current"
-          }
-        },
-        "additionalProperties": false
-      },
-      "VinOlapInput": {
-        "type": "object",
-        "required": ["cube", "universe"],
-        "properties": {
-          "cube": {
-            "type": "string",
-            "enum": ["VIN_SEMANTIC_CUBE_V0.1"]
-          },
-          "universe": {
-            "$ref": "#/components/schemas/VinUniverse"
-          },
-          "operation": {
-            "type": "string",
-            "enum": ["AGGREGATE", "TEMPORAL_BOUNDARY"],
-            "default": "AGGREGATE",
-            "description": "Defaults to AGGREGATE when omitted."
-          },
-          "boundary": {
-            "type": "string",
-            "enum": ["MIN", "MAX"],
-            "description": "Applies only to TEMPORAL_BOUNDARY."
-          },
-          "measures": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 1,
-            "items": {
-              "$ref": "#/components/schemas/VinMeasure"
-            }
-          },
-          "derived_metrics": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VinDerivedMetric"
-            },
-            "default": []
-          },
-          "dimensions": {
-            "type": "array",
-            "maxItems": 3,
-            "items": {
-              "$ref": "#/components/schemas/VinDimension"
-            },
-            "default": []
-          },
-          "time": {
-            "$ref": "#/components/schemas/VinTime"
-          },
-          "filters": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VinFilter"
-            },
-            "default": []
-          },
-          "options": {
-            "$ref": "#/components/schemas/VinOptions"
-          }
-        },
-        "allOf": [
-          {
-            "if": {
-              "properties": {
-                "operation": {
-                  "const": "TEMPORAL_BOUNDARY"
-                }
-              },
-              "required": ["operation"]
-            },
-            "then": {
-              "required": ["boundary", "time"],
-              "properties": {
-                "time": {
-                  "$ref": "#/components/schemas/VinBoundaryTime"
-                },
-                "measures": {
-                  "type": "array",
-                  "maxItems": 0
-                },
-                "derived_metrics": {
-                  "type": "array",
-                  "maxItems": 0
-                },
-                "dimensions": {
-                  "type": "array",
-                  "maxItems": 0
-                }
-              }
-            },
-            "else": {
-              "required": ["measures"],
-              "not": {
-                "required": ["boundary"]
-              }
-            }
-          }
-        ],
         "additionalProperties": false
       }
     }
