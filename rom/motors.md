@@ -124,14 +124,24 @@ ventas_raw
 Reglas:
 
 - reutiliza exactamente el parser de `fecha_factura` del motor de sensibilidad;
-- universo principal: VIN no nulo con FIRST y LAST en meses distintos;
+- FIRST/LAST se calculan globalmente sobre el snapshot RAW completo;
+- para el análisis de ventana se incluye un VIN cross-month si FIRST o LAST cae dentro del rango solicitado;
+- cualquier VIN no nulo con al menos una `fecha_factura` inválida o nula se excluye del universo, igual que en el motor de sensibilidad;
 - compara FIRST vs LAST en cliente, razón social, factura, operación, tipo de operación, propuesta, sucursal, vendedor y precio;
-- calcula matrices direccionales y frecuencia de cambios;
-- reporta explícitamente `FK SPA` y `CIDEF S.A.` sin atribuirles significado comercial;
+- `FK SPA` y `CIDEF S.A.` se reconocen por `cliente` o `razon_social`, porque RAW puede almacenar el código en `cliente` y el nombre en `razon_social`;
 - si varias filas comparten la misma fecha extrema, usa el menor `id` solo como desempate técnico estable y reporta el VIN como ambiguo por empate;
 - no decide qué evento es comercialmente correcto.
 
-Devuelve agregados exhaustivos del universo, transiciones de mes, comparación por atributo, clientes FIRST/LAST, precios, combinaciones frecuentes, ejemplos y auditoría de empates.
+Además de los agregados originales, la versión interna 0.2 devuelve:
+
+- auditoría de los 3 clientes FIRST más frecuentes;
+- cuántos pasan a un cliente LAST distinto y cuántos permanecen en el mismo cliente;
+- cruce `first_customer × same/different_customer × from_month × change_combination`;
+- cohortes separadas `FIRST_2025-09`, `FIRST_2025-12` y `REST`;
+- conteos explícitos de extremos que quedan fuera de la ventana solicitada;
+- semántica de ventana documentada en `universe_policy`.
+
+El objetivo sigue siendo caracterizar evidencia para una regla temporal V0.1, no inferir por sí mismo el significado comercial de FIRST o LAST.
 
 ## NOT AVAILABLE
 
