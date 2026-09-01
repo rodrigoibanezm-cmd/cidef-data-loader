@@ -243,6 +243,84 @@ Devuelve:
 
 Este motor existe para responder si las RAW ya contienen evidencia suficiente para cerrar los 66 casos. Si ninguna fuente discrimina, la conclusión correcta es que falta evidencia externa; no corresponde seguir fabricando reglas sobre `ventas_raw`.
 
+### `ventas_identity_coverage_v01`
+
+Motor determinista transversal de **cobertura de identidad comercial**. Es una pieza habilitante para Familia 4 — DESEMPEÑO RELATIVO y para cualquier motor que necesite atribuir ventas históricas a tienda y vendedor canónicos.
+
+Pregunta:
+
+> ¿Qué proporción de las filas históricas de `ventas_raw` puede atribuirse determinísticamente a sucursal y persona canónicas?
+
+Input:
+
+```json
+{}
+```
+
+Fuentes:
+
+```text
+ventas_raw
+sucursales_master
+personas_master
+```
+
+Dependencias de identidad:
+
+```text
+ventas_raw.id_sucursal_vta
+  -> sucursales_master.id_sucursal_vta
+  -> sucursal_id
+
+ventas_raw.nombre_usuario
+  -> personas_master.usuario_canonico
+  -> persona_id
+```
+
+Política:
+
+- grain = una fila fuente de `ventas_raw`; este motor audita llaves RAW→MASTER y no deduplica ventas por VIN;
+- matching exclusivamente por igualdad exacta de las llaves declaradas;
+- no usa `desc_sucursal_vta`, nombre completo, similitud textual ni heurísticas;
+- cada dimensión se clasifica como `RESUELTA`, `NO_RESUELTA` o `AMBIGUA`;
+- una llave MASTER que aparezca más de una vez se considera ambigua y no se eleva a identidad resuelta;
+- `personas_master.validated=false` se reporta como warning separado, sin convertir por sí solo un login exacto en otra identidad;
+- identidad canónica de persona no prueba por sí sola rol vendedor histórico;
+- persistencia exclusivamente runtime; no crea tabla ni mapping materializado.
+
+Devuelve:
+
+```text
+engine
+version
+status
+policy
+rows_total
+coverage:
+  store
+  seller
+  both
+distinct_keys
+unresolved
+ambiguous
+resolved_to_unvalidated_person_rows
+validation
+warnings
+```
+
+Validaciones principales:
+
+```text
+store_reconciles
+seller_reconciles
+joint_not_above_store
+joint_not_above_seller
+store_master_key_unique
+seller_master_key_unique
+```
+
+`status=warning` si existe cualquier gap de cobertura, ambigüedad o falla de reconciliación. El motor no define un umbral de materialidad: devuelve la cobertura exacta observada para que el consumidor decida si es suficiente para su uso.
+
 ### `expected_monthly_backtest_v01`
 
 Motor determinista de selección de regla de **EXPECTATIVA mensual** para Familia 1.
