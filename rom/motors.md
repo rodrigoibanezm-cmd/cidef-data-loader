@@ -1,12 +1,14 @@
-# Registro de capacidades — CIDEF Motor Lab
+# Registro de capacidades — CIDEF Agent Motor Lab
 
-Una capacidad solo está `AVAILABLE` si existe en `/api/custom-gpt` y en `schema.json`.
+Una capacidad solo está `AVAILABLE` si existe en el router dedicado del agente `lib/custom-gpt-router.js`, es invocable por `/api/custom-gpt` y está declarada en `rom/schema.json`.
+
+El router multi-tenant `/api/router` NO es la superficie del agente y no debe usarse para estas capacidades.
 
 ## AVAILABLE
 
 ### `list_tables`
 
-Devuelve la allowlist operacional vigente separada en RAW y MASTER. Usar al inicio cuando exista duda sobre qué tablas puede explorar el GPT.
+Devuelve la allowlist operacional vigente separada en RAW y MASTER. Usar al inicio cuando exista duda sobre qué tablas puede explorar el agente.
 
 ### `table_schema`
 
@@ -241,9 +243,109 @@ Devuelve:
 
 Este motor existe para responder si las RAW ya contienen evidencia suficiente para cerrar los 66 casos. Si ninguna fuente discrimina, la conclusión correcta es que falta evidencia externa; no corresponde seguir fabricando reglas sobre `ventas_raw`.
 
+### `expected_monthly_backtest_v01`
+
+Motor determinista de selección de regla de **EXPECTATIVA mensual** para Familia 1.
+
+Pregunta:
+
+> ¿Qué regla habría estimado mejor cuántos vehículos debía vender CIDEF en cada mes histórico sin mirar el resultado del propio mes ni información futura?
+
+Input:
+
+```json
+{}
+```
+
+No requiere parámetros externos. Construye o reutiliza el contexto runtime común de ventas:
+
+```text
+buildVentasContext()
+  -> monthlySales[]
+```
+
+Dependencia compartida:
+
+```text
+ventas_context_v01
+```
+
+Si un motor superior ya construyó el contexto, debe reutilizarlo mediante `sharedContext`; de lo contrario el motor llama `buildVentasContext()` una sola vez.
+
+Candidatos V0.1:
+
+```text
+last_year
+moving_average_3
+moving_average_6
+adjusted_last_year
+```
+
+Definiciones:
+
+```text
+last_year(M)
+  = ventas(M - 12)
+
+moving_average_3(M)
+  = promedio ventas(M-1, M-2, M-3)
+
+moving_average_6(M)
+  = promedio ventas(M-1 ... M-6)
+
+adjusted_last_year(M)
+  = ventas(M-12)
+    × [promedio(M-1,M-2,M-3)
+       / promedio(M-13,M-14,M-15)]
+```
+
+Política walk-forward:
+
+- para cada mes objetivo `M`, sólo puede usar meses anteriores a `M`;
+- nunca usa ventas del propio mes objetivo para producir su expectativa;
+- nunca usa meses posteriores;
+- los cuatro candidatos se comparan sobre la **misma ventana común**, formada únicamente por meses donde todos son evaluables;
+- no elige un modelo por intuición ni por el desempeño del mes actual.
+
+Ranking determinista:
+
+```text
+1. WAPE ascendente
+2. |bias| ascendente
+3. MAE ascendente
+4. candidate name ascendente como desempate estable
+```
+
+Devuelve:
+
+```text
+engine
+version
+status
+policy
+winner
+ranking[]
+monthly_backtest[]
+coverage
+validation
+```
+
+`ranking[]` contiene las métricas históricas comparables de cada candidato. `monthly_backtest[]` preserva el detalle mes a mes para auditar expectativa versus venta real.
+
+Validaciones principales:
+
+```text
+ventas_context_ok
+common_window_ok
+candidates_evaluated
+has_evaluable_months
+```
+
+Este motor **no** calcula todavía la proyección del mes en curso ni la brecha real versus expectativa. Su responsabilidad única es seleccionar y demostrar históricamente la regla base de EXPECTATIVA mensual.
+
 ## NOT AVAILABLE
 
-No forman parte de la superficie actual del Custom GPT:
+No forman parte de la superficie actual del agente:
 
 - `join_tables`
 - `vin_olap`
@@ -254,7 +356,7 @@ No forman parte de la superficie actual del Custom GPT:
 - DDL/DML
 - SQL libre
 
-Pueden existir internamente en el repositorio, pero el GPT no debe asumir que están disponibles.
+Pueden existir internamente en el repositorio o en el router multi-tenant, pero el agente no debe asumir que están disponibles.
 
 ## Cómo nace un motor nuevo
 
@@ -277,4 +379,4 @@ validation
 shared_dependencies
 ```
 
-Después de implementado y validado, ese motor puede incorporarse a la superficie del Custom GPT si resulta útil para seguir diseñando o probando familias superiores.
+Después de implementado y validado, ese motor puede incorporarse a la superficie dedicada del agente si resulta útil para seguir diseñando o probando familias superiores.
