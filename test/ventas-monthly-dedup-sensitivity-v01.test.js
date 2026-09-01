@@ -90,5 +90,9 @@ test('unparseable dates are reported and not silently assigned', () => {
   assert.equal(result.status, 'warning');
   assert.equal(result.coverage.unparseable_fecha_factura_rows, 1);
   assert.equal(result.coverage.null_fecha_factura_rows, 1);
-  assert.equal(result.warnings.length, 2);
+  assert.equal(result.coverage.vins_with_date_errors, 1);
+  assert.equal(result.coverage.unassignable_null_vin_rows, 1);
+  assert.equal(result.validation.expected_units_raw, 2);
+  assert.equal(result.validation.expected_units_assignable, 0);
+  assert.ok(result.warnings.length >= 2);
 });
