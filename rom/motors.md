@@ -845,6 +845,121 @@ Motores posteriores de Familia 2 deben recibir este contexto mediante `sharedCon
 
 Este motor/contexto **no define todavía competidores reales**, no incorpora microsegmento/precio y no hace afirmaciones de desplazamiento. Su responsabilidad es construir y auditar una sola vez el universo observable reusable del request.
 
+### `org_sales_deterioration_backtest_v01`
+
+Motor determinista de diagnóstico para **Familia 3 — DETERIORO Y RED FLAGS** sobre organización comercial.
+
+Pregunta:
+
+> ¿Cuándo una desviación adversa de ventas de una tienda o vendedor respecto de su propia historia deja de ser ruido puntual y pasa a mostrar persistencia?
+
+Inputs:
+
+```text
+grain: tienda | vendedor
+start_month: YYYY-MM
+end_month: YYYY-MM
+candidate_baselines: string[]
+candidate_deviation_methods: string[]
+candidate_persistence_rules: string[]
+```
+
+Fuentes:
+
+```text
+ventas_raw
+sucursales_master
+personas_master
+```
+
+Dependencias compartidas:
+
+```text
+ventas_context_v01
+loadOrganizationalIdentityMaps()
+enrichRecognizedSales()
+```
+
+Política temporal:
+
+- `ventas_raw` se lee una sola vez por ejecución y los cutoffs mensuales se reconstruyen en memoria;
+- para cada mes objetivo `t`, la baseline usa sólo evidencia disponible hasta `t-1`;
+- el real observado usa evidencia disponible hasta `t`;
+- la historia anterior a `start_month` se usa como warm-up para baseline y distribución histórica de errores;
+- meses futuros nunca participan en la señal ni en la confirmación; sólo se usan después para evaluar si una alarma revirtió o persistió;
+- `onset_month` y `confirmation_month` se reportan por separado.
+
+Identidad:
+
+- tienda se resuelve por igualdad exacta `ventas_raw.id_sucursal_vta -> sucursales_master.id_sucursal_vta`;
+- vendedor se resuelve por igualdad exacta `ventas_raw.nombre_usuario -> personas_master.usuario_canonico`;
+- no existe fuzzy fallback;
+- `persona_sucursal` vigente no se usa para reescribir la historia;
+- identidad no resuelta o ambigua permanece explícita en cobertura/warnings.
+
+Candidatos de baseline:
+
+```text
+last_year
+adjusted_last_year
+moving_average_k
+median_k
+```
+
+`k` es suministrado por el caller cuando corresponde. `adjusted_last_year` reutiliza la fórmula vigente de EXPECTATIVA; el motor no inventa otra variante.
+
+Métodos de desviación:
+
+```text
+relative
+scaled_mad
+historical_percentile
+```
+
+Reglas de persistencia parametrizadas:
+
+```text
+consecutive_k
+frequency_n_of_k
+deepening_k
+```
+
+El motor valida las expresiones y rechaza reglas `frequency_n_of_k` cuando `n > k`. Estos valores son candidatos de laboratorio, no thresholds de negocio persistidos.
+
+Devuelve:
+
+```text
+engine
+version
+status
+inputs
+policy
+identity_audit
+monthly_series_coverage[]
+candidate_results[]
+unit_backtests[]
+episode_backtests[]
+rolling_year_stability[]
+coverage
+warnings
+validation
+```
+
+`candidate_results[]` permite comparar combinaciones de baseline + desviación + persistencia mediante episodios detectados, reversión inmediata y persistencia posterior. `episode_backtests[]` conserva `onset_month`, `confirmation_month`, `lead_periods` y evidencia futura únicamente de evaluación.
+
+Validaciones principales:
+
+```text
+ventas_contexts_ok
+final_identity_reconciles
+baseline_uses_prior_cutoff
+signal_uses_no_future_labels
+onset_not_after_confirmation
+has_evaluable_rows
+```
+
+El motor **no selecciona todavía la regla final de deterioro**, no define severidad comercial, no mezcla producto/RVM y no crea tabla, fact, mart ni cubo. Su responsabilidad es hacer backtesting walk-forward reproducible para descubrir qué combinación separa mejor ruido de cambio persistente.
+
 ## NOT AVAILABLE
 
 No forman parte de la superficie actual del agente:
