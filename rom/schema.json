@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.5.1",
-    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expected_monthly_backtest_v01. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
+    "version": "1.6.0",
+    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation backtest and stability analysis. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
     {
@@ -50,7 +50,8 @@
               "ventas_cross_month_first_last_audit_v01",
               "ventas_hybrid_unresolved_sensitivity_v01",
               "ventas_unresolved_recognition_evidence_v01",
-              "expected_monthly_backtest_v01"
+              "expected_monthly_backtest_v01",
+              "expected_monthly_stability_v01"
             ]
           },
           "input": {
@@ -114,7 +115,7 @@
       },
       "ActionInput": {
         "type": "object",
-        "description": "Action-specific input. expected_monthly_backtest_v01 requires no external parameters and should be called with an empty object.",
+        "description": "Action-specific input. expected_monthly_backtest_v01 and expected_monthly_stability_v01 require no external parameters and should be called with an empty object.",
         "properties": {
           "table": { "$ref": "#/components/schemas/AllowedTable" },
           "tables": {
