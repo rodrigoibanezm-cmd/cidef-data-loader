@@ -1,0 +1,53 @@
+name: Patch competitive relation ROMs
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-competitive-relation-roms.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebase latest main
+        run: git pull --rebase origin main
+      - name: Test competitive relation
+        run: |
+          node --test test/competitive-relation.test.js
+          node --test test/competitive-signal-backtest.test.js
+      - name: Check syntax and router
+        run: |
+          node --check lib/competitive-relation/rule.js
+          node --check lib/competitive-relation/relationInput.js
+          node --check lib/competitive-relation/projectRelations.js
+          node --check lib/competitive-relation/validateRelations.js
+          node --check lib/competitive-relation/buildCompetitiveRelations.js
+          node --check lib/motors/competitive-relation-v01.js
+          node --check lib/custom-gpt-router.js
+          grep -q 'competitive_relation_v01: competitiveRelationV01' lib/custom-gpt-router.js
+      - name: Patch ROM files
+        run: node scripts/patch-competitive-relation-roms.mjs
+      - name: Validate ROM
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('rom/schema.json','utf8'))"
+          grep -q 'competitive_relation_v01' rom/schema.json
+          grep -q '### `competitive_relation_v01`' rom/motors.md
+      - name: Commit ROM changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rom/schema.json rom/motors.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Document productive competitive relation V0.1"
+            git push
+          fi
