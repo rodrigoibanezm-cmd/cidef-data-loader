@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install dependencies
-        run: npm ci
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Test deterioration semantics
         run: node --test test/org-sales-deterioration-backtest.test.js test/org-deterioration-observation-semantics.test.js test/observation-semantics-audit.test.js test/org-unit-evidence.test.js test/org-backtest-output.test.js
       - name: Patch ROM files
