@@ -1,0 +1,19 @@
+name: Test product concentration
+
+on:
+  push:
+    paths:
+      - '.github/workflows/test-product-concentration.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: node --check lib/motors/ventas-product-concentration-v01.js
+      - run: node --test test/ventas-product-concentration.test.js
+      - run: node --input-type=module -e "import('./lib/custom-gpt-router.js').then(m=>{if(!m.listCustomGptActions().includes('ventas_product_concentration_v01')) process.exit(1)})"
