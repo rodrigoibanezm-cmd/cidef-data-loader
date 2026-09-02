@@ -9,45 +9,24 @@ jobs:
   runtime:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Diagnose exact canonical model coverage
+      - name: Validate deployed resolver and Pareto
         run: |
           set -euo pipefail
-          call() {
-            curl -sS -X POST -H 'content-type: application/json' --data "$1" \
-              https://cidef-data-loader.vercel.app/api/custom-gpt
+          call_until() {
+            local body="$1" engine="$2" version="$3" out="$4"
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+              code=$(curl -sS -o "$out" -w '%{http_code}' -X POST -H 'content-type: application/json' \
+                --data "$body" https://cidef-data-loader.vercel.app/api/custom-gpt || true)
+              if [ "$code" = "200" ] && jq -e --arg e "$engine" --arg v "$version" '.result.engine==$e and .result.version==$v' "$out" >/dev/null 2>&1; then return 0; fi
+              sleep 10
+            done
+            cat "$out" || true
+            return 1
           }
-          call '{"action":"query_table","input":{"table":"modelos_master_v01","operation":"select","columns":["modelo_id","marca_id","nombre_canonico","nombre_normalizado"],"limit":1000}}' > models.json
-          call '{"action":"query_table","input":{"table":"marcas_master_v01","operation":"select","columns":["marca_id","nombre_canonico","nombre_normalizado"],"limit":1000}}' > brands.json
-          call '{"action":"query_table","input":{"table":"ventas_raw","operation":"aggregate","group_by":["desc_mae_marca","desc_articulo"],"metrics":[{"op":"count","as":"rows"}],"limit":1000}}' > sales.json
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const rows = (p) => JSON.parse(fs.readFileSync(p,'utf8')).result.rows;
-          const norm = (v) => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim().replace(/\s+/g,' ');
-          const brandCanon = (v) => {
-            const n=norm(v);
-            if (['DFM','DFLM','DONG FENG','DONGFENG','ZNA DONGFENG'].includes(n)) return 'DONGFENG';
-            if (['LEAP MOTOR','LEAPMOTOR'].includes(n)) return 'LEAPMOTOR';
-            return n;
-          };
-          const brands = new Map(rows('brands.json').map(r=>[Number(r.marca_id),norm(r.nombre_normalizado)]));
-          const models = rows('models.json').map(r=>({id:Number(r.modelo_id),brand:brands.get(Number(r.marca_id)),name:norm(r.nombre_normalizado),canon:r.nombre_canonico}));
-          const sales = rows('sales.json');
-          let total=0,resolved=0,ambiguous=0,unresolved=0;
-          const misses=[];
-          const conflicts=[];
-          for(const r of sales){
-            const count=Number(r.rows); total+=count;
-            const b=brandCanon(r.desc_mae_marca), text=` ${norm(r.desc_articulo)} `;
-            const candidates=models.filter(m=>m.brand===b && text.includes(` ${m.name} `));
-            const maxLen=Math.max(0,...candidates.map(m=>m.name.length));
-            const best=candidates.filter(m=>m.name.length===maxLen);
-            const ids=[...new Set(best.map(m=>m.id))];
-            if(ids.length===1) resolved+=count;
-            else if(ids.length>1){ambiguous+=count; conflicts.push({brand:r.desc_mae_marca,desc:r.desc_articulo,count,candidates:best});}
-            else {unresolved+=count; misses.push({brand:r.desc_mae_marca,desc:r.desc_articulo,count});}
-          }
-          console.log(JSON.stringify({model_count:models.length,total,resolved,ambiguous,unresolved,resolved_pct:+(100*resolved/total).toFixed(2),top_misses:misses.sort((a,b)=>b.count-a.count).slice(0,30),conflicts:conflicts.slice(0,20),models},null,2));
-          NODE
+          call_until '{"action":"ventas_product_model_resolution_v01","input":{"start_month":"2026-01","end_month":"2026-07"}}' ventas_product_model_resolution_v01 0.1 resolver.json
+          call_until '{"action":"ventas_product_concentration_v01","input":{"start_month":"2026-01","end_month":"2026-07","pareto_threshold_pct":80}}' ventas_product_concentration_v01 0.2 pareto.json
+          jq '{engine,version,status,coverage,validation}' resolver.json | jq '.result // .'
+          jq '{engine,version,status,period,coverage,validation,warnings}' pareto.json | jq '.result // .'
+          jq -e '.result.validation.arithmetic_reconciles == true' resolver.json >/dev/null
+          jq -e '.result.validation.resolved_rows_have_model == true' resolver.json >/dev/null
+          jq -e '.result.validation.model_catalog_complete == true' pareto.json >/dev/null
