@@ -25,8 +25,8 @@ jobs:
           }
           call_until '{"action":"ventas_product_model_resolution_v01","input":{"start_month":"2026-01","end_month":"2026-07"}}' ventas_product_model_resolution_v01 0.1 resolver.json
           call_until '{"action":"ventas_product_concentration_v01","input":{"start_month":"2026-01","end_month":"2026-07","pareto_threshold_pct":80}}' ventas_product_concentration_v01 0.2 pareto.json
-          jq '{engine,version,status,coverage,validation}' resolver.json | jq '.result // .'
-          jq '{engine,version,status,period,coverage,validation,warnings}' pareto.json | jq '.result // .'
+          jq '.result | {engine,version,status,coverage,validation,warnings}' resolver.json
+          jq '.result | {engine,version,status,period,coverage,validation,warnings}' pareto.json
           jq -e '.result.validation.arithmetic_reconciles == true' resolver.json >/dev/null
           jq -e '.result.validation.resolved_rows_have_model == true' resolver.json >/dev/null
           jq -e '.result.validation.model_catalog_complete == true' pareto.json >/dev/null
