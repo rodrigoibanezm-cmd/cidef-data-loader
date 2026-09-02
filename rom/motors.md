@@ -1507,6 +1507,8 @@ Fuentes:
 ventas_raw
 sucursales_master
 personas_master
+notas_venta_raw      # sólo grain=tienda, evidencia ACTIVE_ZERO
+sucursal_aliases     # sólo grain=tienda, identidad NV→sucursal
 ```
 
 Dependencias compartidas:
