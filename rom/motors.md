@@ -2336,3 +2336,52 @@ shared_dependencies
 ```
 
 Después de implementado y validado, ese motor puede incorporarse a la superficie dedicada del agente si resulta útil para seguir diseñando o probando familias superiores.
+
+### `ventas_product_concentration_v01`
+
+Motor determinista de concentración de ventas por modelo para **Familia 3 — DETERIORO Y RED FLAGS**, orientado a robustez del resultado.
+
+Pregunta:
+
+> ¿Qué tan concentrada está la venta en pocos modelos y cómo cambia esa concentración en el tiempo?
+
+Inputs:
+
+```text
+start_month: YYYY-MM
+end_month: YYYY-MM
+pareto_threshold_pct?: number   default 80
+```
+
+Política:
+
+- sólo acepta meses calendario cerrados en America/Santiago;
+- reutiliza `ventas_product_context_v01` y su reconocimiento LAST-by-VIN cutoff-safe al `end_month`;
+- identidad de modelo = aliases RESUELTO de `producto_aliases_v01`; no fuzzy matching;
+- el Pareto se calcula únicamente sobre ventas con `modelo_id` resuelto; ambiguas/no resueltas permanecen explícitas en cobertura y nunca se distribuyen por inferencia;
+- orden determinista = ventas descendente, luego `modelo_id` ascendente;
+- el conjunto Pareto incluye modelos hasta alcanzar por primera vez el porcentaje solicitado;
+- `pareto_threshold_pct` es parametrizable: 80 es default, no regla hardcodeada;
+- persistencia exclusivamente runtime; no crea tabla, mart ni cubo.
+
+Devuelve:
+
+```text
+period:
+  recognized_sales
+  resolved_product_sales
+  distinct_models
+  pareto_model_count
+  pareto_model_share_pct
+  pareto_sales
+  pareto_sales_share_pct
+  pareto_models[]
+monthly[]:
+  month
+  mismos campos de concentración
+coverage
+validation
+warnings
+```
+
+Cada elemento de `pareto_models[]` incluye `rank`, `modelo_id`, marca/modelo canónicos, ventas, participación y participación acumulada. El motor mide concentración y su evolución; **no** etiqueta por sí solo el resultado como frágil, sano o diversificado.
