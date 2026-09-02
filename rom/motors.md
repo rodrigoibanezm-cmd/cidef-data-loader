@@ -955,6 +955,81 @@ no_post_cutoff_evidence_used
 
 Este motor permite evaluar pronósticos históricos congelados contra el resultado que habría sido observable al cierre de cada mes, sin leakage de meses posteriores.
 
+### `ventas_daily_context_v01`
+
+Motor determinista de **snapshot diario cutoff-safe de ventas reconocidas** para Familia 1. Es la pieza habilitante para futuros backtests intra-mes como `PREDICTABILITY_DAY`; todavía no calcula forecast ni día de predictibilidad.
+
+Pregunta:
+
+> ¿Qué ventas reconocidas eran observables al cierre de una fecha calendario, usando exactamente la misma semántica LAST-by-VIN del contexto mensual?
+
+Input:
+
+```text
+cutoff_date: YYYY-MM-DD
+```
+
+Dependencia compartida:
+
+```text
+buildVentasContext({ cutoffDate })
+ventas_context_v01
+```
+
+Política:
+
+- `fecha_factura <= cutoff_date` se aplica de forma inclusiva **antes** de resolver reconocimiento;
+- VIN no nulo conserva la regla vigente: una venta reconocida por VIN usando LAST `fecha_factura` dentro de la evidencia observable;
+- VIN nulo conserva la regla vigente: una venta por fila con `fecha_factura` parseable dentro del cutoff;
+- empate exacto de LAST conserva el desempate técnico vigente por menor `id` estable;
+- `cutoff_month` y `cutoff_date` son mutuamente excluyentes dentro del helper común;
+- `cutoff_date = último día del mes` debe ser equivalente a `cutoff_month` para el mismo snapshot;
+- no aplica clasificación organizacional: CIDEF/DEALER se resuelve después del reconocimiento;
+- no calcula forecast, expectativa, concentración de cierre ni `PREDICTABILITY_DAY`.
+
+Devuelve:
+
+```text
+engine
+version
+status
+inputs:
+  cutoff_date
+policy
+as_of:
+  cutoff_date
+  month
+  day_of_month
+  recognized_sales_total
+  month_sales_to_date
+monthly_sales[]
+coverage
+validation
+warnings
+```
+
+Validaciones principales:
+
+```text
+ventas_context_ok
+cutoff_context_match
+no_post_cutoff_evidence_used
+```
+
+Invariantes de implementación cubiertas por tests:
+
+```text
+cutoff_date = month_end
+→ mismo set reconocido que cutoff_month
+
+cutoff_date antes de evidencia futura
+→ la evidencia futura no participa en LAST-by-VIN
+```
+
+El contexto común `ventas_context_v01` sube a versión interna `0.3` para aceptar `cutoffDate` sin cambiar el shape de `recognizedSale` ni la semántica existente de `cutoffMonth`.
+
+Para el futuro indicador de control de cierre, el universo organizacional deberá aplicarse después del reconocimiento usando MASTER y limitarse a `sucursales_master.tipo_canal = 'CIDEF'`; dealers quedan fuera de esa señal V0.1.
+
 ### `ventas_product_sales_v01`
 
 Motor determinista transversal de **ventas CIDEF reconocidas por producto canónico y período**. Es una pieza de mise en place reusable para Familia 1, Familia 2 y cualquier análisis posterior que necesite comparar crecimiento interno contra mercado/share sin reconstruir identidad manualmente.
