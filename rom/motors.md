@@ -1377,6 +1377,87 @@ Si `observed_to_date > actual_close`, no clampa ni corrige: falla la validation 
 No calcula `completion_ratio`, forecast, forecast error, thresholds ni `PREDICTABILITY_DAY`.
 
 
+### `daily_close_forecast_backtest_v01`
+
+Motor determinista compacto de **backtest de cierre diario** para Familia 1 — EXPECTATIVA Y CIERRE. Versión interna: `0.1`.
+
+Pregunta:
+
+> ¿Cuánto error histórico produce cada día calendario si el cierre se estima usando la mediana de completion observada exclusivamente en meses anteriores?
+
+Inputs obligatorios:
+
+```text
+start_month: YYYY-MM
+end_month: YYYY-MM
+```
+
+Ambos targets deben ser meses cerrados. La historia de training se deriva automáticamente desde la primera `fecha_factura` parseable disponible hasta cada target.
+
+Dependencia principal:
+
+```text
+daily_close_backtest_context_v01
+```
+
+V0.1 fija una sola baseline:
+
+```text
+completion_ratio = observed_to_date / actual_close
+learned_completion(M,d) = median(completion_ratio de observaciones con month < M y mismo calendar day d)
+forecast_close(M,d) = observed_to_date(M,d) / learned_completion(M,d)
+```
+
+Los `completion_ratio=0` históricos **sí participan** en la mediana. Si la mediana aprendida es `<=0`, el target queda `NOT_EVALUABLE`; no usa epsilon ni imputación.
+
+Grains:
+
+```text
+CIDEF_PROPIO
+TIENDA_PROPIA_POOLED
+```
+
+TIENDA V0.1 no segmenta por volumen ni usa `actual_close` del target para seleccionar buckets. `actual_close` participa únicamente como label para calcular error después del forecast.
+
+Output compacto `candidate_results[]`, máximo una fila por `grain × day_of_month`, con:
+
+```text
+grain
+candidate = median_completion_all_prior
+day_of_month
+target_observations
+targets_evaluable
+targets_not_evaluable
+training_observations_min
+training_observations_max
+mape_pct
+median_ape_pct
+p75_ape_pct
+p90_ape_pct
+mean_signed_error_pct
+```
+
+Los errores están expresados en porcentaje, no fracción.
+
+Validaciones principales:
+
+```text
+underlying_context_ok
+training_precedes_target
+learned_completion_in_bounds
+forecast_only_when_completion_positive
+forecast_formula_reconciles
+signed_error_reconciles
+absolute_error_reconciles
+summary_counts_reconcile
+no_nonfinite_evaluable_values
+target_actual_close_not_used_in_forecast
+no_store_volume_segmentation
+```
+
+El motor no devuelve miles de forecasts individuales y no calcula `PREDICTABILITY_DAY`, threshold de precisión, alerta ni estado live. Su responsabilidad termina en error histórico compacto por día.
+
+
 ### `ventas_product_sales_v01`
 
 Motor determinista transversal de **ventas CIDEF reconocidas por producto canónico y período**. Es una pieza de mise en place reusable para Familia 1, Familia 2 y cualquier análisis posterior que necesite comparar crecimiento interno contra mercado/share sin reconstruir identidad manualmente.
