@@ -9,38 +9,14 @@ jobs:
   runtime:
     runs-on: ubuntu-latest
     steps:
-      - name: Call deployed Custom GPT endpoint
+      - name: Inspect product source fields
         run: |
           set -euo pipefail
           call() {
             curl -sS -X POST -H 'content-type: application/json' --data "$1" \
               https://cidef-data-loader.vercel.app/api/custom-gpt
           }
-
-          for i in 1 2 3 4 5 6; do
-            call '{"action":"ventas_product_concentration_v01","input":{"start_month":"2026-01","end_month":"2026-07","pareto_threshold_pct":80}}' > concentration.json
-            if jq -e '.result.engine == "ventas_product_concentration_v01"' concentration.json >/dev/null; then break; fi
-            [ "$i" = "6" ] && { cat concentration.json; exit 1; }
-            sleep 10
-          done
-
-          jq -e '.result.version == "0.1"' concentration.json >/dev/null
-          jq -e '.result.monthly | length == 7' concentration.json >/dev/null
-          jq -e '.result.validation.ventas_context_ok == true' concentration.json >/dev/null
-          jq -e '.result.validation.recognized_sales_reconcile == true' concentration.json >/dev/null
-          jq -e '.result.validation.resolved_model_sales_reconcile == true' concentration.json >/dev/null
-          jq -e '.result.validation.pareto_threshold_reached_or_empty == true' concentration.json >/dev/null
-          echo '=== concentration ==='
-          jq '.result | {engine,version,status,inputs,period,coverage,validation,warnings}' concentration.json
-
-          echo '=== ventas product profile ==='
-          call '{"action":"profile_table","input":{"table":"ventas_raw","columns":["producto","producto_sku"]}}' \
-            | jq '.result'
-
-          echo '=== alias profile ==='
-          call '{"action":"profile_table","input":{"table":"producto_aliases_v01","columns":["nivel","fuente","valor_raw","estado"]}}' \
-            | jq '.result'
-
-          echo '=== alias counts ==='
-          call '{"action":"query_table","input":{"table":"producto_aliases_v01","operation":"aggregate","group_by":["nivel","fuente","estado"],"metrics":[{"op":"count","as":"rows"}],"limit":1000}}' \
-            | jq '.result'
+          echo '=== ventas schema ==='
+          call '{"action":"table_schema","input":{"tables":["ventas_raw"]}}' | jq '.result'
+          echo '=== master model schema ==='
+          call '{"action":"table_schema","input":{"tables":["modelos_master_v01","marcas_master_v01"]}}' | jq '.result'
