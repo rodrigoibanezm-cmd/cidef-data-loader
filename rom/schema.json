@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.21.0",
-    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, monthly and daily cutoff-safe sales context, product sales and recognized product detail, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with null-safe relative-gap detail, shared competitive context with optional Chile market-origin peer filtering, monthly competitive share trajectory over the same peer semantics, canonical product GENERATION membership context, bounded organization sales deterioration backtesting, and an AUDIT_ONLY observation-semantics comparison with explicit ACTIVE_ZERO evidence and temporal/unit-universe validations for Family 3. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
+    "version": "1.22.0",
+    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, monthly and daily cutoff-safe sales context, product sales and recognized product detail, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with null-safe relative-gap detail, shared competitive context with optional Chile market-origin peer filtering, bounded competitive share trajectory with compact trajectory and explicit monthly detail outputs over the same peer semantics, canonical product GENERATION membership context, bounded organization sales deterioration backtesting, and an AUDIT_ONLY observation-semantics comparison with explicit ACTIVE_ZERO evidence and temporal/unit-universe validations for Family 3. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
     {
@@ -194,7 +194,7 @@
       },
       "ActionInput": {
         "type": "object",
-        "description": "Action-specific input. product_generation_context_v01 accepts optional modelo_id, version_id, generation_id, membership_status, include_evidence and a bounded limit; it reads canonical GENERATION identity/membership only and never performs backfill. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. ventas_daily_context_v01 requires cutoff_date and exposes the cutoff-safe recognized-sales snapshot without organizational filtering or forecasting. ventas_organizational_context_v01 requires start_month and end_month. organizational_share_expectation_backtest_v01 requires grain, start_month, end_month and candidate_baselines; monthly detail returns relative_gap_pp=null whenever expected_share is unavailable/non-evaluable. ventas_product_sales_v01 and ventas_product_detail_v01 require modelo_id, start_month, end_month and cutoff_month=end_month. competitive_context_v01 and competitive_share_trajectory_v01 require target_model_ids, date_from and date_to; geography and origin_group are optional. org_sales_deterioration_backtest_v01 requires grain, start_month, end_month and the three candidate arrays. org_sales_observation_semantics_audit_v01 is AUDIT_ONLY/DISCOVERY_ONLY, requires only start_month and end_month, fixes tienda + last_year + relative + deepening_2, accepts detail_limit plus optional detail_unit_id, and exposes bounded ACTIVE_ZERO unit-month evidence plus explicit temporal and unit-universe validations.",
+        "description": "Action-specific input. product_generation_context_v01 accepts optional modelo_id, version_id, generation_id, membership_status, include_evidence and a bounded limit; it reads canonical GENERATION identity/membership only and never performs backfill. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. ventas_daily_context_v01 requires cutoff_date and exposes the cutoff-safe recognized-sales snapshot without organizational filtering or forecasting. ventas_organizational_context_v01 requires start_month and end_month. organizational_share_expectation_backtest_v01 requires grain, start_month, end_month and candidate_baselines; monthly detail returns relative_gap_pp=null whenever expected_share is unavailable/non-evaluable. ventas_product_sales_v01 and ventas_product_detail_v01 require modelo_id, start_month, end_month and cutoff_month=end_month. competitive_context_v01 and competitive_share_trajectory_v01 require target_model_ids, date_from and date_to; geography and origin_group are optional. competitive_share_trajectory_v01 defaults to output_mode=trajectory; output_mode=monthly requires entity_keys. org_sales_deterioration_backtest_v01 requires grain, start_month, end_month and the three candidate arrays. org_sales_observation_semantics_audit_v01 is AUDIT_ONLY/DISCOVERY_ONLY, requires only start_month and end_month, fixes tienda + last_year + relative + deepening_2, accepts detail_limit plus optional detail_unit_id, and exposes bounded ACTIVE_ZERO unit-month evidence plus explicit temporal and unit-universe validations.",
         "properties": {
           "table": {
             "$ref": "#/components/schemas/AllowedTable"
@@ -391,10 +391,10 @@
               "stability",
               "episodes",
               "units",
-              "monthly"
+              "monthly",
+              "trajectory"
             ],
-            "default": "summary",
-            "description": "Action-specific output mode. Compact summary is the default. For deterioration, units returns bounded candidate x unit evidence."
+            "description": "Action-specific output mode. competitive_share_trajectory_v01 uses trajectory by default; monthly requires entity_keys. Other motors retain their documented runtime defaults."
           },
           "detail_limit": {
             "type": "integer",
@@ -431,6 +431,17 @@
             "type": "string",
             "pattern": "^(consecutive_([2-9]|[1-9][0-9]+)|frequency_[1-9][0-9]*_of_[1-9][0-9]*|deepening_([2-9]|[1-9][0-9]+))$",
             "description": "Optional deterioration detail filter; must also appear in candidate_persistence_rules."
+          },
+          "entity_keys": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Explicit market entity keys for competitive_share_trajectory_v01 when output_mode=monthly. Transport bound only; it does not define competitor relevance."
           }
         },
         "additionalProperties": false

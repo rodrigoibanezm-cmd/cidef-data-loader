@@ -1347,7 +1347,7 @@ Este motor/contexto **no define todavía competidores reales**, no incorpora mic
 
 ### `competitive_share_trajectory_v01`
 
-Motor determinista de trayectoria mensual para **Familia 2 — POSICIÓN COMPETITIVA**.
+Motor determinista v0.2 de trayectoria mensual para **Familia 2 — POSICIÓN COMPETITIVA**.
 
 Pregunta:
 
@@ -1361,47 +1361,43 @@ date_from: YYYY-MM-DD
 date_to: YYYY-MM-DD
 geography?: region | comuna
 origin_group?: CHINESE | NON_CHINESE | UNKNOWN
-```
-
-Dependencia compartida:
-
-```text
-competitive_context_v01
+output_mode?: trajectory | monthly   default trajectory
+entity_keys?: string[]               required only for monthly; max 50
 ```
 
 Política:
 
-- reutiliza exactamente identidad RVM→MASTER y semántica de peer group de `competitive_context_v01`;
-- fija los universos desde todo el período solicitado y luego agrupa RVM por mes dentro de esos universos;
-- no ejecuta una consulta independiente por mes;
-- con `origin_group`, deriva el origen desde el lookup Chile versionado y recalcula el denominador mensual dentro del grupo;
-- una entidad observada al menos una vez en el período recibe `units=0` y `share=0` en meses sin inscripción; esos ceros sintéticos exponen `rank=null`;
-- no define competidores ni thresholds: expone evidencia de trayectoria.
+- reutiliza identidad RVM→MASTER y peer semantics de `competitive_context_v01`;
+- fija universos sobre todo el período y calcula internamente la matriz mensual completa;
+- `trajectory` es la salida compacta por defecto y NO transporta `monthly[]`;
+- `monthly` exige `entity_keys` y transporta solo esas entidades;
+- `entity_keys` limita transporte, no define relevancia ni competidores;
+- con `origin_group`, el denominador mensual se recalcula dentro del grupo;
+- entidades observadas en el período se zero-fill en meses sin inscripción: units=0, share=0, rank=null;
+- no define competidores ni thresholds.
 
-Devuelve:
+Outputs:
 
 ```text
-sharedContext:
-  scope
-  targets[]
+trajectory (default):
   peerUniverses[]
-  monthly[]:
-    month + universe + entity + units + share + rank + cumulativeShare
-  trajectory[]:
-    first/last share + shareChangePp + first/last rank + rankChange + totalUnits
-  validation
-  warnings[]
+  trajectory[]
+
+monthly:
+  peerUniverses[]
+  monthly[] only for requested entity_keys
+
+both:
+  scope + targets + validation + warnings
 ```
 
-Validaciones principales:
+Validaciones adicionales de monthly:
 
 ```text
-base_context_ok
-monthly_share_reconciles
-months_returned
-universes_returned
-raw_monthly_rows
-dense_monthly_rows
+requested_entity_keys
+matched_entity_keys
+monthly_rows_returned
+entity_keys_complete
 ```
 
 ### `product_generation_context_v01`
