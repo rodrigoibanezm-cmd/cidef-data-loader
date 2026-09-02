@@ -1,0 +1,40 @@
+name: Patch competitive signal backtest ROMs
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-competitive-signal-backtest-roms.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebase latest main
+        run: git pull --rebase origin main
+      - name: Test competitive signal helpers
+        run: node --test test/competitive-signal-backtest.test.js
+      - name: Verify custom router import
+        run: node -e "import('./lib/custom-gpt-router.js').then(m=>{if(!m.listCustomGptActions().includes('competitive_signal_backtest_v01'))process.exit(1)})"
+      - name: Patch ROM files
+        run: node scripts/patch-competitive-signal-backtest-roms.mjs
+      - name: Validate schema JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('rom/schema.json','utf8'))"
+      - name: Commit ROM changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rom/schema.json rom/motors.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Document competitive signal backtest"
+            git push
+          fi
