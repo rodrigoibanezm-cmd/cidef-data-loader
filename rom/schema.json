@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.18.0",
-    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, cutoff-safe actual, product sales and recognized product detail, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting, shared competitive context, canonical product GENERATION membership context, bounded organization sales deterioration backtesting, and an AUDIT_ONLY observation-semantics comparison for Family 3. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
+    "version": "1.19.0",
+    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, cutoff-safe actual, product sales and recognized product detail, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting, shared competitive context with optional Chile market-origin peer filtering, canonical product GENERATION membership context, bounded organization sales deterioration backtesting, and an AUDIT_ONLY observation-semantics comparison for Family 3. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
     {
@@ -192,7 +192,7 @@
       },
       "ActionInput": {
         "type": "object",
-        "description": "Action-specific input. product_generation_context_v01 accepts optional modelo_id, version_id, generation_id, membership_status, include_evidence and a bounded limit; it reads canonical GENERATION identity/membership only and never performs backfill. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. ventas_organizational_context_v01 requires start_month and end_month. organizational_share_expectation_backtest_v01 requires grain, start_month, end_month and candidate_baselines. ventas_product_sales_v01 and ventas_product_detail_v01 require modelo_id, start_month, end_month and cutoff_month=end_month. competitive_context_v01 requires target_model_ids, date_from and date_to; geography is optional. org_sales_deterioration_backtest_v01 requires grain, start_month, end_month and the three candidate arrays. org_sales_observation_semantics_audit_v01 is AUDIT_ONLY/DISCOVERY_ONLY, requires only start_month and end_month, fixes tienda + last_year + relative + deepening_2, and accepts detail_limit plus optional detail_unit_id.",
+        "description": "Action-specific input. product_generation_context_v01 accepts optional modelo_id, version_id, generation_id, membership_status, include_evidence and a bounded limit; it reads canonical GENERATION identity/membership only and never performs backfill. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. ventas_organizational_context_v01 requires start_month and end_month. organizational_share_expectation_backtest_v01 requires grain, start_month, end_month and candidate_baselines. ventas_product_sales_v01 and ventas_product_detail_v01 require modelo_id, start_month, end_month and cutoff_month=end_month. competitive_context_v01 requires target_model_ids, date_from and date_to; geography and origin_group are optional. org_sales_deterioration_backtest_v01 requires grain, start_month, end_month and the three candidate arrays. org_sales_observation_semantics_audit_v01 is AUDIT_ONLY/DISCOVERY_ONLY, requires only start_month and end_month, fixes tienda + last_year + relative + deepening_2, and accepts detail_limit plus optional detail_unit_id.",
         "properties": {
           "table": {
             "$ref": "#/components/schemas/AllowedTable"
@@ -326,6 +326,15 @@
           },
           "geography": {
             "$ref": "#/components/schemas/Geography"
+          },
+          "origin_group": {
+            "type": "string",
+            "enum": [
+              "CHINESE",
+              "NON_CHINESE",
+              "UNKNOWN"
+            ],
+            "description": "Optional competitive_context_v01 peer filter. Derived from the versioned Chile market-brand-origin lookup; missing origin never falls through to NON_CHINESE."
           },
           "grain": {
             "type": "string",
