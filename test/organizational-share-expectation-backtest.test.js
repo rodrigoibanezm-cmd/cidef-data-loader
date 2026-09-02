@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { calculateShareExpectationBacktest } from '../lib/share-expectation/buildShareExpectationBacktest.js';
 import { calculateShareExpectation } from '../lib/share-expectation/shareCandidates.js';
 import { parseShareBacktestInput } from '../lib/share-expectation/shareBacktestInput.js';
+import { formatShareBacktestOutput } from '../lib/share-expectation/formatShareBacktestOutput.js';
 
 test('share candidates require exact calendar months and never skip missing history', () => {
   const index = new Map([
@@ -17,15 +18,18 @@ test('share candidates require exact calendar months and never skip missing hist
   assert.deepEqual(result.source_months, ['2026-03', '2026-02']);
 });
 
-test('seller backtest keeps store in unit grain and ranks on common evaluable rows', () => {
+test('seller backtest keeps store grain, distributions and sales evidence', () => {
   const sellerMonthly = [];
   for (const sucursalId of ['1', '2']) {
     for (let month = 1; month <= 4; month += 1) {
+      const share = sucursalId === '1' ? 0.40 + month * 0.01 : 0.20 + month * 0.01;
       sellerMonthly.push({
         month: `2026-0${month}`,
         sucursal_id: sucursalId,
         persona_id: '63',
-        share_of_store: sucursalId === '1' ? 0.40 + month * 0.01 : 0.20 + month * 0.01,
+        sales: Math.round(share * 100),
+        store_sales: 100,
+        share_of_store: share,
       });
     }
   }
@@ -33,17 +37,24 @@ test('seller backtest keeps store in unit grain and ranks on common evaluable ro
     grain: 'vendedor',
     start_month: '2026-03',
     end_month: '2026-04',
-    candidate_baselines: ['moving_average_1', 'median_2'],
+    candidate_baselines: ['moving_average_2'],
+    output_mode: 'monthly',
   });
   const context = { seller_monthly: sellerMonthly, store_monthly: [], validation: { ok: true } };
   const result = calculateShareExpectationBacktest(context, parsed);
+  const output = formatShareBacktestOutput(result, parsed);
 
   assert.equal(result.validation.ok, true);
   assert.equal(result.coverage.target_rows, 4);
   assert.equal(result.coverage.common_evaluable_rows, 4);
   assert.equal(new Set(result.monthly_backtest.map((row) => row.unit_key)).size, 2);
-  assert.ok(result.monthly_backtest.some((row) => row.unit_key === '1|63'));
-  assert.ok(result.monthly_backtest.some((row) => row.unit_key === '2|63'));
-  assert.equal(result.ranking.length, 2);
-  assert.equal(result.ranking.every((row) => row.common_metrics.rows_evaluated === 4), true);
+  assert.equal(result.candidate_results[0].relative_gap_distribution.rows, 4);
+  assert.equal(
+    result.candidate_results[0].relative_gap_distribution.mean_pp,
+    result.candidate_results[0].candidate_specific_metrics.bias_pp,
+  );
+  assert.equal(output.monthly_backtest[0].sales > 0, true);
+  assert.equal(output.monthly_backtest[0].parent_sales, 100);
+  assert.equal(Number.isFinite(output.monthly_backtest[0].expected_share), true);
+  assert.equal(Number.isFinite(output.monthly_backtest[0].relative_gap_pp), true);
 });
