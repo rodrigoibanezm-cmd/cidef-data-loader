@@ -644,6 +644,169 @@ La versión `0.3` es un bugfix semántico de detalle: evita que `expected_share=
 
 El motor **no define** todavía threshold de bajo desempeño, score, ranking de unidades, alertas, persistencia, deterioro, peer groups ni regla productiva final. Su responsabilidad es producir evidencia de backtest para seleccionar `expected_share` por grain y validar la señal relativa resultante.
 
+### `organizational_relative_performance_v01`
+
+Motor determinista **productivo** para **Familia 4 — DESEMPEÑO RELATIVO**. Versión interna actual: `0.1`.
+
+Pregunta:
+
+> ¿Cuál fue el desempeño relativo observado de cada tienda o vendedor respecto de su participación histórica esperable según la regla certificada de su grain?
+
+Inputs:
+
+```text
+grain: tienda | vendedor
+start_month: YYYY-MM
+end_month: YYYY-MM
+```
+
+V0.1 acepta exclusivamente esos tres inputs. No acepta `candidate_baselines`, `cutoff_date`, `cutoff_month`, `target_month`, `output_mode` ni otros knobs del laboratorio.
+
+Dependencias compartidas:
+
+```text
+ventas_organizational_context_v01
+buildShareSeries
+calculateShareExpectation
+relativeGapPp
+```
+
+No duplica fórmulas del backtest. Reutiliza las mismas series, lags calendario, expectativa y cálculo de gap ya certificados.
+
+Reglas productivas fijas:
+
+```text
+TIENDA
+unit = sucursal_id
+actual_share = share_of_cidef
+baseline = median_3
+expected_share(M) = median(share(M-1), share(M-2), share(M-3))
+required_history_months = 3
+```
+
+```text
+VENDEDOR
+unit = sucursal_id + persona_id
+actual_share = share_of_store
+baseline = moving_average_5
+expected_share(M) = average(share(M-1), ..., share(M-5))
+required_history_months = 5
+```
+
+El caller no selecciona baseline. La regla queda versionada dentro del motor.
+
+Semántica temporal V0.1:
+
+```text
+mode = CURRENT_SNAPSHOT
+```
+
+- `start_month/end_month` definen sólo el rango de output;
+- el motor carga internamente el warm-up exacto de 3 o 5 meses previo a `start_month`;
+- sólo acepta meses calendario cerrados según `America/Santiago`;
+- el mes calendario en curso se rechaza; no existe semántica MTD en V0.1;
+- `CURRENT_SNAPSHOT` significa que la historia refleja la evidencia reconocida disponible actualmente;
+- no representa cómo habría aparecido un mes histórico al cierre de ese mismo mes;
+- point-in-time/cutoff-safe queda explícitamente fuera de V0.1.
+
+Grain de salida:
+
+```text
+TIENDA
+month + sucursal_id
+
+VENDEDOR
+month + sucursal_id + persona_id
+```
+
+Universo de output:
+
+```text
+units observed in target month only
+```
+
+Una unidad ausente en el mes objetivo no genera fila y nunca se fabrica como `sales=0`.
+
+Missing history:
+
+```text
+si la unidad está observada en el mes objetivo
+pero falta cualquier lag calendario requerido:
+
+  conservar sales / parent_sales / actual_share
+  evaluable = false
+  expected_share = null
+  relative_gap_pp = null
+```
+
+No imputa, no usa menos meses, no salta huecos y no convierte missing en cero.
+
+Cada fila `rows[]` devuelve:
+
+```text
+month
+sucursal_id
+persona_id          # sólo grain=vendedor
+sales
+parent_sales
+actual_share
+expected_share
+relative_gap_pp
+evaluable
+source_months[]
+```
+
+`source_months[]` contiene todos los meses calendario requeridos por la regla, incluso cuando falta alguno y la fila queda no evaluable.
+
+Metadata:
+
+```text
+certified_rule:
+  baseline
+  required_history_months
+  actual_share
+
+coverage:
+  rows_total
+  evaluable_rows
+  non_evaluable_rows
+```
+
+Validaciones principales:
+
+```text
+source_context_ok
+output_grain_unique
+shares_in_bounds
+sales_parent_evidence_present
+share_reconciles_with_sales
+certified_baseline_used
+exact_calendar_lags_only
+no_missing_month_imputation
+no_target_or_future_month_used
+expectations_in_bounds
+relative_gap_reconciles
+evaluable_semantics_ok
+seller_grain_includes_store
+target_months_closed
+```
+
+`evaluable_semantics_ok` exige:
+
+```text
+evaluable=true
+→ expected_share != null
+→ relative_gap_pp != null
+
+evaluable=false
+→ expected_share = null
+→ relative_gap_pp = null
+```
+
+Warnings propagan warnings del contexto organizacional, reportan filas no evaluables por historia incompleta y recuerdan que `CURRENT_SNAPSHOT` no equivale a un snapshot histórico point-in-time.
+
+El motor **no** selecciona candidatos, no hace backtesting, no define materialidad, threshold, score, ranking, alerta, deterioro, persistencia, forecast, MTD ni reconstrucción de roster. Su responsabilidad termina en `actual_share`, `expected_share`, `relative_gap_pp` y su trazabilidad determinística.
+
 ### `expected_monthly_backtest_v01`
 
 Motor determinista de selección de regla de **EXPECTATIVA mensual** para Familia 1.
