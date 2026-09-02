@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.19.1",
-    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, cutoff-safe actual, product sales and recognized product detail, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with null-safe relative-gap detail, shared competitive context with optional Chile market-origin peer filtering, canonical product GENERATION membership context, bounded organization sales deterioration backtesting, and an AUDIT_ONLY observation-semantics comparison for Family 3. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
+    "version": "1.20.0",
+    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, monthly and daily cutoff-safe sales context, product sales and recognized product detail, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with null-safe relative-gap detail, shared competitive context with optional Chile market-origin peer filtering, canonical product GENERATION membership context, bounded organization sales deterioration backtesting, and an AUDIT_ONLY observation-semantics comparison for Family 3. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
     {
@@ -61,6 +61,7 @@
               "ventas_unresolved_recognition_evidence_v01",
               "ventas_identity_coverage_v01",
               "ventas_monthly_actual_v01",
+              "ventas_daily_context_v01",
               "ventas_product_sales_v01",
               "ventas_product_detail_v01",
               "ventas_organizational_context_v01",
@@ -192,7 +193,7 @@
       },
       "ActionInput": {
         "type": "object",
-        "description": "Action-specific input. product_generation_context_v01 accepts optional modelo_id, version_id, generation_id, membership_status, include_evidence and a bounded limit; it reads canonical GENERATION identity/membership only and never performs backfill. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. ventas_organizational_context_v01 requires start_month and end_month. organizational_share_expectation_backtest_v01 requires grain, start_month, end_month and candidate_baselines; monthly detail returns relative_gap_pp=null whenever expected_share is unavailable/non-evaluable. ventas_product_sales_v01 and ventas_product_detail_v01 require modelo_id, start_month, end_month and cutoff_month=end_month. competitive_context_v01 requires target_model_ids, date_from and date_to; geography and origin_group are optional. org_sales_deterioration_backtest_v01 requires grain, start_month, end_month and the three candidate arrays. org_sales_observation_semantics_audit_v01 is AUDIT_ONLY/DISCOVERY_ONLY, requires only start_month and end_month, fixes tienda + last_year + relative + deepening_2, and accepts detail_limit plus optional detail_unit_id.",
+        "description": "Action-specific input. product_generation_context_v01 accepts optional modelo_id, version_id, generation_id, membership_status, include_evidence and a bounded limit; it reads canonical GENERATION identity/membership only and never performs backfill. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. ventas_daily_context_v01 requires cutoff_date and exposes the cutoff-safe recognized-sales snapshot without organizational filtering or forecasting. ventas_organizational_context_v01 requires start_month and end_month. organizational_share_expectation_backtest_v01 requires grain, start_month, end_month and candidate_baselines; monthly detail returns relative_gap_pp=null whenever expected_share is unavailable/non-evaluable. ventas_product_sales_v01 and ventas_product_detail_v01 require modelo_id, start_month, end_month and cutoff_month=end_month. competitive_context_v01 requires target_model_ids, date_from and date_to; geography and origin_group are optional. org_sales_deterioration_backtest_v01 requires grain, start_month, end_month and the three candidate arrays. org_sales_observation_semantics_audit_v01 is AUDIT_ONLY/DISCOVERY_ONLY, requires only start_month and end_month, fixes tienda + last_year + relative + deepening_2, and accepts detail_limit plus optional detail_unit_id.",
         "properties": {
           "table": {
             "$ref": "#/components/schemas/AllowedTable"
@@ -256,6 +257,11 @@
             "type": "string",
             "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
             "description": "Last month whose ventas_raw evidence may be used by cutoff-aware sales and expectation motors"
+          },
+          "cutoff_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Inclusive calendar cutoff for ventas_daily_context_v01. Backend requires a valid YYYY-MM-DD date and applies it before LAST-by-VIN recognition."
           },
           "target_month": {
             "type": "string",
