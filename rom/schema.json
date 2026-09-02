@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.15.0",
-    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, cutoff-safe actual and product sales, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting, shared competitive context, and bounded organization sales deterioration backtesting. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
+    "version": "1.16.0",
+    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, cutoff-safe actual, product sales and recognized product detail, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting, shared competitive context, and bounded organization sales deterioration backtesting. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
     { "url": "https://cidef-data-loader.vercel.app" }
@@ -47,6 +47,7 @@
               "ventas_identity_coverage_v01",
               "ventas_monthly_actual_v01",
               "ventas_product_sales_v01",
+              "ventas_product_detail_v01",
               "ventas_organizational_context_v01",
               "expected_monthly_backtest_v01",
               "expected_monthly_stability_v01",
@@ -127,7 +128,7 @@
       },
       "ActionInput": {
         "type": "object",
-        "description": "Action-specific input. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. ventas_organizational_context_v01 requires start_month and end_month; the window is applied after recognition and end_month is not a temporal cutoff. organizational_share_expectation_backtest_v01 requires grain, start_month, end_month and candidate_baselines from last_year, moving_average_N or median_N; it uses exact calendar lags, no missing-month imputation, and summary output by default. expected_monthly_candidates_v01 requires cutoff_month plus the immediately following target_month. ventas_monthly_actual_v01 requires cutoff_month and a target_month not later than the cutoff. ventas_product_sales_v01 requires modelo_id, start_month, end_month and cutoff_month=end_month. competitive_context_v01 requires target_model_ids, date_from and date_to; geography is optional. org_sales_deterioration_backtest_v01 requires grain, start_month, end_month and the three candidate arrays. It returns output_mode=summary by default; stability, episodes and units are bounded detail modes controlled by detail_limit and optional candidate filters.",
+        "description": "Action-specific input. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. ventas_organizational_context_v01 requires start_month and end_month; the window is applied after recognition and end_month is not a temporal cutoff. organizational_share_expectation_backtest_v01 requires grain, start_month, end_month and candidate_baselines from last_year, moving_average_N or median_N; it uses exact calendar lags, no missing-month imputation, and summary output by default. expected_monthly_candidates_v01 requires cutoff_month plus the immediately following target_month. ventas_monthly_actual_v01 requires cutoff_month and a target_month not later than the cutoff. ventas_product_sales_v01 and ventas_product_detail_v01 require modelo_id, start_month, end_month and cutoff_month=end_month; detail exposes every recognized resolved target sale without truncation. competitive_context_v01 requires target_model_ids, date_from and date_to; geography is optional. org_sales_deterioration_backtest_v01 requires grain, start_month, end_month and the three candidate arrays. It returns output_mode=summary by default; stability, episodes and units are bounded detail modes controlled by detail_limit and optional candidate filters.",
         "properties": {
           "table": { "$ref": "#/components/schemas/AllowedTable" },
           "tables": { "type": "array", "items": { "$ref": "#/components/schemas/AllowedTable" } },
@@ -168,7 +169,7 @@
           "modelo_id": {
             "type": "integer",
             "minimum": 1,
-            "description": "Canonical modelo_id used by ventas_product_sales_v01"
+            "description": "Canonical modelo_id used by ventas_product_sales_v01 and ventas_product_detail_v01"
           },
           "target_model_ids": {
             "type": "array",
