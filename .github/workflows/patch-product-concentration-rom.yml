@@ -24,26 +24,25 @@ jobs:
           import fs from 'node:fs';
           const schemaPath = 'rom/schema.json';
           const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
-          const action = 'ventas_product_concentration_v01';
           const actions = schema.components.schemas.CustomGptRequest.properties.action.enum;
-          if (!actions.includes(action)) {
+          const resolver = 'ventas_product_model_resolution_v01';
+          if (!actions.includes(resolver)) {
             const after = actions.indexOf('ventas_product_detail_v01');
-            actions.splice(after >= 0 ? after + 1 : actions.length, 0, action);
+            actions.splice(after >= 0 ? after + 1 : actions.length, 0, resolver);
           }
-          const props = schema.components.schemas.ActionInput.properties;
-          props.pareto_threshold_pct = {
-            type: 'number', minimum: 0.01, maximum: 100, default: 80,
-            description: 'Sales-share threshold used by ventas_product_concentration_v01 to define the Pareto model set; caller-configurable, 80 by default.'
-          };
-          const actionDescription = 'ventas_product_concentration_v01 requires start_month and end_month over closed America/Santiago months and accepts pareto_threshold_pct (default 80); it measures concentration among resolved canonical model sales, returns period and monthly Pareto sets, and keeps unresolved/ambiguous product identity explicit in coverage.';
-          if (!schema.components.schemas.ActionInput.description.includes('ventas_product_concentration_v01')) {
-            schema.components.schemas.ActionInput.description += ` ${actionDescription}`;
+          const resolverDesc = 'ventas_product_model_resolution_v01 requires start_month and end_month; it maps ventas_raw technical SKU to canonical modelo_id using certified ventas aliases first and exact VIN evidence from vehiculo_canonico/RVM only when that evidence is deterministic, while preserving AMBIGUOUS and UNRESOLVED explicitly. No fuzzy, substring or majority-vote resolution is allowed.';
+          if (!schema.components.schemas.ActionInput.description.includes(resolver)) {
+            schema.components.schemas.ActionInput.description += ` ${resolverDesc}`;
           }
-          if (!schema.info.description.includes('product sales concentration')) {
+          schema.components.schemas.ActionInput.description = schema.components.schemas.ActionInput.description.replace(
+            /ventas_product_concentration_v01 requires start_month and end_month[^.]*\.[^.]*(?:\.[^.]*)?/,
+            'ventas_product_concentration_v01 requires start_month and end_month over closed America/Santiago months and accepts pareto_threshold_pct (default 80); V0.2 consumes ventas_product_model_resolution_v01 semantics, returns period and monthly Pareto sets, and keeps unresolved/ambiguous identity explicit in coverage.'
+          );
+          if (!schema.info.description.includes('deterministic SKU-to-model resolution')) {
             schema.info.description = schema.info.description.replace(
-              'product sales and recognized product detail,',
-              'product sales, recognized product detail, parameterized product sales concentration/Pareto trend,'
-            );
+              'product sales, recognized product detail,',
+              'product sales, recognized product detail, deterministic SKU-to-model resolution, inner product concentration/Pareto trend,'
+            ).replace('inner product concentration/Pareto trend','parameterized product sales concentration/Pareto trend');
           }
           const parts = String(schema.info.version || '1.0.0').split('.').map(Number);
           if (parts.length === 3 && parts.every(Number.isFinite)) {
@@ -53,11 +52,23 @@ jobs:
 
           const motorsPath = 'rom/motors.md';
           let motors = fs.readFileSync(motorsPath, 'utf8');
-          const heading = '### `ventas_product_concentration_v01`';
-          if (!motors.includes(heading)) {
-            motors = motors.trimEnd() + `\n\n${heading}\n\nMotor determinista de concentración de ventas por modelo para **Familia 3 — DETERIORO Y RED FLAGS**, orientado a robustez del resultado.\n\nPregunta:\n\n> ¿Qué tan concentrada está la venta en pocos modelos y cómo cambia esa concentración en el tiempo?\n\nInputs:\n\n\`\`\`text\nstart_month: YYYY-MM\nend_month: YYYY-MM\npareto_threshold_pct?: number   default 80\n\`\`\`\n\nPolítica:\n\n- sólo acepta meses calendario cerrados en America/Santiago;\n- reutiliza \`ventas_product_context_v01\` y su reconocimiento LAST-by-VIN cutoff-safe al \`end_month\`;\n- identidad de modelo = aliases RESUELTO de \`producto_aliases_v01\`; no fuzzy matching;\n- el Pareto se calcula únicamente sobre ventas con \`modelo_id\` resuelto; ambiguas/no resueltas permanecen explícitas en cobertura y nunca se distribuyen por inferencia;\n- orden determinista = ventas descendente, luego \`modelo_id\` ascendente;\n- el conjunto Pareto incluye modelos hasta alcanzar por primera vez el porcentaje solicitado;\n- \`pareto_threshold_pct\` es parametrizable: 80 es default, no regla hardcodeada;\n- persistencia exclusivamente runtime; no crea tabla, mart ni cubo.\n\nDevuelve:\n\n\`\`\`text\nperiod:\n  recognized_sales\n  resolved_product_sales\n  distinct_models\n  pareto_model_count\n  pareto_model_share_pct\n  pareto_sales\n  pareto_sales_share_pct\n  pareto_models[]\nmonthly[]:\n  month\n  mismos campos de concentración\ncoverage\nvalidation\nwarnings\n\`\`\`\n\nCada elemento de \`pareto_models[]\` incluye \`rank\`, \`modelo_id\`, marca/modelo canónicos, ventas, participación y participación acumulada. El motor mide concentración y su evolución; **no** etiqueta por sí solo el resultado como frágil, sano o diversificado.\n`;
-            fs.writeFileSync(motorsPath, motors);
+          const resolverSection = `### \`ventas_product_model_resolution_v01\`\n\nMotor determinista productivo de identidad de producto para ventas reconocidas.\n\nPregunta:\n\n> ¿A qué modelo canónico pertenece cada SKU técnico observado en las ventas reconocidas?\n\nInputs:\n\n\`\`\`text\nstart_month: YYYY-MM\nend_month: YYYY-MM\n\`\`\`\n\nPolítica:\n\n- reconocimiento de venta = \`ventas_context_v01\`, LAST-by-VIN antes de resolver producto;\n- grain de identidad = \`ventas_raw.articulo\` (SKU técnico) → \`modelo_id\`;\n- precedencia: alias certificado de \`ventas_raw\` → evidencia exacta por VIN en \`vehiculo_canonico\` → identidad MODELO certificada de RVM para ese VIN;\n- un fallback SKU sólo se resuelve cuando toda la evidencia VIN efectiva disponible converge a un único \`modelo_id\` y no existe ambigüedad RVM pendiente;\n- no fuzzy, no substring, no majority vote;\n- un conflicto nunca se corrige por volumen: queda \`AMBIGUOUS\`;\n- no escribe MASTER ni crea tablas; persistencia exclusivamente runtime.\n\nDevuelve cobertura sobre ventas reconocidas, cobertura de SKU y \`mappings[]\` con SKU, estado, \`modelo_id\`, marca/modelo canónicos, método de resolución y conteos de evidencia VIN. Estados posibles: \`RESOLVED\`, \`AMBIGUOUS\`, \`UNRESOLVED\`.\n`;
+          const resolverHeading = '### `ventas_product_model_resolution_v01`';
+          if (!motors.includes(resolverHeading)) {
+            const concentrationHeading = '### `ventas_product_concentration_v01`';
+            const pos = motors.indexOf(concentrationHeading);
+            motors = pos >= 0 ? `${motors.slice(0,pos)}${resolverSection}\n${motors.slice(pos)}` : `${motors.trimEnd()}\n\n${resolverSection}`;
           }
+          const concentrationSection = `### \`ventas_product_concentration_v01\`\n\nMotor determinista de concentración de ventas por modelo para **Familia 3 — DETERIORO Y RED FLAGS**, orientado a robustez del resultado. Versión productiva actual: \`0.2\`.\n\nPregunta:\n\n> ¿Qué tan concentrada está la venta en pocos modelos y cómo cambia esa concentración en el tiempo?\n\nInputs:\n\n\`\`\`text\nstart_month: YYYY-MM\nend_month: YYYY-MM\npareto_threshold_pct?: number   default 80\n\`\`\`\n\nPolítica:\n\n- sólo acepta meses calendario cerrados en America/Santiago;\n- reutiliza el reconocimiento LAST-by-VIN cutoff-safe y la semántica productiva de \`ventas_product_model_resolution_v01\`;\n- identidad: alias certificado primero y evidencia VIN exacta sólo cuando converge determinísticamente; no fuzzy, substring ni majority vote;\n- el Pareto usa sólo ventas con \`modelo_id\` resuelto; ambiguas/no resueltas permanecen explícitas en cobertura;\n- orden determinista = ventas descendente, luego \`modelo_id\` ascendente;\n- incluye modelos hasta alcanzar por primera vez el porcentaje solicitado;\n- \`pareto_threshold_pct\` es parametrizable; 80 es sólo default;\n- no etiqueta el resultado como sano/frágil ni crea historia materializada.\n\nDevuelve \`period\`, \`monthly[]\`, \`coverage\`, \`validation\` y \`warnings\`; cada Pareto incluye modelo canónico, ventas, share y share acumulado.\n`;
+          const heading = '### `ventas_product_concentration_v01`';
+          const start = motors.indexOf(heading);
+          if (start >= 0) {
+            const next = motors.indexOf('\n### `', start + heading.length);
+            motors = `${motors.slice(0,start)}${concentrationSection}\n${next >= 0 ? motors.slice(next + 1) : ''}`;
+          } else {
+            motors = `${motors.trimEnd()}\n\n${concentrationSection}`;
+          }
+          fs.writeFileSync(motorsPath, motors);
           JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
           NODE
       - name: Commit ROM changes
@@ -65,5 +76,5 @@ jobs:
           git config user.name 'cidef-agent-bot'
           git config user.email 'actions@users.noreply.github.com'
           git add rom/schema.json rom/motors.md
-          git diff --cached --quiet || git commit -m 'Expose product concentration motor in ROM'
+          git diff --cached --quiet || git commit -m 'Expose productive product model resolution in ROM'
           git push origin HEAD:main
