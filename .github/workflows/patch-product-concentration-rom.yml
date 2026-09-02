@@ -1,0 +1,69 @@
+name: Patch product concentration ROM
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-product-concentration-rom.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch ROM
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const schemaPath = 'rom/schema.json';
+          const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+          const action = 'ventas_product_concentration_v01';
+          const actions = schema.components.schemas.CustomGptRequest.properties.action.enum;
+          if (!actions.includes(action)) {
+            const after = actions.indexOf('ventas_product_detail_v01');
+            actions.splice(after >= 0 ? after + 1 : actions.length, 0, action);
+          }
+          const props = schema.components.schemas.ActionInput.properties;
+          props.pareto_threshold_pct = {
+            type: 'number', minimum: 0.01, maximum: 100, default: 80,
+            description: 'Sales-share threshold used by ventas_product_concentration_v01 to define the Pareto model set; caller-configurable, 80 by default.'
+          };
+          const actionDescription = 'ventas_product_concentration_v01 requires start_month and end_month over closed America/Santiago months and accepts pareto_threshold_pct (default 80); it measures concentration among resolved canonical model sales, returns period and monthly Pareto sets, and keeps unresolved/ambiguous product identity explicit in coverage.';
+          if (!schema.components.schemas.ActionInput.description.includes('ventas_product_concentration_v01')) {
+            schema.components.schemas.ActionInput.description += ` ${actionDescription}`;
+          }
+          if (!schema.info.description.includes('product sales concentration')) {
+            schema.info.description = schema.info.description.replace(
+              'product sales and recognized product detail,',
+              'product sales, recognized product detail, parameterized product sales concentration/Pareto trend,'
+            );
+          }
+          const parts = String(schema.info.version || '1.0.0').split('.').map(Number);
+          if (parts.length === 3 && parts.every(Number.isFinite)) {
+            parts[1] += 1; parts[2] = 0; schema.info.version = parts.join('.');
+          }
+          fs.writeFileSync(schemaPath, `${JSON.stringify(schema, null, 2)}\n`);
+
+          const motorsPath = 'rom/motors.md';
+          let motors = fs.readFileSync(motorsPath, 'utf8');
+          const heading = '### `ventas_product_concentration_v01`';
+          if (!motors.includes(heading)) {
+            motors = motors.trimEnd() + `\n\n${heading}\n\nMotor determinista de concentración de ventas por modelo para **Familia 3 — DETERIORO Y RED FLAGS**, orientado a robustez del resultado.\n\nPregunta:\n\n> ¿Qué tan concentrada está la venta en pocos modelos y cómo cambia esa concentración en el tiempo?\n\nInputs:\n\n\`\`\`text\nstart_month: YYYY-MM\nend_month: YYYY-MM\npareto_threshold_pct?: number   default 80\n\`\`\`\n\nPolítica:\n\n- sólo acepta meses calendario cerrados en America/Santiago;\n- reutiliza \`ventas_product_context_v01\` y su reconocimiento LAST-by-VIN cutoff-safe al \`end_month\`;\n- identidad de modelo = aliases RESUELTO de \`producto_aliases_v01\`; no fuzzy matching;\n- el Pareto se calcula únicamente sobre ventas con \`modelo_id\` resuelto; ambiguas/no resueltas permanecen explícitas en cobertura y nunca se distribuyen por inferencia;\n- orden determinista = ventas descendente, luego \`modelo_id\` ascendente;\n- el conjunto Pareto incluye modelos hasta alcanzar por primera vez el porcentaje solicitado;\n- \`pareto_threshold_pct\` es parametrizable: 80 es default, no regla hardcodeada;\n- persistencia exclusivamente runtime; no crea tabla, mart ni cubo.\n\nDevuelve:\n\n\`\`\`text\nperiod:\n  recognized_sales\n  resolved_product_sales\n  distinct_models\n  pareto_model_count\n  pareto_model_share_pct\n  pareto_sales\n  pareto_sales_share_pct\n  pareto_models[]\nmonthly[]:\n  month\n  mismos campos de concentración\ncoverage\nvalidation\nwarnings\n\`\`\`\n\nCada elemento de \`pareto_models[]\` incluye \`rank\`, \`modelo_id\`, marca/modelo canónicos, ventas, participación y participación acumulada. El motor mide concentración y su evolución; **no** etiqueta por sí solo el resultado como frágil, sano o diversificado.\n`;
+            fs.writeFileSync(motorsPath, motors);
+          }
+          JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+          NODE
+      - name: Commit ROM changes
+        run: |
+          git config user.name 'cidef-agent-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add rom/schema.json rom/motors.md
+          git diff --cached --quiet || git commit -m 'Expose product concentration motor in ROM'
+          git push origin HEAD:main
