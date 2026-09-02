@@ -19,5 +19,5 @@ jobs:
         with:
           node-version: 22
       - run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Run targeted tests
+      - name: Run targeted tests after shared-helper alignment
         run: node --test test/current-month-close-forecast.test.js test/daily-close-forecast.test.js test/predictability-day.test.js
