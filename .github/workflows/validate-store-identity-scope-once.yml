@@ -1,0 +1,67 @@
+name: One-time observed store identity validation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/validate-store-identity-scope-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-document:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run targeted tests
+        run: node --test test/ventas-daily-organizational-context.test.js test/ventas-organizational-context.test.js
+      - name: Update ROM
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          schema_path = Path('rom/schema.json')
+          schema = json.loads(schema_path.read_text())
+          parts = [int(x) for x in schema['info']['version'].split('.')]
+          parts[-1] += 1
+          schema['info']['version'] = '.'.join(map(str, parts))
+          schema_path.write_text(json.dumps(schema, indent=2, ensure_ascii=False) + '\n')
+
+          motors_path = Path('rom/motors.md')
+          text = motors_path.read_text()
+          start_marker = '### `ventas_daily_organizational_context_v01`'
+          end_marker = '### `ventas_product_sales_v01`'
+          start = text.index(start_marker)
+          end = text.index(end_marker, start)
+          section = text[start:end]
+
+          if 'Version motor: `0.2`' not in section:
+              section = section.replace(
+                  start_marker,
+                  start_marker + '\n\nVersion motor: `0.2`',
+                  1,
+              )
+
+          note = '''Semántica de `store_identity_keys_unique` V0.2:\n\n```text\nOBSERVED_EVENT_STORE_KEY_UNIQUENESS\n= cada source key no nula usada por recognizedSales[] del target month\n  resuelve exactamente a una identidad MASTER\n```\n\nLas keys `NULL` o no utilizadas por los eventos reconocidos del mes no participan en esta validation. `unresolved_store` y `ambiguous_store` siguen reportándose por separado y nunca se infieren.\n\n'''
+          if 'OBSERVED_EVENT_STORE_KEY_UNIQUENESS' not in section:
+              section = section.replace('Reconciliaciones:\n', note + 'Reconciliaciones:\n', 1)
+
+          motors_path.write_text(text[:start] + section + text[end:])
+          PY
+      - name: Commit ROM update
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rom/schema.json rom/motors.md
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'document observed store identity validation v0.2'
+          git push origin HEAD:main
