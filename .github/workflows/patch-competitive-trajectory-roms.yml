@@ -1,0 +1,30 @@
+name: Patch competitive context origin ROM
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-competitive-trajectory-roms.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch motor documentation
+        run: node scripts/patch-competitive-context-origin-rom.mjs
+      - name: Commit ROM alignment
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rom/motors.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Align competitive context origin documentation"
+            git push
+          fi
