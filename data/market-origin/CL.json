@@ -2,9 +2,9 @@
   "market": "CL",
   "classification": "CURRENT_CHILE_MARKET_BRAND_ORIGIN",
   "source": {
-    "authority": "CAVEM",
+    "authority": "CAVEM + ANAC + official brand sources",
     "period": "2026-01",
-    "reference": "Informe Mensual Estadistico Enero 2026 - Primeras Inscripciones Marcas Chinas",
+    "reference": "CAVEM Chinese-brand classification; ANAC Pais Marca semantics; official brand-origin evidence for non-CN controls",
     "url": "https://www.cavem.cl/informes/69a723e19fdd4.pdf"
   },
   "coverage": "EXPERIMENTAL_SEED",
