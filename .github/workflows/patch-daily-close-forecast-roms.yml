@@ -1,0 +1,58 @@
+name: Patch daily close forecast ROMs
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-daily-close-forecast-roms.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebase latest main
+        run: git pull --rebase origin main
+      - name: Test productive daily close forecast
+        run: |
+          node --test test/daily-close-forecast.test.js
+          node --test test/daily-close-forecast-backtest.test.js
+      - name: Check syntax router and file size
+        run: |
+          node --check lib/daily-close-forecast/forecastInput.js
+          node --check lib/daily-close-forecast/learnCurrentCompletion.js
+          node --check lib/daily-close-forecast/buildCurrentForecast.js
+          node --check lib/daily-close-forecast/historicalAccuracy.js
+          node --check lib/daily-close-forecast/validateCurrentForecast.js
+          node --check lib/daily-close-forecast/buildDailyCloseForecast.js
+          node --check lib/motors/daily-close-forecast-v01.js
+          node --check lib/custom-gpt-router.js
+          grep -q 'daily_close_forecast_v01: dailyCloseForecastV01' lib/custom-gpt-router.js
+          for f in lib/daily-close-forecast/forecastInput.js lib/daily-close-forecast/learnCurrentCompletion.js lib/daily-close-forecast/buildCurrentForecast.js lib/daily-close-forecast/historicalAccuracy.js lib/daily-close-forecast/validateCurrentForecast.js lib/daily-close-forecast/buildDailyCloseForecast.js lib/motors/daily-close-forecast-v01.js; do
+            lines=$(wc -l < "$f")
+            test "$lines" -le 120 || { echo "$f exceeds 120 lines: $lines"; exit 1; }
+          done
+      - name: Patch ROM files
+        run: node scripts/patch-daily-close-forecast-roms.mjs
+      - name: Validate ROM
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('rom/schema.json','utf8'))"
+          grep -q 'daily_close_forecast_v01' rom/schema.json
+          grep -q '### `daily_close_forecast_v01`' rom/motors.md
+      - name: Commit ROM changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rom/schema.json rom/motors.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Document productive daily close forecast V0.1"
+            git push
+          fi
