@@ -15,10 +15,24 @@ La allowlist real vive en backend. Si existe discrepancia, ejecutar `list_tables
 
 - `marcas_master_v01`
 - `modelos_master_v01`
+- `generaciones_master_v01`
 - `versiones_master_v01`
+- `version_generation_v01`
+- `generation_evidence_v01`
 - `producto_aliases_v01`
 - `producto_clasificacion_v01`
 - `producto_portafolio_v01`
+
+Jerarquía estructural objetivo:
+
+```text
+BRAND
+→ MODEL
+→ GENERATION
+→ VERSION
+```
+
+`version_generation_v01` conserva el estado canónico de pertenencia VERSION→GENERATION (`RESOLVED`, `UNRESOLVED`, `CONFLICT`). `generation_evidence_v01` conserva evidencia fuente; no autoriza inferir generaciones por parecido textual.
 
 ## MASTER V0.1 — Sucursal
 
