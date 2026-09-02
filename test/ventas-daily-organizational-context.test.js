@@ -9,6 +9,7 @@ function maps() {
       ['20', { canonical_id: '2', nombre_canonico: 'DEALER A', tipo_canal: 'DEALER', match_count: 1 }],
       ['30', { canonical_id: '3', nombre_canonico: 'PROPIA SIN VENTA', tipo_canal: 'CIDEF', match_count: 1 }],
       ['40', { canonical_id: '4', nombre_canonico: 'AMBIGUA', tipo_canal: 'CIDEF', match_count: 2 }],
+      ['null', { canonical_id: '5', nombre_canonico: null, tipo_canal: null, match_count: 42 }],
     ]),
     sellers: new Map(),
   };
@@ -30,11 +31,13 @@ function context() {
   };
 }
 
-test('reconciles target-month recognized sales by store identity and channel', () => {
-  const result = calculateVentasDailyOrganizationalContext(
-    context(), maps(), { cutoffDate: '2026-04-15' },
-  );
+function run(ctx = context()) {
+  return calculateVentasDailyOrganizationalContext(ctx, maps(), { cutoffDate: '2026-04-15' });
+}
 
+test('reconciles target-month recognized sales by store identity and channel', () => {
+  const result = run();
+  assert.equal(result.version, '0.2');
   assert.equal(result.coverage.recognized_sales_in_target_month_to_date, 5);
   assert.equal(result.coverage.resolved_store, 3);
   assert.equal(result.coverage.unresolved_store, 1);
@@ -48,20 +51,22 @@ test('reconciles target-month recognized sales by store identity and channel', (
 });
 
 test('keeps sparse positive stores and never fabricates zero rows', () => {
-  const result = calculateVentasDailyOrganizationalContext(
-    context(), maps(), { cutoffDate: '2026-04-15' },
-  );
-
+  const result = run();
   assert.equal(result.store_sales_to_date.length, 2);
   assert.equal(result.store_sales_to_date.some((row) => row.sucursal_id === '3'), false);
   assert.deepEqual(result.store_sales_to_date.map((row) => row.month_sales_to_date), [2, 1]);
 });
 
-test('reports ambiguous MASTER source keys as validation warning', () => {
-  const result = calculateVentasDailyOrganizationalContext(
-    context(), maps(), { cutoffDate: '2026-04-15' },
-  );
+test('ignores unused null/global duplicate keys for observed-event uniqueness', () => {
+  const clean = context();
+  clean.recognizedSales = clean.recognizedSales.filter((sale) => ['1', '2', '3', '4'].includes(sale.source_id));
+  const result = run(clean);
+  assert.equal(result.validation.store_identity_keys_unique, true);
+  assert.equal(result.status, 'ok');
+});
 
+test('reports a source key actually used by recognized sales when ambiguous', () => {
+  const result = run();
   assert.equal(result.validation.store_identity_keys_unique, false);
   assert.equal(result.status, 'warning');
 });
