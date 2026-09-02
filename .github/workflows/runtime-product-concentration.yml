@@ -9,14 +9,14 @@ jobs:
   runtime:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect product source fields
+      - name: Inspect product source values
         run: |
           set -euo pipefail
           call() {
             curl -sS -X POST -H 'content-type: application/json' --data "$1" \
               https://cidef-data-loader.vercel.app/api/custom-gpt
           }
-          echo '=== ventas schema ==='
-          call '{"action":"table_schema","input":{"tables":["ventas_raw"]}}' | jq '.result'
-          echo '=== master model schema ==='
-          call '{"action":"table_schema","input":{"tables":["modelos_master_v01","marcas_master_v01"]}}' | jq '.result'
+          echo '=== ventas product profile ==='
+          call '{"action":"profile_table","input":{"table":"ventas_raw","columns":["desc_mae_marca","desc_articulo","articulo"]}}' | jq '.result'
+          echo '=== ventas brand + article description ==='
+          call '{"action":"query_table","input":{"table":"ventas_raw","operation":"aggregate","group_by":["desc_mae_marca","desc_articulo"],"metrics":[{"op":"count","as":"rows"}],"limit":300}}' | jq '.result'
