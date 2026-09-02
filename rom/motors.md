@@ -1337,7 +1337,7 @@ Esta capacidad no densifica el roster de tiendas y no decide todavía `STORE_ACT
 
 ### `daily_close_backtest_context_v01`
 
-Motor runtime determinista de **contexto observacional diario** para Familia 1 — EXPECTATIVA Y CIERRE. Versión interna: `0.1`.
+Motor runtime determinista de **contexto observacional diario** para Familia 1 — EXPECTATIVA Y CIERRE. Versión interna: `0.2`.
 
 Inputs obligatorios:
 
@@ -1369,6 +1369,7 @@ Grains:
 ```text
 CIDEF_PROPIO  = target_month + cutoff_date
 TIENDA_PROPIA = target_month + cutoff_date + sucursal_id
+VENDEDOR_CIDEF = target_month + cutoff_date + sucursal_id observado + persona_id
 ```
 
 Universo tienda V0.1:
@@ -1376,6 +1377,16 @@ Universo tienda V0.1:
 ```text
 month-end tipo_canal='CIDEF' AND actual_close > 0
 ```
+
+Universo vendedor V0.2:
+
+```text
+persona resuelta
+AND VENDEDOR_CIDEF(persona_id, fecha_factura)
+AND actual_close > 0 para sucursal observada + persona
+```
+
+La pertenencia proviene de MASTER temporal; `ventas_raw` nunca crea rol ni asignación. La sucursal del grain permanece siendo la observada en la venta y no se reescribe con la asignación actual.
 
 Semántica:
 
@@ -1386,7 +1397,7 @@ sin label positivo al cierre → store-month no emitido / UNKNOWN
 actual_close → LABEL_ONLY
 ```
 
-Devuelve `company_observations[]` y `store_observations[]` con `target_month`, `cutoff_date`, `day_of_month`, `observed_to_date` y `actual_close`; tienda agrega `sucursal_id`, `sucursal` y `observation_semantics`.
+Devuelve `company_observations[]`, `store_observations[]` y `seller_observations[]` con `target_month`, `cutoff_date`, `day_of_month`, `observed_to_date` y `actual_close`. Tienda agrega `sucursal_id`, `sucursal` y `observation_semantics`; vendedor agrega además `persona_id` y `persona`.
 
 Validaciones: grains únicos, cutoff dentro del mes, no negativos, `observed_to_date <= actual_close`, igualdad al cierre, identidad/canal completos al month-end, ausencia de estado negativo y reconciliación CIDEF propio contra tiendas elegibles.
 
@@ -1397,7 +1408,7 @@ No calcula `completion_ratio`, forecast, forecast error, thresholds ni `PREDICTA
 
 ### `daily_close_forecast_backtest_v01`
 
-Motor determinista compacto de **backtest de cierre diario** para Familia 1 — EXPECTATIVA Y CIERRE. Versión interna: `0.1`.
+Motor determinista compacto de **backtest de cierre diario** para Familia 1 — EXPECTATIVA Y CIERRE. Versión interna: `0.2`.
 
 Pregunta:
 
@@ -1433,9 +1444,10 @@ Grains:
 ```text
 CIDEF_PROPIO
 TIENDA_PROPIA_POOLED
+VENDEDOR_CIDEF_POOLED
 ```
 
-TIENDA V0.1 no segmenta por volumen ni usa `actual_close` del target para seleccionar buckets. `actual_close` participa únicamente como label para calcular error después del forecast.
+TIENDA V0.1 no segmenta por volumen. VENDEDOR V0.2 evalúa una única completion pooled sobre unidades `sucursal observada + persona` elegibles mediante `VENDEDOR_CIDEF`; no ajusta una curva individual por vendedor. Ningún grain usa `actual_close` del target para seleccionar buckets. `actual_close` participa únicamente como label para calcular error después del forecast.
 
 Output compacto `candidate_results[]`, máximo una fila por `grain × day_of_month`, con:
 
@@ -1473,7 +1485,7 @@ target_actual_close_not_used_in_forecast
 no_store_volume_segmentation
 ```
 
-El motor no devuelve miles de forecasts individuales y no calcula `PREDICTABILITY_DAY`, threshold de precisión, alerta ni estado live. Su responsabilidad termina en error histórico compacto por día.
+El motor no devuelve miles de forecasts individuales y no calcula `PREDICTABILITY_DAY`, threshold de precisión, alerta ni estado live. La curva `VENDEDOR_CIDEF_POOLED` queda como evidencia de validación y todavía no alimenta el forecast productivo. Su responsabilidad termina en error histórico compacto por día.
 
 
 ### `daily_close_forecast_v01`

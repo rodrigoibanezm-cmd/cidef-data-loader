@@ -9,6 +9,7 @@ function sale(id, date) {
     fecha_factura: date,
     id_sucursal_vta: '10',
     desc_sucursal_vta: 'Store A',
+    nombre_usuario: 'SELLER1',
   };
 }
 
@@ -28,7 +29,18 @@ const identityMaps = {
     tipo_canal: 'CIDEF',
     match_count: 1,
   }]]),
-  sellers: new Map(),
+  sellers: new Map([['SELLER1', {
+    canonical_id: 101,
+    nombre_canonico: 'Seller One',
+    validated: true,
+    match_count: 1,
+  }]]),
+  vendedorCidef: new Map([['101', [{
+    sucursal_id: 1,
+    valid_from: null,
+    valid_to: null,
+    vigente: true,
+  }]]]),
 };
 
 const now = new Date('2026-09-02T12:00:00.000Z');
@@ -42,17 +54,23 @@ test('median completion walk-forward produces compact company and pooled-store e
   );
 
   assert.equal(result.status, 'ok');
-  assert.equal(result.candidate_results.length, 62);
+  assert.equal(result.candidate_results.length, 93);
   const company15 = result.candidate_results.find(
     (row) => row.grain === 'CIDEF_PROPIO' && row.day_of_month === 15,
   );
   const store15 = result.candidate_results.find(
     (row) => row.grain === 'TIENDA_PROPIA_POOLED' && row.day_of_month === 15,
   );
+  const seller15 = result.candidate_results.find(
+    (row) => row.grain === 'VENDEDOR_CIDEF_POOLED' && row.day_of_month === 15,
+  );
   assert.equal(company15.targets_evaluable, 1);
   assert.equal(company15.training_observations_min, 2);
   assert.ok(Math.abs(company15.mape_pct - 33.33333333333333) < 1e-9);
   assert.ok(Math.abs(store15.median_ape_pct - 33.33333333333333) < 1e-9);
+  assert.ok(Math.abs(seller15.median_ape_pct - 33.33333333333333) < 1e-9);
+  assert.equal(result.coverage.seller_targets_evaluable, 27);
+  assert.equal(result.validation.seller_uses_certified_vendedor_cidef, true);
   assert.equal(result.validation.training_precedes_target, true);
   assert.equal(result.validation.forecast_formula_reconciles, true);
 });

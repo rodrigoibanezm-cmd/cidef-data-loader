@@ -17,7 +17,13 @@ function maps() {
       ['20', { canonical_id: '2', nombre_canonico: 'PROPIA B', tipo_canal: 'CIDEF', match_count: 1 }],
       ['30', { canonical_id: '3', nombre_canonico: 'DEALER A', tipo_canal: 'DEALER', match_count: 1 }],
     ]),
-    sellers: new Map(),
+    sellers: new Map([
+      ['SELLER1', { canonical_id: '101', nombre_canonico: 'VENDEDOR UNO', validated: true, match_count: 1 }],
+      ['ADMIN', { canonical_id: '999', nombre_canonico: 'ADMIN', validated: true, match_count: 1 }],
+    ]),
+    vendedorCidef: new Map([
+      ['101', [{ sucursal_id: '1', valid_from: null, valid_to: null, vigente: true }]],
+    ]),
   };
 }
 
@@ -82,6 +88,27 @@ test('does not clamp non-monotone store history when observed exceeds final clos
   );
   assert.equal(result.validation.store_observed_le_actual, false);
   assert.equal(result.status, 'warning');
+});
+
+test('emits seller observations only for date-effective VENDEDOR_CIDEF', () => {
+  const sourceRows = [
+    { ...row('1', 'VIN-S1', '03/05/2026', '10'), nombre_usuario: 'SELLER1' },
+    { ...row('2', 'VIN-S2', '03/20/2026', '10'), nombre_usuario: 'SELLER1' },
+    { ...row('3', 'VIN-A1', '03/10/2026', '10'), nombre_usuario: 'ADMIN' },
+  ];
+  const result = calculateDailyCloseBacktestContext(
+    sourceRows, maps(), { start_month: '2026-03', end_month: '2026-03' }, NOW,
+  );
+
+  assert.equal(result.seller_observations.some((item) => item.persona_id === '999'), false);
+  const day1 = result.seller_observations.find((item) => item.day_of_month === 1);
+  const monthEnd = result.seller_observations.find((item) => item.day_of_month === 31);
+  assert.equal(day1.observation_semantics, 'CERTIFIED_ZERO');
+  assert.equal(day1.actual_close, 2);
+  assert.equal(monthEnd.observed_to_date, 2);
+  assert.equal(result.coverage.eligible_seller_months, 1);
+  assert.equal(result.validation.seller_month_end_equals_close, true);
+  assert.equal(result.validation.eligible_seller_close_not_above_store, true);
 });
 
 test('rejects an open end month', () => {
