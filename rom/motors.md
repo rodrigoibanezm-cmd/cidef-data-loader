@@ -1341,6 +1341,65 @@ Motores posteriores de Familia 2 deben recibir este contexto mediante `sharedCon
 
 Este motor/contexto **no define todavía competidores reales**, no incorpora microsegmento/precio y no hace afirmaciones de desplazamiento. Su responsabilidad es construir y auditar una sola vez el universo observable reusable del request.
 
+### `competitive_share_trajectory_v01`
+
+Motor determinista de trayectoria mensual para **Familia 2 — POSICIÓN COMPETITIVA**.
+
+Pregunta:
+
+> ¿Cómo cambia mes a mes el share y ranking de los modelos dentro del mismo peer universe observable de un target CIDEF?
+
+Inputs:
+
+```text
+target_model_ids: bigint[]
+date_from: YYYY-MM-DD
+date_to: YYYY-MM-DD
+geography?: region | comuna
+origin_group?: CHINESE | NON_CHINESE | UNKNOWN
+```
+
+Dependencia compartida:
+
+```text
+competitive_context_v01
+```
+
+Política:
+
+- reutiliza exactamente identidad RVM→MASTER y semántica de peer group de `competitive_context_v01`;
+- fija los universos desde todo el período solicitado y luego agrupa RVM por mes dentro de esos universos;
+- no ejecuta una consulta independiente por mes;
+- con `origin_group`, deriva el origen desde el lookup Chile versionado y recalcula el denominador mensual dentro del grupo;
+- una entidad observada al menos una vez en el período recibe `units=0` y `share=0` en meses sin inscripción; esos ceros sintéticos exponen `rank=null`;
+- no define competidores ni thresholds: expone evidencia de trayectoria.
+
+Devuelve:
+
+```text
+sharedContext:
+  scope
+  targets[]
+  peerUniverses[]
+  monthly[]:
+    month + universe + entity + units + share + rank + cumulativeShare
+  trajectory[]:
+    first/last share + shareChangePp + first/last rank + rankChange + totalUnits
+  validation
+  warnings[]
+```
+
+Validaciones principales:
+
+```text
+base_context_ok
+monthly_share_reconciles
+months_returned
+universes_returned
+raw_monthly_rows
+dense_monthly_rows
+```
+
 ### `product_generation_context_v01`
 
 Contexto read-only de identidad estructural para **MASTER PRODUCT** y habilitante de Familia 2.
