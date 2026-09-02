@@ -1507,6 +1507,113 @@ La versión 0.3 **no cambia** reconocimiento de ventas, identidad, fórmulas de 
 
 El motor **no selecciona todavía la regla final de deterioro**, no define severidad comercial, no mezcla producto/RVM y no crea tabla, fact, mart ni cubo. Su responsabilidad es hacer backtesting walk-forward reproducible para descubrir qué combinación separa mejor ruido de cambio persistente.
 
+### `org_sales_observation_semantics_audit_v01`
+
+Capacidad determinista **AUDIT_ONLY / DISCOVERY_ONLY** para Familia 3. No es una nueva familia ni modifica `org_sales_deterioration_backtest_v01`.
+
+Pregunta:
+
+> ¿Qué cambia en el candidato fijo `last_year + relative + deepening_2` si una tienda-mes sin venta se trata como cero sólo cuando existe evidencia independiente de actividad mediante NV, y como UNKNOWN en caso contrario?
+
+Inputs:
+
+```text
+start_month: YYYY-MM
+end_month: YYYY-MM
+detail_limit?: 1..200
+detail_unit_id?: sucursal_id
+```
+
+Candidato fijo:
+
+```text
+grain = tienda
+baseline = last_year
+deviation = relative
+persistence = deepening_2
+```
+
+Fuentes:
+
+```text
+ventas_raw
+notas_venta_raw
+sucursal_aliases
+sucursales_master
+```
+
+Semántica NEW:
+
+```text
+recognized_sales > 0
+→ OBSERVED_POSITIVE
+→ sales = recognized_sales
+
+recognized_sales = 0 AND nv_count > 0
+→ ACTIVE_ZERO
+→ sales = 0
+
+recognized_sales = 0 AND nv_count = 0
+→ UNKNOWN
+→ no evaluable row
+```
+
+Política:
+
+- escenario OLD reutiliza exactamente la construcción cutoff-safe vigente;
+- escenario NEW parte de los mismos snapshots de ventas reconocidas y sólo añade `ACTIVE_ZERO` desde NV;
+- `fecha_nota_de_venta` reutiliza el parser temporal certificado de ventas, sin parsing dependiente del locale;
+- NV→sucursal usa exclusivamente `sucursal_aliases` con `fuente=notas_venta_raw`, `validated=true`, normalización MASTER y destino único;
+- NV demuestra actividad observable pero nunca incrementa `sales`;
+- UNKNOWN no se densifica ni se convierte en cero;
+- UNKNOWN corta continuidad: las series sparse se segmentan antes de reutilizar `evaluateOrgCandidates`;
+- NV no crea un roster nuevo: el universo se limita a tiendas ya observadas en la historia de ventas reconocidas;
+- NEW reutiliza `expectedLastYear`, `calculateDeviations` y la lógica vigente de persistencia/episodios.
+
+Output:
+
+```text
+engine
+version
+mode = AUDIT_ONLY
+validation
+nv_identity
+nv_time
+coverage
+units[]
+old
+new
+comparison
+episode_comparison
+new_backtest_skips
+warnings
+```
+
+`units[]` reporta:
+
+```text
+unit_id
+unit_label
+observed_positive_months
+active_zero_months
+unknown_months
+first_evaluable_month
+last_evaluable_month
+```
+
+`old/new` reportan:
+
+```text
+evaluable_rows
+confirmed_episodes
+persistent_units
+persistent_unit_ids
+```
+
+`comparison` separa `persistent_both`, `old_only` y `new_only`. Los episodios diferenciales conservan onset, confirmation y flags futuros. `detail_unit_id` se aplica antes de `detail_limit` y devuelve metadata `matched_rows / returned_rows / truncated`.
+
+Esta capacidad existe sólo para decidir si la semántica `OBSERVED_POSITIVE / ACTIVE_ZERO / UNKNOWN` debe incorporarse posteriormente al motor productivo. No cambia todavía la versión 0.3 ni su comportamiento.
+
 ## NOT AVAILABLE
 
 No forman parte de la superficie actual del agente:
