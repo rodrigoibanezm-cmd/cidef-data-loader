@@ -43,16 +43,15 @@ test('seller backtest keeps store grain, distributions and sales evidence', () =
   const context = { seller_monthly: sellerMonthly, store_monthly: [], validation: { ok: true } };
   const result = calculateShareExpectationBacktest(context, parsed);
   const output = formatShareBacktestOutput(result, parsed);
+  const distribution = result.candidate_results[0].relative_gap_distribution;
+  const bias = result.candidate_results[0].candidate_specific_metrics.bias_pp;
 
   assert.equal(result.validation.ok, true);
   assert.equal(result.coverage.target_rows, 4);
   assert.equal(result.coverage.common_evaluable_rows, 4);
   assert.equal(new Set(result.monthly_backtest.map((row) => row.unit_key)).size, 2);
-  assert.equal(result.candidate_results[0].relative_gap_distribution.rows, 4);
-  assert.equal(
-    result.candidate_results[0].relative_gap_distribution.mean_pp,
-    result.candidate_results[0].candidate_specific_metrics.bias_pp,
-  );
+  assert.equal(distribution.rows, 4);
+  assert.ok(Math.abs(distribution.mean_pp - bias) < 1e-10);
   assert.equal(output.monthly_backtest[0].sales > 0, true);
   assert.equal(output.monthly_backtest[0].parent_sales, 100);
   assert.equal(Number.isFinite(output.monthly_backtest[0].expected_share), true);
