@@ -2080,6 +2080,47 @@ La versión 0.4 cambia exclusivamente la semántica de observación/missingness 
 
 El motor **no selecciona todavía la regla final de deterioro**, no define severidad comercial, no mezcla producto/RVM y no crea tabla, fact, mart ni cubo. Su responsabilidad es hacer backtesting walk-forward reproducible para descubrir qué combinación separa mejor ruido de cambio persistente.
 
+### `org_sales_deterioration_episode_evidence_v01`
+
+Capacidad determinista de evidencia para **Familia 3 — DETERIORO Y RED FLAGS**. Versión interna actual: `0.1`. No define una nueva regla: reutiliza exactamente el runtime y la evaluación de `org_sales_deterioration_backtest_v01` v0.4.
+
+Pregunta:
+
+> ¿Qué evidencia ex-ante concreta hizo que un episodio de deterioro se activara?
+
+Inputs:
+
+```text
+grain: tienda | vendedor
+start_month: YYYY-MM
+end_month: YYYY-MM
+candidate_baselines: exactamente 1
+candidate_deviation_methods: exactamente 1
+candidate_persistence_rules: exactamente 1
+context_months?: 1..12, default 3
+detail_unit_id?: unit_id
+detail_limit?: 1..200
+```
+
+El motor comparte `buildOrgDeteriorationRuntime()`: ventas reconocidas, identidad, semántica sparse, baseline, deviations y persistencia son las mismas que en v0.4. `context_months` sólo limita presentación; nunca cambia la señal.
+
+Cada `episode_evidence[]` expone:
+
+```text
+unit_id / unit_label
+onset_month / confirmation_month / lead_periods
+candidate
+signal_evidence.pre_onset_context[]
+signal_evidence.onset
+signal_evidence.confirmation
+signal_evidence.persistence_rows[]
+future_evaluation
+```
+
+Cada fila de señal contiene `month`, `sales`, `baseline`, `error`, `deviation_method`, `deviation_value`, `error_history_available` y `adverse`. Los meses exactos usados por persistencia provienen de `evaluatePersistence()`; no se reconstruyen con una fórmula paralela.
+
+`future_evaluation` permanece separado y nunca participa en `signal_evidence`. Validaciones explícitas: `episode_signal_evidence_complete` y `signal_context_uses_no_future_rows`. Output acotado reporta `matched_rows`, `returned_rows` y `truncated`.
+
 ### `org_sales_observation_semantics_audit_v01`
 
 Capacidad determinista **AUDIT_ONLY / DISCOVERY_ONLY** para Familia 3. Versión interna actual: `0.2`. No es una nueva familia ni modifica `org_sales_deterioration_backtest_v01`.
