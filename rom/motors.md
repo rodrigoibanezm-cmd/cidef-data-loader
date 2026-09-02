@@ -1317,6 +1317,66 @@ Los warnings del contexto de ventas, incluido el desempate técnico de LAST cuan
 Esta capacidad no densifica el roster de tiendas y no decide todavía `STORE_ACTIVE_ZERO` versus `STORE_UNKNOWN`. Para el futuro indicador de control de cierre V0.1, un consumidor posterior deberá seleccionar exclusivamente `tipo_canal='CIDEF'`; dealers quedan fuera de `PREDICTABILITY_DAY`.
 
 
+### `daily_close_backtest_context_v01`
+
+Motor runtime determinista de **contexto observacional diario** para Familia 1 — EXPECTATIVA Y CIERRE. Versión interna: `0.1`.
+
+Inputs obligatorios:
+
+```text
+start_month: YYYY-MM
+end_month: YYYY-MM
+```
+
+`end_month` debe ser cerrado; rango máximo 84 meses. Fuentes: `ventas_raw` y `sucursales_master`.
+
+Pipeline:
+
+```text
+carga ventas_raw una vez
+→ parseFechaFactura certificado
+→ timeline incremental cutoff-safe
+→ VIN no nulo: LAST observable al final de cada día
+→ empate exacto: menor stable id
+→ VIN nulo: una unidad por fila parseable
+→ identidad histórica exacta
+→ tipo_canal
+→ snapshots diarios
+```
+
+No invoca el motor público una vez por día. Reutiliza `ventasContextUtils`, `loadOrganizationalIdentityMaps` y `enrichRecognizedSale` para evitar miles de ejecuciones redundantes.
+
+Grains:
+
+```text
+CIDEF_PROPIO  = target_month + cutoff_date
+TIENDA_PROPIA = target_month + cutoff_date + sucursal_id
+```
+
+Universo tienda V0.1:
+
+```text
+month-end tipo_canal='CIDEF' AND actual_close > 0
+```
+
+Semántica:
+
+```text
+fila positiva al cutoff → POSITIVE_OBSERVED
+sin fila al cutoff + actual_close > 0 → CERTIFIED_ZERO
+sin label positivo al cierre → store-month no emitido / UNKNOWN
+actual_close → LABEL_ONLY
+```
+
+Devuelve `company_observations[]` y `store_observations[]` con `target_month`, `cutoff_date`, `day_of_month`, `observed_to_date` y `actual_close`; tienda agrega `sucursal_id`, `sucursal` y `observation_semantics`.
+
+Validaciones: grains únicos, cutoff dentro del mes, no negativos, `observed_to_date <= actual_close`, igualdad al cierre, identidad/canal completos al month-end, ausencia de estado negativo y reconciliación CIDEF propio contra tiendas elegibles.
+
+Si `observed_to_date > actual_close`, no clampa ni corrige: falla la validation y devuelve `status=warning`.
+
+No calcula `completion_ratio`, forecast, forecast error, thresholds ni `PREDICTABILITY_DAY`.
+
+
 ### `ventas_product_sales_v01`
 
 Motor determinista transversal de **ventas CIDEF reconocidas por producto canónico y período**. Es una pieza de mise en place reusable para Familia 1, Familia 2 y cualquier análisis posterior que necesite comparar crecimiento interno contra mercado/share sin reconstruir identidad manualmente.
