@@ -12,10 +12,16 @@ const unit = (months) => ({
   months: new Map(months),
 });
 
-test('baseline does not zero-fill missing history months', () => {
+test('productive sparse baseline does not zero-fill missing history months', () => {
   const history = unit([['2026-01', 10], ['2026-03', 8]]);
-  assert.equal(calculateBaseline('moving_average_3', history, '2026-04'), null);
-  assert.equal(calculateBaseline('median_3', history, '2026-04'), null);
+  const options = { zeroFillMissing: false };
+  assert.equal(calculateBaseline('moving_average_3', history, '2026-04', options), null);
+  assert.equal(calculateBaseline('median_3', history, '2026-04', options), null);
+});
+
+test('legacy baseline mode remains available for OLD audit compatibility', () => {
+  const history = unit([['2026-01', 10], ['2026-03', 8]]);
+  assert.equal(calculateBaseline('moving_average_3', history, '2026-04').value, 6);
 });
 
 test('UNKNOWN actual is skipped while explicit observed zero is evaluable', () => {
