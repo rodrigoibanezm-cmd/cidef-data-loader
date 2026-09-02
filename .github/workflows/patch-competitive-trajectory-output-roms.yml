@@ -1,0 +1,34 @@
+name: Patch competitive trajectory output ROMs
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-competitive-trajectory-output-roms.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test bounded trajectory outputs
+        run: node --test test/competitive-share-trajectory.test.js
+      - name: Patch ROM files
+        run: node scripts/patch-competitive-trajectory-output-roms.mjs
+      - name: Validate schema JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('rom/schema.json','utf8'))"
+      - name: Commit ROM changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rom/schema.json rom/motors.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Document bounded competitive trajectory outputs"
+            git push
+          fi
