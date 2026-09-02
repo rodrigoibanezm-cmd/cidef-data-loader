@@ -1458,6 +1458,66 @@ no_store_volume_segmentation
 El motor no devuelve miles de forecasts individuales y no calcula `PREDICTABILITY_DAY`, threshold de precisión, alerta ni estado live. Su responsabilidad termina en error histórico compacto por día.
 
 
+### `predictability_day_v01`
+
+Motor determinista de **selección de día predecible** para Familia 1 — EXPECTATIVA Y CIERRE. Versión interna: `0.1`.
+
+Pregunta:
+
+> ¿Desde qué día calendario el error histórico del forecast entra en la tolerancia definida y permanece dentro de ella hasta el cierre?
+
+Inputs:
+
+```text
+start_month: YYYY-MM
+end_month: YYYY-MM
+median_ape_threshold_pct: number  default 20
+p90_ape_threshold_pct: number     default 40
+```
+
+Dependencia única de cálculo:
+
+```text
+daily_close_forecast_backtest_v01
+```
+
+Regla V0.1:
+
+```text
+PASS(day)
+= median_ape_pct <= median_ape_threshold_pct
+AND p90_ape_pct <= p90_ape_threshold_pct
+AND targets_evaluable > 0
+
+PREDICTABILITY_DAY
+= primer día PASS que también mantiene PASS
+  en todos los días calendario evaluables posteriores
+```
+
+Grains:
+
+```text
+CIDEF_PROPIO
+TIENDA_PROPIA_POOLED
+```
+
+Los defaults `20% / 40%` son tolerancias operacionales V0.1, no parámetros descubiertos por el backtest. El caller puede reemplazarlos explícitamente sin cambiar el motor.
+
+El output devuelve por grain:
+
+```text
+predictability_day
+first_day_meeting_thresholds
+median_ape_pct_at_day
+p90_ape_pct_at_day
+targets_evaluable_at_day
+maintained_through_last_evaluable_day
+last_evaluable_day
+```
+
+No hardcodea los días resultantes, no optimiza el forecast y no calcula todavía el forecast live del mes actual.
+
+
 ### `ventas_product_sales_v01`
 
 Motor determinista transversal de **ventas CIDEF reconocidas por producto canónico y período**. Es una pieza de mise en place reusable para Familia 1, Familia 2 y cualquier análisis posterior que necesite comparar crecimiento interno contra mercado/share sin reconstruir identidad manualmente.
