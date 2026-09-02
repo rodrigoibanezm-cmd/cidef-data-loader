@@ -16,3 +16,17 @@ jobs:
       - run: npm install --ignore-scripts --no-audit --no-fund
       - run: node --check lib/motors/intramonth-sales-history-context-v01.js
       - run: node --test test/intramonth-sales-history-context.test.js test/daily-close-backtest-context.test.js
+      - name: ROM integrity diagnostics
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import crypto from 'node:crypto';
+          const text = fs.readFileSync('rom/motors.md', 'utf8');
+          const lines = text.split('\n');
+          const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
+          console.log(`TOTAL lines=${lines.length} chars=${text.length} bytes=${Buffer.byteLength(text)} sha256=${sha256(text)}`);
+          for (const [start, end] of [[1,400],[401,800],[801,1200],[1201,1600],[1601,2000],[2001,2400]]) {
+            const chunk = lines.slice(start - 1, end).join('\n');
+            console.log(`CHUNK ${start}-${end} lines=${chunk.split('\n').length} chars=${chunk.length} sha256=${sha256(chunk)}`);
+          }
+          NODE
