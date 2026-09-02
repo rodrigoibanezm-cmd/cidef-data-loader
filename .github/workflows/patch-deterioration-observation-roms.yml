@@ -19,7 +19,7 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Test deterioration semantics
+      - name: Test deterioration semantics and legacy audit compatibility
         run: node --test test/org-sales-deterioration-backtest.test.js test/org-deterioration-observation-semantics.test.js test/observation-semantics-audit.test.js test/org-unit-evidence.test.js test/org-backtest-output.test.js
       - name: Patch ROM files
         run: node scripts/patch-deterioration-observation-roms.mjs
