@@ -13,11 +13,8 @@ const input = {
 };
 
 const result = {
-  status: 'ok',
-  identity_audit: { resolved: 10 },
-  coverage: { evaluable_rows: 12 },
-  warnings: [],
-  validation: { has_evaluable_rows: true },
+  status: 'ok', identity_audit: { resolved: 10 }, coverage: { evaluable_rows: 12 },
+  warnings: [], validation: { has_evaluable_rows: true },
   monthly_series_coverage: [
     { cutoff_month: '2025-01', units: 2, recognized: 3, resolved: 3, unresolved: 0, ambiguous: 0 },
     { cutoff_month: '2025-02', units: 3, recognized: 4, resolved: 4, unresolved: 0, ambiguous: 0 },
@@ -26,7 +23,10 @@ const result = {
     baseline: 'last_year', deviation_method: 'relative', persistence_rule: 'consecutive_2',
     episodes: 2, immediate_reversal_rate: 0, next_2_persistent_rate: 1,
   }],
-  unit_backtests: [{ unit_id: 1 }, { unit_id: 2 }],
+  unit_backtests: [
+    { baseline: 'last_year', deviation_method: 'relative', persistence_rule: 'consecutive_2', unit_id: 1 },
+    { baseline: 'last_year', deviation_method: 'scaled_mad', persistence_rule: 'consecutive_2', unit_id: 2 },
+  ],
   episode_backtests: [
     { baseline: 'last_year', deviation_method: 'relative', persistence_rule: 'consecutive_2', unit_id: 1 },
     { baseline: 'last_year', deviation_method: 'relative', persistence_rule: 'consecutive_2', unit_id: 2 },
@@ -38,8 +38,7 @@ const result = {
 };
 
 test('summary output is compact and omits raw detail arrays', () => {
-  const parsed = parseOrgDeteriorationInput(input);
-  const output = formatOrgBacktestOutput(result, parsed);
+  const output = formatOrgBacktestOutput(result, parseOrgDeteriorationInput(input));
   assert.equal(output.monthly_series_coverage.periods, 2);
   assert.equal(output.candidate_results.length, 1);
   assert.equal(output.rolling_year_stability.length, 1);
@@ -55,10 +54,19 @@ test('episode detail is bounded and reports truncation', () => {
   assert.equal(output.detail.truncated, true);
 });
 
+test('unit detail applies candidate filters before limit', () => {
+  const parsed = parseOrgDeteriorationInput({
+    ...input, output_mode: 'units', detail_limit: 1, detail_deviation_method: 'relative',
+  });
+  const output = formatOrgBacktestOutput(result, parsed);
+  assert.equal(output.unit_backtests.length, 1);
+  assert.equal(output.unit_backtests[0].deviation_method, 'relative');
+  assert.equal(output.detail.matched_rows, 1);
+  assert.equal(output.detail.truncated, false);
+});
+
 test('detail filters must belong to requested candidates', () => {
   assert.throws(() => parseOrgDeteriorationInput({
-    ...input,
-    output_mode: 'episodes',
-    detail_baseline: 'moving_average_3',
+    ...input, output_mode: 'episodes', detail_baseline: 'moving_average_3',
   }));
 });
