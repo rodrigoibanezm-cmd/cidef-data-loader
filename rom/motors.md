@@ -2678,9 +2678,36 @@ shared_dependencies
 
 Después de implementado y validado, ese motor puede incorporarse a la superficie dedicada del agente si resulta útil para seguir diseñando o probando familias superiores.
 
+### `ventas_product_model_resolution_v01`
+
+Motor determinista productivo de identidad de producto para ventas reconocidas.
+
+Pregunta:
+
+> ¿A qué modelo canónico pertenece cada SKU técnico observado en las ventas reconocidas?
+
+Inputs:
+
+```text
+start_month: YYYY-MM
+end_month: YYYY-MM
+```
+
+Política:
+
+- reconocimiento de venta = `ventas_context_v01`, LAST-by-VIN antes de resolver producto;
+- grain de identidad = `ventas_raw.articulo` (SKU técnico) → `modelo_id`;
+- precedencia: alias certificado de `ventas_raw` → evidencia exacta por VIN en `vehiculo_canonico` → identidad MODELO certificada de RVM para ese VIN;
+- un fallback SKU sólo se resuelve cuando toda la evidencia VIN efectiva disponible converge a un único `modelo_id` y no existe ambigüedad RVM pendiente;
+- no fuzzy, no substring, no majority vote;
+- un conflicto nunca se corrige por volumen: queda `AMBIGUOUS`;
+- no escribe MASTER ni crea tablas; persistencia exclusivamente runtime.
+
+Devuelve cobertura sobre ventas reconocidas, cobertura de SKU y `mappings[]` con SKU, estado, `modelo_id`, marca/modelo canónicos, método de resolución y conteos de evidencia VIN. Estados posibles: `RESOLVED`, `AMBIGUOUS`, `UNRESOLVED`.
+
 ### `ventas_product_concentration_v01`
 
-Motor determinista de concentración de ventas por modelo para **Familia 3 — DETERIORO Y RED FLAGS**, orientado a robustez del resultado.
+Motor determinista de concentración de ventas por modelo para **Familia 3 — DETERIORO Y RED FLAGS**, orientado a robustez del resultado. Versión productiva actual: `0.2`.
 
 Pregunta:
 
@@ -2697,57 +2724,13 @@ pareto_threshold_pct?: number   default 80
 Política:
 
 - sólo acepta meses calendario cerrados en America/Santiago;
-- reutiliza `ventas_product_context_v01` y su reconocimiento LAST-by-VIN cutoff-safe al `end_month`;
-- identidad de modelo = aliases RESUELTO de `producto_aliases_v01`; no fuzzy matching;
-- el Pareto se calcula únicamente sobre ventas con `modelo_id` resuelto; ambiguas/no resueltas permanecen explícitas en cobertura y nunca se distribuyen por inferencia;
+- reutiliza el reconocimiento LAST-by-VIN cutoff-safe y la semántica productiva de `ventas_product_model_resolution_v01`;
+- identidad: alias certificado primero y evidencia VIN exacta sólo cuando converge determinísticamente; no fuzzy, substring ni majority vote;
+- el Pareto usa sólo ventas con `modelo_id` resuelto; ambiguas/no resueltas permanecen explícitas en cobertura;
 - orden determinista = ventas descendente, luego `modelo_id` ascendente;
-- el conjunto Pareto incluye modelos hasta alcanzar por primera vez el porcentaje solicitado;
-- `pareto_threshold_pct` es parametrizable: 80 es default, no regla hardcodeada;
-- persistencia exclusivamente runtime; no crea tabla, mart ni cubo.
+- incluye modelos hasta alcanzar por primera vez el porcentaje solicitado;
+- `pareto_threshold_pct` es parametrizable; 80 es sólo default;
+- no etiqueta el resultado como sano/frágil ni crea historia materializada.
 
-Devuelve:
+Devuelve `period`, `monthly[]`, `coverage`, `validation` y `warnings`; cada Pareto incluye modelo canónico, ventas, share y share acumulado.
 
-```text
-period:
-  recognized_sales
-  resolved_product_sales
-  distinct_models
-  pareto_model_count
-  pareto_model_share_pct
-  pareto_sales
-  pareto_sales_share_pct
-  pareto_models[]
-monthly[]:
-  month
-  mismos campos de concentración
-coverage
-validation
-warnings
-```
-
-Cada elemento de `pareto_models[]` incluye `rank`, `modelo_id`, marca/modelo canónicos, ventas, participación y participación acumulada. El motor mide concentración y su evolución; **no** etiqueta por sí solo el resultado como frágil, sano o diversificado.
-
-
-## dealer_inventory_aging_v01
-
-**Familia:** 5 — ACCIONABILIDAD  
-**Availability:** AVAILABLE  
-**Version:** 0.1
-
-Pregunta productiva: ¿qué VIN del stock dealer actual superan un umbral de aging, dónde están y cuál es su contexto operacional?
-
-Contrato migrado desde el motor legado `dealer_inventory_aging`, preservando sus reglas de negocio validadas. La fuente pasa de RAW histórico a `vehiculo_canonico`.
-
-- Universo canónico: `vigente=true AND canal_salida='DEALER'`.
-- Aging: `aging_days = as_of - fecha_ingreso_stock`.
-- No usa `fecha_eta`.
-- La existencia de factura no elimina una unidad del stock dealer; esto preserva la semántica Forum validada.
-- Umbral parametrizable y exclusivo: `aging_days > min_days`; default `min_days=60`.
-- Identidad dealer/grupo usa IDs canónicos; dealer no resuelto se conserva como `NO_RESUELTO`, no se descarta.
-- No define `stock_disponible` ni interpreta reservado/tránsito/patio como exclusiones.
-
-Inputs: `min_days`, `as_of`, `dealer_id`, `dealer_group_id`, `detail_limit`.
-
-Outputs: `summary`, `by_dealer`, detalle VIN acotado y ordenado por mayor aging, `validation` y `warnings`.
-
-Validaciones: reconciliación de cobertura con/sin fecha de ingreso, aged <= stock con fecha, detalle acotado y sobre umbral, y preservación explícita de identidad dealer no resuelta.
