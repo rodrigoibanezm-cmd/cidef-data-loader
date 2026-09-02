@@ -49,12 +49,13 @@ jobs:
           node -e "JSON.parse(require('fs').readFileSync('rom/schema.json','utf8'))"
           grep -q 'daily_close_forecast_v01' rom/schema.json
           grep -q '### `daily_close_forecast_v01`' rom/motors.md
-      - name: Commit ROM changes
+      - name: Commit and publish ROM changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add rom/schema.json rom/motors.md
           if ! git diff --cached --quiet; then
             git commit -m "Document productive daily close forecast V0.1"
+            git pull --rebase origin main
             git push
           fi
