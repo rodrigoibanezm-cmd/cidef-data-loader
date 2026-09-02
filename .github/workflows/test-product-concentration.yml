@@ -14,6 +14,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: node --check lib/motors/ventas-product-model-resolution-v01.js
       - run: node --check lib/motors/ventas-product-concentration-v01.js
-      - run: node --test test/ventas-product-concentration.test.js
-      - run: node --input-type=module -e "import('./lib/custom-gpt-router.js').then(m=>{if(!m.listCustomGptActions().includes('ventas_product_concentration_v01')) process.exit(1)})"
+      - run: node --test test/ventas-product-model-resolution.test.js test/ventas-product-concentration.test.js
+      - run: node --input-type=module -e "import('./lib/custom-gpt-router.js').then(m=>{for(const a of ['ventas_product_model_resolution_v01','ventas_product_concentration_v01']) if(!m.listCustomGptActions().includes(a)) process.exit(1)})"
