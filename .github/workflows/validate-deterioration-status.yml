@@ -1,0 +1,17 @@
+name: Validate deterioration status
+
+on:
+  push:
+    paths:
+      - '.github/workflows/validate-deterioration-status.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: node --test test/org-deterioration-status.test.js test/org-deterioration-episode-evidence.test.js test/org-sales-deterioration-backtest.test.js test/org-deterioration-observation-semantics.test.js test/observation-semantics-audit.test.js test/org-backtest-output.test.js
