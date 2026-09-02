@@ -4,6 +4,12 @@ on:
   push:
     paths:
       - '.github/workflows/test-product-concentration.yml'
+      - 'lib/product-model-resolution/**'
+      - 'lib/motors/ventas-product-model-resolution-v01.js'
+      - 'lib/motors/ventas-product-concentration-v01.js'
+      - 'lib/custom-gpt-router.js'
+      - 'test/ventas-product-model-resolution.test.js'
+      - 'test/ventas-product-concentration.test.js'
 
 jobs:
   test:
