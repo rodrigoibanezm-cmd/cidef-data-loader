@@ -1749,7 +1749,7 @@ entity_keys_complete
 
 ### `competitive_signal_backtest_v01`
 
-Motor determinista v0.1 de backtest de señales para **Familia 2 — POSICIÓN COMPETITIVA**.
+Motor determinista v0.2 de backtest de señales para **Familia 2 — POSICIÓN COMPETITIVA**.
 
 Pregunta:
 
@@ -1764,7 +1764,9 @@ date_to: YYYY-MM-DD
 geography?: region | comuna
 origin_group?: CHINESE | NON_CHINESE | UNKNOWN
 output_mode?: summary | pair_detail   default summary
-pair_keys?: string[]                  required only for pair_detail; max 50
+pair_offset?: integer >= 0             summary only; default 0
+pair_limit?: integer 1..50             summary only; default 20
+pair_keys?: string[]                   required only for pair_detail; max 50
 ```
 
 Grain:
@@ -1782,7 +1784,9 @@ Política:
 - share gap = diferencia absoluta de share en puntos porcentuales; también conserva signed gap internamente;
 - crossings sólo ocurren dentro de secuencias joint-active y nunca atraviesan gaps inactivos; ties pueden mediar un crossing sin crear crossings extra;
 - convergence/divergence runs usan meses calendario adyacentes joint-active; FLAT o inactividad cortan el run;
-- `summary` transporta una fila compacta por par; `pair_detail` exige pair_keys y abre sólo esos pares;
+- `summary` calcula todos los pares pero transporta una página determinística ordenada por `pairKey`; `pair_offset`/`pair_limit` son límites de transporte y nunca filtros de relevancia;
+- cada `summary` devuelve `page.totalPairs`, `returnedPairs`, `hasMore` y `nextOffset`; metadata repetida de target/universe se normaliza contra `targets[]` y `universes[]`;
+- `pair_detail` exige pair_keys y abre sólo esos pares;
 - no define competitor label, score, pesos, thresholds, proximidad productiva ni persistencia productiva.
 
 Features V0.1 por par:
@@ -1795,7 +1799,7 @@ convergenceDivergence: run counts + longest run transitions
 diagnostics.rankGap: evaluableMonths, mean, median, min, max
 ```
 
-`pair_detail` agrega `monthly[]`, `crossingEvents[]`, `convergenceDivergenceRuns[]` y `activeSpans`. Co-movement y proximity episodes quedan fuera de V0.1. Persistencia exclusivamente runtime.
+`summary` devuelve features completas sólo para la página transportada, mientras `coverage.pairs` y `page.totalPairs` conservan el total calculado. `pair_detail` agrega `monthly[]`, `crossingEvents[]`, `convergenceDivergenceRuns[]` y `activeSpans`. Co-movement y proximity episodes quedan fuera de V0.2. Persistencia exclusivamente runtime.
 
 Validaciones incluyen targets/universos, reconciliación mensual, pair count, self-pairs, keys únicas, consistencia de universe/meses, share gaps, continuity y detail pair-key completeness. Warnings del contexto competitivo se propagan.
 

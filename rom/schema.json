@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.25.1",
-    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, monthly and daily cutoff-safe sales context, daily organizational cutoff-safe sales context, product sales and recognized product detail, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with null-safe relative-gap detail, productive organizational relative performance over closed months using certified grain-specific baselines, shared competitive context with optional Chile market-origin peer filtering, bounded competitive share trajectory with compact trajectory and explicit monthly detail outputs over the same peer semantics, competitive signal backtesting across target×peer×universe without competitor labels, canonical product GENERATION membership context, bounded organization sales deterioration backtesting with sparse observation semantics, deterioration episode evidence with ex-ante signal rows, and an AUDIT_ONLY observation-semantics comparison with explicit ACTIVE_ZERO evidence and temporal/unit-universe validations for Family 3. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
+    "version": "1.26.0",
+    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, monthly and daily cutoff-safe sales context, daily organizational cutoff-safe sales context, product sales and recognized product detail, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with null-safe relative-gap detail, productive organizational relative performance over closed months using certified grain-specific baselines, shared competitive context with optional Chile market-origin peer filtering, bounded competitive share trajectory with compact trajectory and explicit monthly detail outputs over the same peer semantics, paginated competitive signal backtesting across target×peer×universe without competitor labels, canonical product GENERATION membership context, bounded organization sales deterioration backtesting with sparse observation semantics, deterioration episode evidence with ex-ante signal rows, and an AUDIT_ONLY observation-semantics comparison with explicit ACTIVE_ZERO evidence and temporal/unit-universe validations for Family 3. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
     {
@@ -400,7 +400,7 @@
               "trajectory",
               "pair_detail"
             ],
-            "description": "Action-specific output mode. competitive_share_trajectory_v01 uses trajectory by default and monthly requires entity_keys; competitive_signal_backtest_v01 uses summary by default and pair_detail requires pair_keys. Other motors retain their documented defaults."
+            "description": "Action-specific output mode. competitive_share_trajectory_v01 uses trajectory by default and monthly requires entity_keys; competitive_signal_backtest_v01 uses paginated summary by default and pair_detail requires pair_keys. Other motors retain their documented defaults."
           },
           "detail_limit": {
             "type": "integer",
@@ -466,6 +466,19 @@
             "maximum": 12,
             "default": 3,
             "description": "Transport-only number of contiguous evaluable months returned before episode onset by org_sales_deterioration_episode_evidence_v01; never part of signal generation."
+          },
+          "pair_offset": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Zero-based transport offset for competitive_signal_backtest_v01 when output_mode=summary. Pagination only; all eligible pairs are still calculated."
+          },
+          "pair_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20,
+            "description": "Maximum pair summaries transported by competitive_signal_backtest_v01 when output_mode=summary. Pagination only; it does not define relevance or competitors."
           }
         },
         "additionalProperties": false
