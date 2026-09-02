@@ -448,7 +448,7 @@ Este contexto **no define** todavía benchmark, peer group, expectativa por unid
 
 ### `organizational_share_expectation_backtest_v01`
 
-Motor determinista de laboratorio para **Familia 4 — DESEMPEÑO RELATIVO**.
+Motor determinista de laboratorio para **Familia 4 — DESEMPEÑO RELATIVO**. Versión interna actual: `0.2`.
 
 Pregunta:
 
@@ -483,10 +483,14 @@ Grain y variable:
 TIENDA:
   unit = sucursal_id
   actual_share = share_of_cidef
+  sales = store sales
+  parent_sales = cidef_sales
 
 VENDEDOR:
   unit = sucursal_id + persona_id
   actual_share = share_of_store
+  sales = seller sales
+  parent_sales = store_sales
 ```
 
 Política walk-forward:
@@ -520,13 +524,33 @@ Comparación y selección:
 Métricas:
 
 ```text
-error_pp = 100 * (actual_share - expected_share)
+relative_gap_pp = 100 * (actual_share - expected_share)
 MAE_pp
 bias_pp
 median_absolute_error_pp
 candidate_specific_coverage
 common_evaluable_coverage
 ```
+
+`candidate_results[]` agrega sobre todas las filas evaluables, sin depender del límite de detalle:
+
+```text
+relative_gap_distribution:
+  rows
+  min_pp
+  p10_pp
+  p25_pp
+  median_pp
+  mean_pp
+  p75_pp
+  p90_pp
+  max_pp
+
+common_relative_gap_distribution:
+  mismos campos sobre common_evaluable_set
+```
+
+Los percentiles usan interpolación lineal determinística sobre la serie ordenada. `relative_gap_distribution.mean_pp` debe reconciliar con `candidate_specific_metrics.bias_pp`.
 
 No usa WAPE ni error relativo como métricas primarias de share.
 
@@ -563,12 +587,34 @@ stability
 
 `detail_limit` impide respuestas Action sobredimensionadas. `detail_candidate` permite acotar el detalle a un candidato solicitado sin alterar el cálculo global.
 
+Para `output_mode=monthly`, cuando se solicita un único candidato o `detail_candidate`, cada fila devuelve:
+
+```text
+unit_key
+sucursal_id
+persona_id
+month
+sales
+parent_sales
+actual_share
+candidate
+expected_share
+relative_gap_pp
+source_months[]
+evaluable
+```
+
+El backend calcula `relative_gap_pp`; el LLM no debe recalcularlo. El detalle puede truncarse, pero las distribuciones del `summary` se calculan siempre sobre el universo evaluable completo.
+
 Validaciones principales:
 
 ```text
 organizational_context_ok
 shares_in_bounds
+sales_parent_evidence_present
+share_reconciles_with_sales
 expectations_in_bounds
+relative_gap_mean_reconciles_with_bias
 no_target_month_used
 no_future_month_used
 exact_calendar_lags_only
@@ -578,7 +624,7 @@ common_comparison_window_equal
 has_common_evaluable_rows
 ```
 
-El motor **no define** todavía threshold de bajo desempeño, score, ranking de unidades, alertas, persistencia, deterioro, peer groups ni regla productiva final. Su responsabilidad es producir evidencia de backtest para seleccionar `expected_share` por grain.
+El motor **no define** todavía threshold de bajo desempeño, score, ranking de unidades, alertas, persistencia, deterioro, peer groups ni regla productiva final. Su responsabilidad es producir evidencia de backtest para seleccionar `expected_share` por grain y validar la señal relativa resultante.
 
 ### `expected_monthly_backtest_v01`
 
