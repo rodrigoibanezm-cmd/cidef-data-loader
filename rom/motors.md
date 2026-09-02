@@ -1204,7 +1204,7 @@ Este motor/contexto **no define todavía competidores reales**, no incorpora mic
 
 ### `org_sales_deterioration_backtest_v01`
 
-Motor determinista de diagnóstico para **Familia 3 — DETERIORO Y RED FLAGS** sobre organización comercial.
+Motor determinista de diagnóstico para **Familia 3 — DETERIORO Y RED FLAGS** sobre organización comercial. Versión interna actual: `0.3`.
 
 Pregunta:
 
@@ -1219,6 +1219,11 @@ end_month: YYYY-MM
 candidate_baselines: string[]
 candidate_deviation_methods: string[]
 candidate_persistence_rules: string[]
+output_mode?: summary | stability | episodes | units
+detail_limit?: 1..200
+detail_baseline?: uno de candidate_baselines
+detail_deviation_method?: uno de candidate_deviation_methods
+detail_persistence_rule?: uno de candidate_persistence_rules
 ```
 
 Fuentes:
@@ -1283,28 +1288,88 @@ deepening_k
 
 El motor valida las expresiones y rechaza reglas `frequency_n_of_k` cuando `n > k`. Estos valores son candidatos de laboratorio, no thresholds de negocio persistidos.
 
-Devuelve:
+Output `summary` por defecto es compacto y conserva `candidate_results` + estabilidad resumida. Los detalles se consultan con modos acotados:
 
 ```text
-engine
-version
-status
-inputs
-policy
-identity_audit
-monthly_series_coverage[]
-candidate_results[]
-unit_backtests[]
-episode_backtests[]
-rolling_year_stability[]
-coverage
-warnings
-validation
+stability
+episodes
+units
 ```
 
-`candidate_results[]` permite comparar combinaciones de baseline + desviación + persistencia mediante episodios detectados, reversión inmediata y persistencia posterior. `episode_backtests[]` conserva `onset_month`, `confirmation_month`, `lead_periods` y evidencia futura únicamente de evaluación.
+Todos los modos de detalle aplican primero los filtros `detail_*`, luego `detail_limit`, y reportan:
 
-Validaciones principales:
+```text
+detail.matched_rows
+detail.returned_rows
+detail.truncated
+```
+
+`output_mode=units` usa grain:
+
+```text
+baseline
++ deviation_method
++ persistence_rule
++ unit_id
+```
+
+Cada fila `unit_backtests[]` devuelve:
+
+```text
+baseline
+deviation_method
+persistence_rule
+unit_id
+unit_label
+identity_validated
+first_evaluable_month
+last_evaluable_month
+baseline_evaluable_rows
+deviation_evaluable_rows
+deviation_unavailable_rows
+deviation_unavailable_reasons:
+  baseline_nonpositive
+  insufficient_error_history
+  zero_scale
+actual_sales_avg
+signal_count
+signal_months[]
+confirmed_episode_count
+confirmation_months[]
+immediate_reversal_count
+immediate_reversal_rate
+next_2_persistent_count
+next_2_persistent_rate
+next_3_persistent_count
+next_3_persistent_rate
+```
+
+Semántica del resumen unitario:
+
+- `baseline_evaluable_rows` = filas donde existe baseline para la unidad;
+- `deviation_evaluable_rows` = filas donde el método solicitado produce valor no nulo;
+- `deviation_unavailable_rows = baseline_evaluable_rows - deviation_evaluable_rows`;
+- `baseline_nonpositive` reutiliza la condición vigente que hace `relative=null` cuando baseline `<= 0`;
+- `insufficient_error_history` reutiliza la historia mínima vigente del método robusto;
+- `zero_scale` identifica `scaled_mad=null` con historia suficiente y MAD/scale cero; no introduce epsilon ni threshold nuevo;
+- `actual_sales_avg` usa como denominador las filas baseline-evaluable;
+- `signal_count/signal_months` reutilizan exactamente `isAdverse()`; no reimplementan fórmulas;
+- episodios y confirmaciones se agregan sólo desde `episode_backtests` del candidato exacto;
+- tasas futuras excluyen flags desconocidos, igual que `candidate_results`.
+
+Reconciliaciones esperadas por candidate × unit:
+
+```text
+baseline_evaluable_rows
+= deviation_evaluable_rows + deviation_unavailable_rows
+
+signal_count = signal_months.length
+confirmed_episode_count = confirmation_months.length
+```
+
+La suma de `confirmed_episode_count` por unidades debe reconciliar con los episodios del mismo `baseline + deviation_method + persistence_rule`.
+
+Validaciones principales del motor:
 
 ```text
 ventas_contexts_ok
@@ -1314,6 +1379,8 @@ signal_uses_no_future_labels
 onset_not_after_confirmation
 has_evaluable_rows
 ```
+
+La versión 0.3 **no cambia** reconocimiento de ventas, identidad, fórmulas de baseline/desviación, definición adversa, persistencia, detección de episodios ni evaluación futura. Sólo amplía el contrato bounded `units` para producir evidencia comparable entre candidatos por unidad.
 
 El motor **no selecciona todavía la regla final de deterioro**, no define severidad comercial, no mezcla producto/RVM y no crea tabla, fact, mart ni cubo. Su responsabilidad es hacer backtesting walk-forward reproducible para descubrir qué combinación separa mejor ruido de cambio persistente.
 
