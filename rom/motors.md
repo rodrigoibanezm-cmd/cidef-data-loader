@@ -1479,7 +1479,7 @@ Este contexto **no define atributos físicos, competencia, precio, percentiles n
 
 ### `org_sales_deterioration_backtest_v01`
 
-Motor determinista de diagnóstico para **Familia 3 — DETERIORO Y RED FLAGS** sobre organización comercial. Versión interna actual: `0.3`.
+Motor determinista de diagnóstico para **Familia 3 — DETERIORO Y RED FLAGS** sobre organización comercial. Versión interna actual: `0.4`.
 
 Pregunta:
 
@@ -1533,6 +1533,26 @@ Identidad:
 - no existe fuzzy fallback;
 - `persona_sucursal` vigente no se usa para reescribir la historia;
 - identidad no resuelta o ambigua permanece explícita en cobertura/warnings.
+
+Semántica de observación V0.4:
+
+```text
+TIENDA
+recognized_sales > 0 → OBSERVED_POSITIVE → sales real
+recognized_sales = 0 + NV > 0 → ACTIVE_ZERO → sales = 0
+sin venta ni NV → UNKNOWN → no evaluable
+
+VENDEDOR
+recognized_sales > 0 → OBSERVED_POSITIVE
+sin venta → UNKNOWN
+ACTIVE_ZERO no se fabrica sin fuente independiente certificada
+```
+
+- UNKNOWN nunca se convierte en cero;
+- las baselines consumen sólo meses realmente observados/ACTIVE_ZERO y no densifican huecos;
+- UNKNOWN corta continuidad de `consecutive_k`, `frequency_n_of_k` y `deepening_k`;
+- el output expone `observation_semantics` y `coverage.skipped_unknown_actual_by_baseline`;
+- la identidad NV de tienda reutiliza la misma resolución MASTER y parser temporal validados por `org_sales_observation_semantics_audit_v01`.
 
 Candidatos de baseline:
 
@@ -1655,7 +1675,7 @@ onset_not_after_confirmation
 has_evaluable_rows
 ```
 
-La versión 0.3 **no cambia** reconocimiento de ventas, identidad, fórmulas de baseline/desviación, definición adversa, persistencia, detección de episodios ni evaluación futura. Sólo amplía el contrato bounded `units` para producir evidencia comparable entre candidatos por unidad.
+La versión 0.4 cambia exclusivamente la semántica de observación/missingness del backtest: elimina zero-fill implícito, incorpora ACTIVE_ZERO certificado por NV para tienda y preserva UNKNOWN como no evaluable. No cambia fórmulas de desviación, candidatos de persistencia, reconocimiento LAST-by-VIN ni identidad comercial.
 
 El motor **no selecciona todavía la regla final de deterioro**, no define severidad comercial, no mezcla producto/RVM y no crea tabla, fact, mart ni cubo. Su responsabilidad es hacer backtesting walk-forward reproducible para descubrir qué combinación separa mejor ruido de cambio persistente.
 
@@ -1831,7 +1851,7 @@ unknown_preserved
 
 La versión `0.2` no cambia OLD, NEW, reconocimiento, identidad, baseline, desviación ni persistencia. Sólo vuelve empíricamente auditable el contrato que en `0.1` estaba parcialmente demostrado por estructura interna.
 
-Esta capacidad existe sólo para decidir si la semántica `OBSERVED_POSITIVE / ACTIVE_ZERO / UNKNOWN` debe incorporarse posteriormente al motor productivo. No cambia todavía la versión 0.3 de `org_sales_deterioration_backtest_v01` ni su comportamiento.
+Esta capacidad conserva la evidencia diagnóstica que validó `OBSERVED_POSITIVE / ACTIVE_ZERO / UNKNOWN` antes de incorporarla a `org_sales_deterioration_backtest_v01` v0.4. Sigue siendo AUDIT_ONLY y no selecciona la regla final de deterioro.
 
 ## NOT AVAILABLE
 
