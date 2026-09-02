@@ -18,7 +18,7 @@ test('shared completion learner uses same calendar day median', () => {
     { target_month: '2026-07', day_of_month: 10, observed_to_date: 40, actual_close: 100 },
     { target_month: '2026-07', day_of_month: 11, observed_to_date: 90, actual_close: 100 },
   ], 10);
-  assert.equal(learned.learned_completion, 0.3);
+  assert.ok(Math.abs(learned.learned_completion - 0.3) < 1e-12);
   assert.equal(learned.training_observations, 2);
   assert.equal(learned.evaluable, true);
 });
