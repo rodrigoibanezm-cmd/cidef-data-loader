@@ -1,0 +1,200 @@
+name: One-time daily close backtest validation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/validate-daily-close-backtest-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-document:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Run targeted tests
+        run: node --test test/daily-close-backtest-context.test.js test/ventas-daily-organizational-context.test.js test/ventas-organizational-context.test.js
+      - name: Update ROM
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          schema_path = Path('rom/schema.json')
+          schema = json.loads(schema_path.read_text())
+          schema['info']['version'] = '1.25.0'
+          actions = schema['components']['schemas']['CustomGptRequest']['properties']['action']['enum']
+          action = 'daily_close_backtest_context_v01'
+          if action not in actions:
+              anchor = actions.index('ventas_daily_organizational_context_v01') + 1
+              actions.insert(anchor, action)
+          desc = schema['components']['schemas']['ActionInput']['description']
+          note = (' daily_close_backtest_context_v01 requires start_month and end_month, rejects open months, '
+                  'and returns cutoff-safe company/store observations with actual_close as LABEL_ONLY; '
+                  'store-months are emitted only when month-end CIDEF actual_close > 0 and absent daily rows '
+                  'inside that cohort become CERTIFIED_ZERO. It does not forecast or calculate predictability.')
+          if 'daily_close_backtest_context_v01 requires' not in desc:
+              schema['components']['schemas']['ActionInput']['description'] = desc + note
+          schema_path.write_text(json.dumps(schema, indent=2, ensure_ascii=False) + '\n')
+
+          motors_path = Path('rom/motors.md')
+          text = motors_path.read_text()
+          heading = '### `daily_close_backtest_context_v01`'
+          marker = '### `ventas_product_sales_v01`'
+          if heading not in text:
+              if marker not in text:
+                  raise SystemExit('motors insertion marker not found')
+              section = '''### `daily_close_backtest_context_v01`
+
+Motor runtime determinista de **contexto observacional diario** para Familia 1 — EXPECTATIVA Y CIERRE. Versión interna: `0.1`.
+
+Pregunta habilitante:
+
+> Para cada mes cerrado y cada día calendario, ¿cuántas ventas de CIDEF propio o de una tienda propia eran observables al cutoff y cuál fue el cierre final usado sólo como label de evaluación?
+
+Inputs:
+
+```text
+start_month: YYYY-MM
+end_month: YYYY-MM
+```
+
+Ambos son obligatorios. `end_month` debe ser un mes cerrado y el rango máximo es 84 meses.
+
+Fuentes:
+
+```text
+ventas_raw
+sucursales_master
+```
+
+Dependencias compartidas:
+
+```text
+parseFechaFactura
+ventasContextUtils: normalizedVin / stableId / compareStableId / recognizedSale
+loadOrganizationalIdentityMaps
+enrichRecognizedSale
+```
+
+Implementación temporal:
+
+```text
+carga ventas_raw una vez
+→ parser temporal certificado
+→ timeline incremental por fecha_factura
+→ VIN no nulo: LAST observable al final de cada día
+→ empate exacto: menor stable id
+→ VIN nulo: una unidad por fila parseable
+→ identidad histórica exacta
+→ tipo_canal
+→ snapshots diarios
+```
+
+No invoca `ventas_daily_organizational_context_v01` una vez por día. Reutiliza las mismas primitivas certificadas para evitar miles de lecturas/ejecuciones redundantes.
+
+Grains:
+
+```text
+CIDEF_PROPIO
+  target_month + cutoff_date
+
+TIENDA_PROPIA
+  target_month + cutoff_date + sucursal_id
+```
+
+Universo tienda V0.1:
+
+```text
+month-end tipo_canal = 'CIDEF'
+AND actual_close > 0
+```
+
+Semántica de cero:
+
+```text
+fila positiva al cutoff
+→ POSITIVE_OBSERVED
+
+sin fila positiva al cutoff
++ misma tienda tiene actual_close > 0 al cierre
+→ CERTIFIED_ZERO
+
+sin label positivo al cierre
+→ store-month no emitido / UNKNOWN
+```
+
+La selección por `actual_close > 0` define exclusivamente el **evaluation cohort**. `actual_close` es `LABEL_ONLY` y no puede usarse como feature del mes objetivo.
+
+Devuelve:
+
+```text
+engine
+version
+status
+inputs
+policy
+coverage
+validation
+warnings
+company_observations[]:
+  target_month
+  cutoff_date
+  day_of_month
+  observed_to_date
+  actual_close
+store_observations[]:
+  target_month
+  cutoff_date
+  day_of_month
+  sucursal_id
+  sucursal
+  observed_to_date
+  actual_close
+  observation_semantics
+```
+
+Validaciones principales:
+
+```text
+closed_months_only
+no_future_evidence_in_observed_to_date
+company_grain_unique
+store_grain_unique
+cutoff_belongs_to_target_month
+company_nonnegative
+store_nonnegative
+company_observed_le_actual
+store_observed_le_actual
+company_month_end_equals_close
+store_month_end_equals_close
+month_end_store_identity_complete
+month_end_channels_complete
+no_negative_store_state
+company_store_close_reconciles
+```
+
+Si `observed_to_date > actual_close` aparece, el motor **no corrige ni clampa** el dato: la validation falla y `status=warning` para preservar la evidencia de una trayectoria no monotónica respecto del cierre final.
+
+Esta capacidad no calcula `completion_ratio`, forecast, forecast error, thresholds ni `PREDICTABILITY_DAY`.
+'''
+              text = text.replace(marker, section + '\n\n' + marker, 1)
+              motors_path.write_text(text)
+          PY
+      - name: Commit ROM update
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rom/schema.json rom/motors.md
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'document daily close backtest context v0.1'
+          git push origin HEAD:main
