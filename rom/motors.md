@@ -446,6 +446,140 @@ Los gaps futuros de identidad no se ocultan: permanecen en el denominador CIDEF 
 
 Este contexto **no define** todavía benchmark, peer group, expectativa por unidad, score, ranking, deterioro ni umbral de desempeño. Su única responsabilidad es producir una base organizacional mensual reconciliada y reusable.
 
+### `organizational_share_expectation_backtest_v01`
+
+Motor determinista de laboratorio para **Familia 4 — DESEMPEÑO RELATIVO**.
+
+Pregunta:
+
+> ¿Qué baseline histórica simple estima mejor la participación mensual esperable de una tienda dentro de CIDEF o de un vendedor dentro de su tienda, usando sólo observaciones calendario previas?
+
+Inputs:
+
+```text
+grain: tienda | vendedor
+start_month: YYYY-MM
+end_month: YYYY-MM
+candidate_baselines:
+  - last_year
+  - moving_average_N
+  - median_N
+output_mode?: summary | monthly | units | stability
+detail_limit?: 1..200
+detail_candidate?: uno de candidate_baselines
+```
+
+Dependencia compartida:
+
+```text
+ventas_organizational_context_v01
+```
+
+El motor no reconstruye ventas ni identidad. Solicita al contexto organizacional el warm-up requerido por el candidato con mayor lag y evalúa targets sólo dentro de `start_month/end_month`.
+
+Grain y variable:
+
+```text
+TIENDA:
+  unit = sucursal_id
+  actual_share = share_of_cidef
+
+VENDEDOR:
+  unit = sucursal_id + persona_id
+  actual_share = share_of_store
+```
+
+Política walk-forward:
+
+```text
+last_year(M)
+  requiere M-12
+
+moving_average_N(M)
+  requiere M-1 ... M-N
+
+median_N(M)
+  requiere M-1 ... M-N
+```
+
+- cada lag es calendario exacto;
+- si falta cualquier mes requerido, ese candidato no es evaluable para ese `unit-month`;
+- missing nunca se convierte en 0, nunca se rellena y nunca se salta usando la última observación disponible;
+- `actual_share(M)` y meses futuros nunca participan en `expected_share(M)`;
+- un mismo `persona_id` en sucursales distintas representa unidades diferentes;
+- `adjusted_last_year` queda fuera de este laboratorio inicial.
+
+Comparación y selección:
+
+- la selección candidata es global por `grain`, no por unidad;
+- resultados por unidad son diagnósticos y no eligen automáticamente una regla individual;
+- el ranking se calcula sobre el mismo `common_evaluable_set` de `unit-month` evaluable por todos los candidatos solicitados;
+- la cobertura específica de cada candidato se conserva por separado;
+- ranking determinista: `MAE_pp` ascendente, luego `|bias_pp|`, luego `median_absolute_error_pp`, luego nombre de candidato como desempate estable.
+
+Métricas:
+
+```text
+error_pp = 100 * (actual_share - expected_share)
+MAE_pp
+bias_pp
+median_absolute_error_pp
+candidate_specific_coverage
+common_evaluable_coverage
+```
+
+No usa WAPE ni error relativo como métricas primarias de share.
+
+Estabilidad:
+
+- recalcula las mismas métricas sobre años calendario;
+- recalcula sobre ventanas móviles de 12 meses calendario;
+- las predicciones walk-forward originales no se modifican para estas vistas.
+
+Output `summary` por defecto:
+
+```text
+engine
+version
+status
+inputs
+policy
+ranking[]
+candidate_results[]
+coverage
+temporal_stability summary
+validation
+warnings
+detail_available
+```
+
+Modos de detalle acotados:
+
+```text
+monthly
+units
+stability
+```
+
+`detail_limit` impide respuestas Action sobredimensionadas. `detail_candidate` permite acotar el detalle a un candidato solicitado sin alterar el cálculo global.
+
+Validaciones principales:
+
+```text
+organizational_context_ok
+shares_in_bounds
+expectations_in_bounds
+no_target_month_used
+no_future_month_used
+exact_calendar_lags_only
+no_missing_month_imputation
+seller_grain_includes_store
+common_comparison_window_equal
+has_common_evaluable_rows
+```
+
+El motor **no define** todavía threshold de bajo desempeño, score, ranking de unidades, alertas, persistencia, deterioro, peer groups ni regla productiva final. Su responsabilidad es producir evidencia de backtest para seleccionar `expected_share` por grain.
+
 ### `expected_monthly_backtest_v01`
 
 Motor determinista de selección de regla de **EXPECTATIVA mensual** para Familia 1.
