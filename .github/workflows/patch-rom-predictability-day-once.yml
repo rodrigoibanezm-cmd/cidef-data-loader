@@ -1,0 +1,25 @@
+name: One-time predictability day ROM patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-rom-predictability-day-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - run: python scripts/patch-rom-predictability-day.py
+      - name: Commit ROM
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rom/schema.json rom/motors.md
+          git commit -m 'document predictability day v0.1'
+          git push origin HEAD:main
