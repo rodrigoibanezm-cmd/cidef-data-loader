@@ -53,6 +53,8 @@ La evidencia actual manda sobre memoria, documentación antigua o supuestos.
 - RAW conserva evidencia fuente.
 - MASTER resuelve identidad estable.
 - No redefinir identidades MASTER dentro de un análisis.
+- Una persona resuelta no es automáticamente un vendedor: todo grain `vendedor` debe exigir `VENDEDOR_CIDEF` vigente para la fecha del evento mediante `persona_roles` + `persona_sucursal` + `sucursales_master.tipo_canal='CIDEF'`.
+- `ventas_raw` puede resolver actividad e identidad, pero nunca crea rol, vigencia, asignación ni pertenencia al universo vendedor.
 - No usar tablas legacy como autoridad cuando existe contrato V0.1 vigente.
 - No inventar tablas, columnas, joins, llaves, mappings, métricas ni reglas de negocio.
 - No inferir una equivalencia que la evidencia no demuestra.

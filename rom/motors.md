@@ -263,6 +263,8 @@ Fuentes:
 ventas_raw
 sucursales_master
 personas_master
+persona_roles
+persona_sucursal
 ```
 
 Dependencias de identidad:
@@ -286,6 +288,9 @@ Política:
 - una llave MASTER que aparezca más de una vez se considera ambigua y no se eleva a identidad resuelta;
 - `personas_master.validated=false` se reporta como warning separado, sin convertir por sí solo un login exacto en otra identidad;
 - identidad canónica de persona no prueba por sí sola rol vendedor histórico;
+- separa explícitamente `resolved_person_identity`, `eligible_vendedor_cidef` y `resolved_person_not_vendedor_cidef`;
+- `eligible_vendedor_cidef` exige persona resuelta, rol `VENDEDOR_TIENDA` activo, asignación `VENDEDOR_TIENDA` activa y sucursal MASTER con `tipo_canal='CIDEF'` para `fecha_factura`;
+- `ventas_raw` nunca crea rol, vigencia, asignación ni pertenencia vendedor;
 - persistencia exclusivamente runtime; no crea tabla ni mapping materializado.
 
 Devuelve:
@@ -304,6 +309,9 @@ distinct_keys
 unresolved
 ambiguous
 resolved_to_unvalidated_person_rows
+resolved_person_identity
+eligible_vendedor_cidef
+resolved_person_not_vendedor_cidef
 validation
 warnings
 ```
@@ -317,6 +325,7 @@ joint_not_above_store
 joint_not_above_seller
 store_master_key_unique
 seller_master_key_unique
+seller_eligibility_reconciles
 ```
 
 `status=warning` si existe cualquier gap de cobertura, ambigüedad o falla de reconciliación. El motor no define un umbral de materialidad: devuelve la cobertura exacta observada para que el consumidor decida si es suficiente para su uso.
@@ -342,6 +351,8 @@ Fuentes:
 ventas_raw
 sucursales_master
 personas_master
+persona_roles
+persona_sucursal
 ```
 
 Dependencias compartidas:
@@ -360,7 +371,10 @@ Política:
 - `start_month` y `end_month` filtran la salida **después** del reconocimiento; `end_month` no es un cutoff temporal;
 - cada evento reconocido conserva las llaves fuente exactas `id_sucursal_vta` y `nombre_usuario` antes de cualquier `trim` usado para campos descriptivos;
 - identidad tienda = igualdad exacta de la llave fuente del evento contra `sucursales_master.id_sucursal_vta`;
-- identidad vendedor = igualdad exacta de la llave fuente del evento contra `personas_master.usuario_canonico`;
+- identidad persona = igualdad exacta de la llave fuente del evento contra `personas_master.usuario_canonico`;
+- pertenencia vendedor = resolver persona y aplicar la regla compartida `VENDEDOR_CIDEF(persona_id, fecha_factura)`;
+- `VENDEDOR_CIDEF` exige rol `VENDEDOR_TIENDA` y asignación `VENDEDOR_TIENDA` vigentes en la fecha, con `sucursales_master.tipo_canal='CIDEF'`;
+- `ventas_raw` aporta actividad e identidad fuente, pero nunca crea pertenencia vendedor;
 - la sucursal histórica sale del mismo evento reconocido y nunca se reasigna mediante `persona_sucursal` vigente;
 - una persona puede aparecer en sucursales distintas a través del tiempo o dentro del mismo mes si así lo observa la venta reconocida;
 - persistencia exclusivamente runtime; no crea tabla, fact, mart ni cubo.
@@ -419,6 +433,8 @@ recognized_sales_total
 recognized_sales_available_total
 recognized_sales_with_store_identity
 recognized_sales_with_seller_identity
+seller_eligible_sales
+seller_non_eligible_sales
 recognized_sales_with_both_identities
 unresolved_store
 unresolved_seller
@@ -433,7 +449,9 @@ Validaciones principales:
 ventas_context_reconciles
 monthly_cidef_reconciles_with_ventas_context
 sum(store_sales) por mes = cidef_sales
-sum(seller_sales) por tienda/mes = store_sales
+seller_eligible_sales + seller_non_eligible_sales + unresolved_seller + ambiguous_seller = ventas reconocidas, en categorías mutuamente excluyentes
+seller_store_sales_reconcile
+no_out_of_universe_seller
 no_seller_without_store
 uses_observed_store_only
 store_identity_keys_unique
@@ -442,7 +460,7 @@ shares_in_bounds
 has_scoped_sales
 ```
 
-Los gaps futuros de identidad no se ocultan: permanecen en el denominador CIDEF o tienda correspondiente y rompen explícitamente la reconciliación del nivel inferior. `personas_master.validated=false` se reporta como warning sin cambiar una identidad exacta resuelta.
+Los gaps de identidad y las personas resueltas fuera de `VENDEDOR_CIDEF` no se ocultan: permanecen en el denominador CIDEF o tienda y se reportan por categoría. Por diseño, `sum(seller_sales)` puede ser menor que `store_sales`; sólo vendedores elegibles entran a `seller_monthly`. `personas_master.validated=false` se reporta como warning sin cambiar una identidad exacta resuelta.
 
 Este contexto **no define** todavía benchmark, peer group, expectativa por unidad, score, ranking, deterioro ni umbral de desempeño. Su única responsabilidad es producir una base organizacional mensual reconciliada y reusable.
 
@@ -2316,6 +2334,8 @@ Fuentes:
 ventas_raw
 sucursales_master
 personas_master
+persona_roles
+persona_sucursal
 notas_venta_raw      # sólo grain=tienda, evidencia ACTIVE_ZERO
 sucursal_aliases     # sólo grain=tienda, identidad NV→sucursal
 ```
@@ -2340,7 +2360,8 @@ Política temporal:
 Identidad:
 
 - tienda se resuelve por igualdad exacta `ventas_raw.id_sucursal_vta -> sucursales_master.id_sucursal_vta`;
-- vendedor se resuelve por igualdad exacta `ventas_raw.nombre_usuario -> personas_master.usuario_canonico`;
+- vendedor primero resuelve identidad exacta `ventas_raw.nombre_usuario -> personas_master.usuario_canonico` y luego exige `VENDEDOR_CIDEF(persona_id, fecha_factura)`;
+- una persona resuelta fuera del rol/asignación `VENDEDOR_TIENDA` CIDEF vigente para la fecha no entra al grain vendedor;
 - no existe fuzzy fallback;
 - `persona_sucursal` vigente no se usa para reescribir la historia;
 - identidad no resuelta o ambigua permanece explícita en cobertura/warnings.
@@ -2833,4 +2854,3 @@ Política:
 - no etiqueta el resultado como sano/frágil ni crea historia materializada.
 
 Devuelve `period`, `monthly[]`, `coverage`, `validation` y `warnings`; cada Pareto incluye modelo canónico, ventas, share y share acumulado.
-
