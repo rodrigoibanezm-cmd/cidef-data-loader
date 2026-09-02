@@ -1687,6 +1687,58 @@ monthly_rows_returned
 entity_keys_complete
 ```
 
+### `competitive_signal_backtest_v01`
+
+Motor determinista v0.1 de backtest de señales para **Familia 2 — POSICIÓN COMPETITIVA**.
+
+Pregunta:
+
+> ¿Qué evidencia temporal homogénea presenta cada target × peer × universe sobre proximidad, continuidad, alternancia y dirección?
+
+Inputs:
+
+```text
+target_model_ids: bigint[]
+date_from: YYYY-MM-DD
+date_to: YYYY-MM-DD
+geography?: region | comuna
+origin_group?: CHINESE | NON_CHINESE | UNKNOWN
+output_mode?: summary | pair_detail   default summary
+pair_keys?: string[]                  required only for pair_detail; max 50
+```
+
+Grain:
+
+```text
+target_model_id × peer_entity_key × peer_universe × requested period
+```
+
+Política:
+
+- reutiliza la matriz mensual certificada de `competitive_share_trajectory_v01`; no relee RVM por peer ni redefine identidad, denominador, share, rank u origin_group;
+- genera todos los pares elegibles dentro de cada peer universe y excluye únicamente el self-pair exacto;
+- late entrants, disappearances, zero-fill, UNKNOWN origin y peers RAW unresolved se conservan como evidencia;
+- `active` significa `observed=true`; una fila synthetic zero-fill es inactiva;
+- share gap = diferencia absoluta de share en puntos porcentuales; también conserva signed gap internamente;
+- crossings sólo ocurren dentro de secuencias joint-active y nunca atraviesan gaps inactivos; ties pueden mediar un crossing sin crear crossings extra;
+- convergence/divergence runs usan meses calendario adyacentes joint-active; FLAT o inactividad cortan el run;
+- `summary` transporta una fila compacta por par; `pair_detail` exige pair_keys y abre sólo esos pares;
+- no define competitor label, score, pesos, thresholds, proximidad productiva ni persistencia productiva.
+
+Features V0.1 por par:
+
+```text
+shareGap: months, meanPp, medianPp, stddevPopulationPp, minPp, maxPp
+continuity: monthsObserved, targetActiveMonths, peerActiveMonths, jointActiveMonths, targetZeroMonths, peerZeroMonths, firstJointActiveMonth, lastJointActiveMonth
+crossings: count, firstCrossingMonth, lastCrossingMonth
+convergenceDivergence: run counts + longest run transitions
+diagnostics.rankGap: evaluableMonths, mean, median, min, max
+```
+
+`pair_detail` agrega `monthly[]`, `crossingEvents[]`, `convergenceDivergenceRuns[]` y `activeSpans`. Co-movement y proximity episodes quedan fuera de V0.1. Persistencia exclusivamente runtime.
+
+Validaciones incluyen targets/universos, reconciliación mensual, pair count, self-pairs, keys únicas, consistencia de universe/meses, share gaps, continuity y detail pair-key completeness. Warnings del contexto competitivo se propagan.
+
 ### `product_generation_context_v01`
 
 Contexto read-only de identidad estructural para **MASTER PRODUCT** y habilitante de Familia 2.
