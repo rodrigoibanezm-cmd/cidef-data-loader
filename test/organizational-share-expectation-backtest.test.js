@@ -18,6 +18,31 @@ test('share candidates require exact calendar months and never skip missing hist
   assert.deepEqual(result.source_months, ['2026-03', '2026-02']);
 });
 
+test('monthly detail keeps relative gap null when expectation is unavailable', () => {
+  const parsed = parseShareBacktestInput({
+    grain: 'tienda',
+    start_month: '2026-02',
+    end_month: '2026-02',
+    candidate_baselines: ['moving_average_2'],
+    output_mode: 'monthly',
+  });
+  const context = {
+    store_monthly: [
+      { month: '2026-01', sucursal_id: '1', sales: 40, cidef_sales: 100, share_of_cidef: 0.40 },
+      { month: '2026-02', sucursal_id: '1', sales: 50, cidef_sales: 100, share_of_cidef: 0.50 },
+    ],
+    seller_monthly: [],
+    validation: { ok: true },
+  };
+  const result = calculateShareExpectationBacktest(context, parsed);
+  const output = formatShareBacktestOutput(result, parsed);
+  const row = output.monthly_backtest[0];
+
+  assert.equal(row.evaluable, false);
+  assert.equal(row.expected_share, null);
+  assert.equal(row.relative_gap_pp, null);
+});
+
 test('seller backtest keeps store grain, distributions and sales evidence', () => {
   const sellerMonthly = [];
   for (const sucursalId of ['1', '2']) {
