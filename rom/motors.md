@@ -1195,6 +1195,8 @@ Para el futuro indicador de control de cierre, el universo organizacional deber�
 
 ### `ventas_daily_organizational_context_v01`
 
+Version motor: `0.2`
+
 Contexto runtime determinista de **ventas reconocidas por sucursal histórica a un cutoff diario**, habilitante de Familia 1 para futuros backtests intra-mes de tiendas propias.
 
 Pregunta:
@@ -1286,6 +1288,16 @@ store_reconciles_with_recognized_target_month
 resolved_channels_reconcile
 cidef_owned_reconciles
 ```
+
+Semántica de `store_identity_keys_unique` V0.2:
+
+```text
+OBSERVED_EVENT_STORE_KEY_UNIQUENESS
+= cada source key no nula usada por recognizedSales[] del target month
+  resuelve exactamente a una identidad MASTER
+```
+
+Las keys `NULL` o no utilizadas por los eventos reconocidos del mes no participan en esta validation. `unresolved_store` y `ambiguous_store` siguen reportándose por separado y nunca se infieren.
 
 Reconciliaciones:
 

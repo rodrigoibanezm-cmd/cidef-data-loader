@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.24.0",
+    "version": "1.24.1",
     "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, monthly and daily cutoff-safe sales context, daily organizational cutoff-safe sales context, product sales and recognized product detail, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with null-safe relative-gap detail, productive organizational relative performance over closed months using certified grain-specific baselines, shared competitive context with optional Chile market-origin peer filtering, bounded competitive share trajectory with compact trajectory and explicit monthly detail outputs over the same peer semantics, canonical product GENERATION membership context, bounded organization sales deterioration backtesting with sparse observation semantics, and an AUDIT_ONLY observation-semantics comparison with explicit ACTIVE_ZERO evidence and temporal/unit-universe validations for Family 3. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
