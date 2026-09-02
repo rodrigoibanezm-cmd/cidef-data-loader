@@ -1602,7 +1602,7 @@ El motor **no selecciona todavía la regla final de deterioro**, no define sever
 
 ### `org_sales_observation_semantics_audit_v01`
 
-Capacidad determinista **AUDIT_ONLY / DISCOVERY_ONLY** para Familia 3. No es una nueva familia ni modifica `org_sales_deterioration_backtest_v01`.
+Capacidad determinista **AUDIT_ONLY / DISCOVERY_ONLY** para Familia 3. Versión interna actual: `0.2`. No es una nueva familia ni modifica `org_sales_deterioration_backtest_v01`.
 
 Pregunta:
 
@@ -1673,7 +1673,9 @@ validation
 nv_identity
 nv_time
 coverage
+unit_universe
 units[]
+active_zero_detail
 old
 new
 comparison
@@ -1681,6 +1683,46 @@ episode_comparison
 new_backtest_skips
 warnings
 ```
+
+`coverage` agrega además:
+
+```text
+ventas_source_rows
+nv_source_rows
+units_total
+unit_months_total
+observed_positive_unit_months
+active_zero_unit_months
+unknown_unit_months
+```
+
+`active_zero_detail.rows[]` expone el grain auditable tienda-mes:
+
+```text
+unit_id
+unit_label
+month
+recognized_sales
+nv_count
+state = ACTIVE_ZERO
+sales = 0
+```
+
+El detalle aplica `detail_unit_id` antes de `detail_limit` y devuelve `matched_rows`, `returned_rows` y `truncated`.
+
+`unit_universe` reconcilia:
+
+```text
+observed_units_total
+candidate_evaluable_units
+units_without_candidate_rows
+units_without_candidate_rows_detail[]:
+  unit_id
+  unit_label
+  reason
+```
+
+La diferencia entre unidades históricamente observadas y unidades con filas del candidato queda explícita; no se inventa roster ni se usa `vigente=true` como filtro retrospectivo.
 
 `units[]` reporta:
 
@@ -1703,9 +1745,34 @@ persistent_units
 persistent_unit_ids
 ```
 
-`comparison` separa `persistent_both`, `old_only` y `new_only`. Los episodios diferenciales conservan onset, confirmation y flags futuros. `detail_unit_id` se aplica antes de `detail_limit` y devuelve metadata `matched_rows / returned_rows / truncated`.
+Validaciones explícitas de auditabilidad V0.2:
 
-Esta capacidad existe sólo para decidir si la semántica `OBSERVED_POSITIVE / ACTIVE_ZERO / UNKNOWN` debe incorporarse posteriormente al motor productivo. No cambia todavía la versión 0.3 ni su comportamiento.
+```text
+active_zero_invariant
+→ cada ACTIVE_ZERO cumple recognized_sales=0, nv_count>0, state=ACTIVE_ZERO, sales=0
+
+unknown_breaks_continuity
+→ ningún episodio confirmado cruza un mes ausente/UNKNOWN entre onset y confirmation
+
+no_future_signal_leakage
+→ history cutoff < target month, actual cutoff = target month y baseline history usa sólo meses anteriores
+```
+
+Se conservan además:
+
+```text
+ventas_context_ok
+nv_identity_ok
+nv_time_ok
+old_semantics_reconciles
+unknown_preserved
+```
+
+`comparison` separa `persistent_both`, `old_only` y `new_only`. Los episodios diferenciales conservan onset, confirmation y flags futuros.
+
+La versión `0.2` no cambia OLD, NEW, reconocimiento, identidad, baseline, desviación ni persistencia. Sólo vuelve empíricamente auditable el contrato que en `0.1` estaba parcialmente demostrado por estructura interna.
+
+Esta capacidad existe sólo para decidir si la semántica `OBSERVED_POSITIVE / ACTIVE_ZERO / UNKNOWN` debe incorporarse posteriormente al motor productivo. No cambia todavía la versión 0.3 de `org_sales_deterioration_backtest_v01` ni su comportamiento.
 
 ## NOT AVAILABLE
 
