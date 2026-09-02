@@ -988,6 +988,132 @@ no_post_cutoff_evidence_used
 
 Este motor **no** calcula crecimiento, mercado, share ni efecto competitivo. Su responsabilidad única es entregar el ingrediente interno canónico `modelo_id × tiempo` para que motores superiores puedan combinarlo con `competitive_context_v01` y otros contextos del mise en place.
 
+### `ventas_product_detail_v01`
+
+Motor determinista transversal de **detalle auditable de ventas CIDEF reconocidas por producto canónico**. Es el consumidor de detalle del mismo contexto runtime que alimenta `ventas_product_sales_v01`.
+
+Pregunta:
+
+> ¿Cuáles son las ventas CIDEF ya reconocidas y resueltas al `modelo_id` solicitado dentro del período?
+
+Inputs:
+
+```text
+modelo_id: integer
+start_month: YYYY-MM
+end_month: YYYY-MM
+cutoff_month: YYYY-MM
+```
+
+Contrato temporal:
+
+```text
+cutoff_month = end_month
+```
+
+Dependencias compartidas:
+
+```text
+buildVentasProductContext({ cutoffMonth })
+resolvedSales[]
+selectProductSales()
+```
+
+Flujo determinista:
+
+```text
+ventas_context_v01
+→ recognizedSales[]
+→ identidad producto MASTER
+→ resolvedSales[]
+→ selectProductSales()
+→ targetSales[]
+→ serializeProductDetail()
+```
+
+Política:
+
+- no relee `ventas_raw` ni reconstruye LAST;
+- usa exactamente el mismo cutoff, reconocimiento e identidad producto que `ventas_product_sales_v01`;
+- sólo expone ventas con `product_identity_status=RESOLVED` y `modelo_id` igual al target;
+- ventas `UNRESOLVED` o `AMBIGUOUS` no se reasignan ni entran al detalle target; permanecen explícitas en cobertura;
+- devuelve el detalle completo del target sin muestreo ni truncamiento, porque `detail.length` debe reconciliar exactamente con `target.units`;
+- persistencia exclusivamente runtime.
+
+Grain:
+
+```text
+1 fila detail = 1 venta CIDEF reconocida y resuelta al modelo target
+```
+
+Campos de `detail[]`:
+
+```text
+source_id
+vin
+fecha_venta
+fecha_venta_iso
+mes_venta
+recognition_basis
+nro_operacion
+nro_propuesta
+factura
+nro_factura
+producto_sku
+producto
+modelo_id
+version_id
+product_identity_status
+```
+
+Devuelve:
+
+```text
+engine
+version
+status
+inputs
+policy
+target:
+  modelo_id
+  units
+detail[]
+coverage:
+  recognized_sales_in_period
+  product_resolved
+  product_unresolved
+  product_ambiguous
+  aliases_loaded
+  target_aliases
+validation
+warnings
+```
+
+Validaciones principales:
+
+```text
+ventas_context_ok
+cutoff_context_match
+cutoff_equals_end_month
+target_model_aliases_present
+no_ambiguous_product_identity
+product_identity_complete_in_period
+detail_units_reconcile_with_target
+no_post_cutoff_evidence_used
+```
+
+Invariante de diseño para el mismo input y snapshot:
+
+```text
+ventas_product_sales_v01.target.units
+=
+ventas_product_detail_v01.target.units
+=
+ventas_product_detail_v01.detail.length
+```
+
+Este motor **no** consulta `notas_venta_raw`, no compara RVM y no interpreta arrastre/boundary. Su responsabilidad es abrir de forma auditable el conjunto de ventas ya reconocido por el pipeline certificado.
+
 ### `competitive_context_v01`
 
 Contexto runtime determinista común para **Familia 2 — POSICIÓN COMPETITIVA**.
