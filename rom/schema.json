@@ -2,11 +2,13 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.17.0",
-    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, cutoff-safe actual, product sales and recognized product detail, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with relative-gap evidence, shared competitive context, canonical product GENERATION membership context, and bounded organization sales deterioration backtesting. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
+    "version": "1.18.0",
+    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, cutoff-safe actual, product sales and recognized product detail, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting, shared competitive context, canonical product GENERATION membership context, bounded organization sales deterioration backtesting, and an AUDIT_ONLY observation-semantics comparison for Family 3. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface."
   },
   "servers": [
-    { "url": "https://cidef-data-loader.vercel.app" }
+    {
+      "url": "https://cidef-data-loader.vercel.app"
+    }
   ],
   "paths": {
     "/api/custom-gpt": {
@@ -16,13 +18,23 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": { "schema": { "$ref": "#/components/schemas/CustomGptRequest" } }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomGptRequest"
+              }
+            }
           }
         },
         "responses": {
-          "200": { "description": "Action completed" },
-          "400": { "description": "Invalid action or input" },
-          "500": { "description": "Backend execution error" }
+          "200": {
+            "description": "Action completed"
+          },
+          "400": {
+            "description": "Invalid action or input"
+          },
+          "500": {
+            "description": "Backend execution error"
+          }
         }
       }
     }
@@ -31,7 +43,10 @@
     "schemas": {
       "CustomGptRequest": {
         "type": "object",
-        "required": ["action", "input"],
+        "required": [
+          "action",
+          "input"
+        ],
         "properties": {
           "action": {
             "type": "string",
@@ -55,10 +70,13 @@
               "competitive_context_v01",
               "product_generation_context_v01",
               "organizational_share_expectation_backtest_v01",
-              "org_sales_deterioration_backtest_v01"
+              "org_sales_deterioration_backtest_v01",
+              "org_sales_observation_semantics_audit_v01"
             ]
           },
-          "input": { "$ref": "#/components/schemas/ActionInput" }
+          "input": {
+            "$ref": "#/components/schemas/ActionInput"
+          }
         },
         "additionalProperties": false
       },
@@ -94,12 +112,28 @@
       },
       "Filter": {
         "type": "object",
-        "required": ["column", "op"],
+        "required": [
+          "column",
+          "op"
+        ],
         "properties": {
-          "column": { "type": "string" },
+          "column": {
+            "type": "string"
+          },
           "op": {
             "type": "string",
-            "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "in", "is_null", "not_null"]
+            "enum": [
+              "eq",
+              "neq",
+              "gt",
+              "gte",
+              "lt",
+              "lte",
+              "contains",
+              "in",
+              "is_null",
+              "not_null"
+            ]
           },
           "value": {}
         },
@@ -107,41 +141,107 @@
       },
       "Metric": {
         "type": "object",
-        "required": ["op"],
+        "required": [
+          "op"
+        ],
         "properties": {
-          "op": { "type": "string", "enum": ["count", "sum", "avg", "min", "max"] },
-          "column": { "type": "string" },
-          "as": { "type": "string" }
+          "op": {
+            "type": "string",
+            "enum": [
+              "count",
+              "sum",
+              "avg",
+              "min",
+              "max"
+            ]
+          },
+          "column": {
+            "type": "string"
+          },
+          "as": {
+            "type": "string"
+          }
         },
         "additionalProperties": false
       },
       "Geography": {
         "type": "object",
-        "required": ["level", "values"],
+        "required": [
+          "level",
+          "values"
+        ],
         "properties": {
-          "level": { "type": "string", "enum": ["region", "comuna"] },
+          "level": {
+            "type": "string",
+            "enum": [
+              "region",
+              "comuna"
+            ]
+          },
           "values": {
             "type": "array",
             "minItems": 1,
             "maxItems": 100,
             "uniqueItems": true,
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         },
         "additionalProperties": false
       },
       "ActionInput": {
         "type": "object",
-        "description": "Action-specific input. product_generation_context_v01 accepts optional modelo_id, version_id, generation_id, membership_status, include_evidence and a bounded limit; it reads canonical GENERATION identity/membership only and never performs backfill. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. ventas_organizational_context_v01 requires start_month and end_month; the window is applied after recognition and end_month is not a temporal cutoff. organizational_share_expectation_backtest_v01 requires grain, start_month, end_month and candidate_baselines from last_year, moving_average_N or median_N; it uses exact calendar lags, no missing-month imputation, and summary output by default. Version 0.2 adds full relative_gap_distribution per candidate in summary and, for one selected candidate in monthly detail, sales, parent_sales, actual_share, expected_share and relative_gap_pp=100*(actual_share-expected_share). expected_monthly_candidates_v01 requires cutoff_month plus the immediately following target_month. ventas_monthly_actual_v01 requires cutoff_month and a target_month not later than the cutoff. ventas_product_sales_v01 and ventas_product_detail_v01 require modelo_id, start_month, end_month and cutoff_month=end_month; detail exposes every recognized resolved target sale without truncation. competitive_context_v01 requires target_model_ids, date_from and date_to; geography is optional. org_sales_deterioration_backtest_v01 requires grain, start_month, end_month and the three candidate arrays. It returns output_mode=summary by default; stability and episodes are bounded candidate detail modes, while units returns bounded candidate x canonical-unit evidence with deviation evaluability, signal months, confirmed episodes and future-evaluation rates. All deterioration detail modes honor detail_limit and optional candidate filters.",
+        "description": "Action-specific input. product_generation_context_v01 accepts optional modelo_id, version_id, generation_id, membership_status, include_evidence and a bounded limit; it reads canonical GENERATION identity/membership only and never performs backfill. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. ventas_organizational_context_v01 requires start_month and end_month. organizational_share_expectation_backtest_v01 requires grain, start_month, end_month and candidate_baselines. ventas_product_sales_v01 and ventas_product_detail_v01 require modelo_id, start_month, end_month and cutoff_month=end_month. competitive_context_v01 requires target_model_ids, date_from and date_to; geography is optional. org_sales_deterioration_backtest_v01 requires grain, start_month, end_month and the three candidate arrays. org_sales_observation_semantics_audit_v01 is AUDIT_ONLY/DISCOVERY_ONLY, requires only start_month and end_month, fixes tienda + last_year + relative + deepening_2, and accepts detail_limit plus optional detail_unit_id.",
         "properties": {
-          "table": { "$ref": "#/components/schemas/AllowedTable" },
-          "tables": { "type": "array", "items": { "$ref": "#/components/schemas/AllowedTable" } },
-          "operation": { "type": "string", "enum": ["select", "aggregate"] },
-          "columns": { "type": "array", "items": { "type": "string" } },
-          "filters": { "type": "array", "items": { "$ref": "#/components/schemas/Filter" } },
-          "group_by": { "type": "array", "maxItems": 4, "items": { "type": "string" } },
-          "metrics": { "type": "array", "items": { "$ref": "#/components/schemas/Metric" } },
-          "limit": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 200, "description": "Generic result bound. product_generation_context_v01 enforces a stricter maximum of 200 rows." },
+          "table": {
+            "$ref": "#/components/schemas/AllowedTable"
+          },
+          "tables": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AllowedTable"
+            }
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "select",
+              "aggregate"
+            ]
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Filter"
+            }
+          },
+          "group_by": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "string"
+            }
+          },
+          "metrics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Metric"
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 200,
+            "description": "Generic result bound. product_generation_context_v01 enforces a stricter maximum of 200 rows."
+          },
           "start_month": {
             "type": "string",
             "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
@@ -166,8 +266,14 @@
             "type": "array",
             "minItems": 1,
             "uniqueItems": true,
-            "items": { "type": "string" },
-            "default": ["77050575", "96800910", "96726670"],
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "77050575",
+              "96800910",
+              "96726670"
+            ],
             "description": "FIRST customer codes treated as resolved-to-LAST by residual Family 1 motors"
           },
           "modelo_id": {
@@ -187,7 +293,11 @@
           },
           "membership_status": {
             "type": "string",
-            "enum": ["RESOLVED", "UNRESOLVED", "CONFLICT"],
+            "enum": [
+              "RESOLVED",
+              "UNRESOLVED",
+              "CONFLICT"
+            ],
             "description": "Optional VERSION→GENERATION membership-state filter"
           },
           "include_evidence": {
@@ -200,15 +310,29 @@
             "minItems": 1,
             "maxItems": 50,
             "uniqueItems": true,
-            "items": { "type": "integer", "minimum": 1 },
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            },
             "description": "Current CIDEF modelo_id values used to derive observable runtime competitive universes from RVM + MASTER"
           },
-          "date_from": { "type": "string", "format": "date" },
-          "date_to": { "type": "string", "format": "date" },
-          "geography": { "$ref": "#/components/schemas/Geography" },
+          "date_from": {
+            "type": "string",
+            "format": "date"
+          },
+          "date_to": {
+            "type": "string",
+            "format": "date"
+          },
+          "geography": {
+            "$ref": "#/components/schemas/Geography"
+          },
           "grain": {
             "type": "string",
-            "enum": ["tienda", "vendedor"],
+            "enum": [
+              "tienda",
+              "vendedor"
+            ],
             "description": "Canonical organization grain for organizational motors"
           },
           "candidate_baselines": {
@@ -227,7 +351,11 @@
             "uniqueItems": true,
             "items": {
               "type": "string",
-              "enum": ["relative", "scaled_mad", "historical_percentile"]
+              "enum": [
+                "relative",
+                "scaled_mad",
+                "historical_percentile"
+              ]
             }
           },
           "candidate_persistence_rules": {
@@ -242,16 +370,27 @@
           },
           "output_mode": {
             "type": "string",
-            "enum": ["summary", "stability", "episodes", "units", "monthly"],
+            "enum": [
+              "summary",
+              "stability",
+              "episodes",
+              "units",
+              "monthly"
+            ],
             "default": "summary",
-            "description": "Action-specific output mode. Compact summary is the default. For deterioration, units returns bounded candidate x unit evidence; all supported detail modes remain bounded."
+            "description": "Action-specific output mode. Compact summary is the default. For deterioration, units returns bounded candidate x unit evidence."
           },
           "detail_limit": {
             "type": "integer",
             "minimum": 1,
             "maximum": 200,
             "default": 100,
-            "description": "Maximum rows returned by bounded detail modes."
+            "description": "Maximum rows returned by bounded detail modes and audit-only evidence."
+          },
+          "detail_unit_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Optional canonical sucursal_id filter for org_sales_observation_semantics_audit_v01; applied before detail_limit."
           },
           "detail_candidate": {
             "type": "string",
@@ -265,7 +404,11 @@
           },
           "detail_deviation_method": {
             "type": "string",
-            "enum": ["relative", "scaled_mad", "historical_percentile"],
+            "enum": [
+              "relative",
+              "scaled_mad",
+              "historical_percentile"
+            ],
             "description": "Optional deterioration detail filter; must also appear in candidate_deviation_methods."
           },
           "detail_persistence_rule": {
