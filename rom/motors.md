@@ -1884,6 +1884,84 @@ diagnostics.rankGap: evaluableMonths, mean, median, min, max
 
 Validaciones incluyen targets/universos, reconciliación mensual, pair count, self-pairs, keys únicas, consistencia de universe/meses, share gaps, continuity y detail pair-key completeness. Warnings del contexto competitivo se propagan.
 
+### `competitive_relation_v01`
+
+Motor productivo determinista v0.1 para **Familia 2 — POSICIÓN COMPETITIVA**.
+
+Pregunta:
+
+> ¿Qué modelos presentan una relación competitiva temporal plausible con uno o más productos CIDEF dentro del mismo peer universe estructural y grupo de origen?
+
+Inputs:
+
+```text
+target_model_ids: bigint[]
+date_from: YYYY-MM-DD
+date_to: YYYY-MM-DD
+origin_group: CHINESE | NON_CHINESE   required
+geography?: region | comuna
+pair_offset?: integer >= 0            default 0
+pair_limit?: integer 1..50            default 20
+```
+
+Dependencia:
+
+```text
+competitive_signal_backtest_v01 v0.2
+```
+
+No relee RVM por peer ni redefine identidad, universo, origin_group, zero-fill, share gap, continuidad o crossings. Calcula todos los pares elegibles mediante el stack competitivo existente y aplica una única regla productiva versionada.
+
+Regla V0.1:
+
+```text
+COMPETITIVE_RELATION_V01 =
+    shareGap.medianPp <= 3.0
+AND continuity.jointActiveMonths >= 6
+AND crossings.count >= 1
+```
+
+Los tres límites son inclusivos. No existe score, peso, probabilidad, Pareto, top-N ni fallback. `origin_group=UNKNOWN` no es aceptado por este motor productivo.
+
+Grain interno:
+
+```text
+target_model_id × peer_entity_key × peer_universe × requested period
+```
+
+La salida transporta sólo relaciones seleccionadas y conserva evidencia mínima auditable:
+
+```text
+pairKey
+targetModelId
+peer.entityKey
+peer.modelId
+peer.identityStatus
+peer.brand
+peer.model
+universeKey
+evidence.medianShareGapPp
+evidence.jointActiveMonths
+evidence.crossings
+relation = COMPETITIVE_RELATION
+ruleVersion = 0.1
+```
+
+`pair_offset/pair_limit` paginan después de aplicar la regla y son exclusivamente transporte. `coverage.totalPairs` mantiene todos los pares calculados; además devuelve selectedPairs, rejectedPairs y selectedRate.
+
+Validaciones principales:
+
+```text
+source_signal_backtest_ok
+source_monthly_share_reconciles
+relation_count_reconciles
+selected_pair_keys_unique
+selected_pairs_satisfy_rule
+no_self_relations
+```
+
+Warnings del stack competitivo se propagan. Persistencia exclusivamente runtime; no crea tabla de competidores. Esta V0.1 no afirma sustitución causal ni que un modelo robe ventas a otro: certifica únicamente una relación competitiva temporal bajo la regla cerrada.
+
 ### `product_generation_context_v01`
 
 Contexto read-only de identidad estructural para **MASTER PRODUCT** y habilitante de Familia 2.
