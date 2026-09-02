@@ -1458,6 +1458,93 @@ no_store_volume_segmentation
 El motor no devuelve miles de forecasts individuales y no calcula `PREDICTABILITY_DAY`, threshold de precisión, alerta ni estado live. Su responsabilidad termina en error histórico compacto por día.
 
 
+### `daily_close_forecast_v01`
+
+Motor productivo determinista v0.1 para **Familia 1 — EXPECTATIVA Y CIERRE**.
+
+Pregunta:
+
+> Dado lo vendido hasta hoy, ¿cuál es el cierre esperado de CIDEF y de las tiendas propias actualmente observadas, usando sólo historia cerrada anterior?
+
+Input:
+
+```text
+cutoff_date: YYYY-MM-DD
+```
+
+El cutoff debe pertenecer al mes calendario abierto vigente en `America/Santiago` y no puede estar en el futuro.
+
+Dependencias reutilizadas:
+
+```text
+ventas_context_v01 / LAST-by-VIN cutoff-safe
+ventas_daily_organizational_context_v01
+daily_close_backtest_context_v01
+daily_close_forecast_backtest_v01 helpers
+```
+
+Regla V0.1:
+
+```text
+completion_ratio = observed_to_date / actual_close
+learned_completion(day) = median(completion_ratio histórico del mismo día)
+forecast_close = observed_to_date / learned_completion(day)
+```
+
+Training usa exclusivamente meses cerrados anteriores al mes objetivo. Completion histórico igual a cero participa en la mediana; si la mediana es `<= 0`, el forecast queda no evaluable y no usa epsilon ni imputación.
+
+Grains productivos:
+
+```text
+CIDEF_PROPIO
+TIENDA_PROPIA
+```
+
+Para tiendas, la baseline aprendida es `TIENDA_PROPIA_POOLED`, igual al backtest V0.1. El output actual incluye sólo tiendas `tipo_canal='CIDEF'` con venta positiva observable al cutoff. Una tienda ausente NO se fabrica como cero y no recibe forecast.
+
+Output principal:
+
+```text
+forecast.company:
+  observed_to_date
+  learned_completion
+  training_observations
+  forecast_close
+  evaluable
+
+forecast.stores[]:
+  sucursal_id
+  sucursal
+  observed_to_date
+  learned_completion
+  training_observations
+  forecast_close
+  evaluable
+
+historical_accuracy:
+  company
+  stores_pooled
+```
+
+`historical_accuracy` reutiliza el mismo walk-forward del backtest y expone para el día solicitado MAPE, mediana APE, p75, p90, bias y cobertura cuando existen observaciones evaluables. Es evidencia de error histórico, no un confidence score.
+
+Validaciones principales:
+
+```text
+current_context_ok
+training_context_ok
+cutoff_is_current_open_month
+training_precedes_target
+company_formula_reconciles
+store_formula_reconciles
+store_scope_cidef_only
+stores_positive_observed_only
+target_actual_close_not_used
+no_future_evidence_used
+```
+
+No calcula meta, brecha contra meta, vendedor, escenarios, score ni recomendación. `predictability_day_v01` es una capacidad separada que puede interpretar cuándo la precisión histórica cumple tolerancias, pero no altera la fórmula de forecast. Persistencia exclusivamente runtime.
+
 ### `predictability_day_v01`
 
 Motor determinista de **selección de día predecible** para Familia 1 — EXPECTATIVA Y CIERRE. Versión interna: `0.1`.
