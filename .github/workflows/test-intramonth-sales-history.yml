@@ -1,0 +1,18 @@
+name: Test intramonth sales history
+
+on:
+  push:
+    paths:
+      - '.github/workflows/test-intramonth-sales-history.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: node --check lib/motors/intramonth-sales-history-context-v01.js
+      - run: node --test test/intramonth-sales-history-context.test.js test/daily-close-backtest-context.test.js
