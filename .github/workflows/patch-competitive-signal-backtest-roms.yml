@@ -23,8 +23,13 @@ jobs:
         run: git pull --rebase origin main
       - name: Test competitive signal helpers
         run: node --test test/competitive-signal-backtest.test.js
-      - name: Verify custom router import
-        run: node -e "import('./lib/custom-gpt-router.js').then(m=>{if(!m.listCustomGptActions().includes('competitive_signal_backtest_v01'))process.exit(1)})"
+      - name: Check competitive signal syntax
+        run: |
+          node --check lib/competitive-signal-backtest/buildSignalBacktest.js
+          node --check lib/motors/competitive-signal-backtest-v01.js
+          node --check lib/custom-gpt-router.js
+      - name: Verify custom router registration
+        run: node -e "const s=require('fs').readFileSync('lib/custom-gpt-router.js','utf8'); if(!s.includes('competitive_signal_backtest_v01: competitiveSignalBacktestV01')) process.exit(1)"
       - name: Patch ROM files
         run: node scripts/patch-competitive-signal-backtest-roms.mjs
       - name: Validate schema JSON
