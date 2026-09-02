@@ -2726,3 +2726,28 @@ warnings
 ```
 
 Cada elemento de `pareto_models[]` incluye `rank`, `modelo_id`, marca/modelo canónicos, ventas, participación y participación acumulada. El motor mide concentración y su evolución; **no** etiqueta por sí solo el resultado como frágil, sano o diversificado.
+
+
+## dealer_inventory_aging_v01
+
+**Familia:** 5 — ACCIONABILIDAD  
+**Availability:** AVAILABLE  
+**Version:** 0.1
+
+Pregunta productiva: ¿qué VIN del stock dealer actual superan un umbral de aging, dónde están y cuál es su contexto operacional?
+
+Contrato migrado desde el motor legado `dealer_inventory_aging`, preservando sus reglas de negocio validadas. La fuente pasa de RAW histórico a `vehiculo_canonico`.
+
+- Universo canónico: `vigente=true AND canal_salida='DEALER'`.
+- Aging: `aging_days = as_of - fecha_ingreso_stock`.
+- No usa `fecha_eta`.
+- La existencia de factura no elimina una unidad del stock dealer; esto preserva la semántica Forum validada.
+- Umbral parametrizable y exclusivo: `aging_days > min_days`; default `min_days=60`.
+- Identidad dealer/grupo usa IDs canónicos; dealer no resuelto se conserva como `NO_RESUELTO`, no se descarta.
+- No define `stock_disponible` ni interpreta reservado/tránsito/patio como exclusiones.
+
+Inputs: `min_days`, `as_of`, `dealer_id`, `dealer_group_id`, `detail_limit`.
+
+Outputs: `summary`, `by_dealer`, detalle VIN acotado y ordenado por mayor aging, `validation` y `warnings`.
+
+Validaciones: reconciliación de cobertura con/sin fecha de ingreso, aged <= stock con fecha, detalle acotado y sobre umbral, y preservación explícita de identidad dealer no resuelta.
