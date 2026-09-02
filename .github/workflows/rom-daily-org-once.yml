@@ -1,4 +1,4 @@
-name: One-time ROM daily organizational context
+name: One-time daily organizational context validation
 
 on:
   push:
@@ -6,23 +6,19 @@ on:
       - '.github/workflows/rom-daily-org-once.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  update-rom:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
-      - name: Insert capability documentation
-        run: python scripts/patch-rom-daily-org.py
-      - name: Commit ROM update
-        shell: bash
-        run: |
-          if git diff --quiet -- rom/motors.md; then exit 0; fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add rom/motors.md
-          git commit -m 'document daily organizational ventas context'
-          git push origin HEAD:main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run targeted tests
+        run: node --test test/ventas-daily-organizational-context.test.js test/ventas-organizational-context.test.js
