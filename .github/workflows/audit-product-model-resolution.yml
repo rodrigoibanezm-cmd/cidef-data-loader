@@ -18,7 +18,7 @@ jobs:
               -H 'content-type: application/json' \
               --data "$body" \
               https://cidef-data-loader.vercel.app/api/custom-gpt || true)
-            if [ "$code" = "200" ] && jq -e '.result.engine == "ventas_product_internal_model_resolution_audit_v01"' response.json >/dev/null 2>&1; then
+            if [ "$code" = "200" ] && jq -e '.result.engine == "ventas_product_internal_model_resolution_audit_v01" and .result.version == "0.2"' response.json >/dev/null 2>&1; then
               break
             fi
             if [ "$i" = "10" ]; then
