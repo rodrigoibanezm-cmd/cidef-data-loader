@@ -1270,6 +1270,7 @@ date_to: YYYY-MM-DD
 geography?:
   level: region | comuna
   values: string[]
+origin_group?: CHINESE | NON_CHINESE | UNKNOWN
 ```
 
 Fuentes:
@@ -1280,6 +1281,7 @@ producto_aliases_v01
 modelos_master_v01
 marcas_master_v01
 producto_portafolio_v01
+data/market-origin/CL.json
 ```
 
 Política:
@@ -1288,6 +1290,8 @@ Política:
 - unidades de mercado = `SUM(rvm_raw.cantidad)`;
 - el target debe pertenecer al portafolio CIDEF vigente;
 - los universos se observan desde `descripcion_segmento + descripcion_tipo + combustible` de RVM;
+- el filtro `origin_group` es opcional y se deriva del lookup Chile versionado; CN→CHINESE, país mapeado no-CN→NON_CHINESE y missing→UNKNOWN;
+- cuando se solicita `origin_group`, `units`, `rank`, `share` y `cumulativeShare` se recalculan dentro del peer group filtrado;
 - conserva todas las combinaciones observadas del target; el builder no decide materialidad;
 - la resolución de identidad contextual `RESUELTO` tiene precedencia sobre la genérica;
 - para aliases RVM a nivel MODELO, `contexto_modelo_raw` se compara contra `rvm_raw.modeo_version`;
