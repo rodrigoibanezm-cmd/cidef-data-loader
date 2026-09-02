@@ -448,7 +448,7 @@ Este contexto **no define** todavía benchmark, peer group, expectativa por unid
 
 ### `organizational_share_expectation_backtest_v01`
 
-Motor determinista de laboratorio para **Familia 4 — DESEMPEÑO RELATIVO**. Versión interna actual: `0.2`.
+Motor determinista de laboratorio para **Familia 4 — DESEMPEÑO RELATIVO**. Versión interna actual: `0.3`.
 
 Pregunta:
 
@@ -525,6 +525,10 @@ Métricas:
 
 ```text
 relative_gap_pp = 100 * (actual_share - expected_share)
+
+if expected_share is unavailable/non-evaluable:
+  relative_gap_pp = null
+
 MAE_pp
 bias_pp
 median_absolute_error_pp
@@ -604,6 +608,18 @@ source_months[]
 evaluable
 ```
 
+Invariante semántica del detalle:
+
+```text
+evaluable = true
+→ expected_share != null
+→ relative_gap_pp != null
+
+evaluable = false
+→ expected_share = null
+→ relative_gap_pp = null
+```
+
 El backend calcula `relative_gap_pp`; el LLM no debe recalcularlo. El detalle puede truncarse, pero las distribuciones del `summary` se calculan siempre sobre el universo evaluable completo.
 
 Validaciones principales:
@@ -623,6 +639,8 @@ seller_grain_includes_store
 common_comparison_window_equal
 has_common_evaluable_rows
 ```
+
+La versión `0.3` es un bugfix semántico de detalle: evita que `expected_share=null` sea tratado como cero al serializar `relative_gap_pp`. No cambia reconocimiento, series, cobertura evaluable, distribuciones, métricas, ranking ni selección de baseline.
 
 El motor **no define** todavía threshold de bajo desempeño, score, ranking de unidades, alertas, persistencia, deterioro, peer groups ni regla productiva final. Su responsabilidad es producir evidencia de backtest para seleccionar `expected_share` por grain y validar la señal relativa resultante.
 
