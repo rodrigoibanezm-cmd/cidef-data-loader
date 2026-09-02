@@ -1248,6 +1248,83 @@ Motores posteriores de Familia 2 deben recibir este contexto mediante `sharedCon
 
 Este motor/contexto **no define todavía competidores reales**, no incorpora microsegmento/precio y no hace afirmaciones de desplazamiento. Su responsabilidad es construir y auditar una sola vez el universo observable reusable del request.
 
+### `product_generation_context_v01`
+
+Contexto read-only de identidad estructural para **MASTER PRODUCT** y habilitante de Familia 2.
+
+Pregunta base:
+
+> ¿Cuál es el estado canónico de la relación MODEL → GENERATION → VERSION y qué evidencia estructurada soporta o contradice cada membership?
+
+Inputs opcionales:
+
+```text
+modelo_id: bigint
+version_id: bigint
+generation_id: bigint
+membership_status: RESOLVED | UNRESOLVED | CONFLICT
+include_evidence: boolean         default false
+limit: 1..200                    default 100
+```
+
+Fuentes:
+
+```text
+modelos_master_v01
+versiones_master_v01
+generaciones_master_v01
+version_generation_v01
+generation_evidence_v01
+```
+
+Política:
+
+- motor exclusivamente read-only; no crea generaciones, no hace backfill y no ejecuta DDL/DML;
+- `version_generation_v01` es la autoridad del estado canónico VERSION→GENERATION;
+- `RESOLVED` exige `generation_id` y VERSION/GENERATION deben pertenecer al mismo `modelo_id`;
+- `UNRESOLVED` conserva VERSION conocida sin fabricar GENERATION;
+- `CONFLICT` conserva evidencia incompatible sin seleccionar ganador;
+- nunca infiere generación desde nombre, portfolio, fuel, marketing label o similitud textual;
+- evidencia se devuelve solo si `include_evidence=true`;
+- si las tablas GENERATION todavía no existen en la base conectada, devuelve `warning` explícito en vez de fabricar contexto.
+
+Devuelve:
+
+```text
+engine
+version
+status
+policy
+sharedContext:
+  scope
+  tableState
+  summary:
+    version_count
+    generation_count
+    membership_rows
+    resolved
+    unresolved
+    conflict
+  generations[]
+  versions[]
+  evidence[]
+  validation
+  warnings[]
+```
+
+Validaciones principales:
+
+```text
+membership_covers_versions
+resolved_requires_generation
+nonresolved_has_no_generation
+resolved_stays_inside_model
+```
+
+La migración `028_producto_generation_schema_v01.sql` inicializa una fila `UNRESOLVED` por VERSION existente y un trigger hace lo mismo para VERSION futuras. Eso mantiene el grain 1:1 sin asignar ninguna generación.
+
+Este contexto **no define atributos físicos, competencia, precio, percentiles ni Pareto**. Su responsabilidad es exponer al agente la identidad estructural certificada antes de que otros motores consuman `length_mm`, `wheelbase_mm` u otras propiedades de generación.
+
 ### `org_sales_deterioration_backtest_v01`
 
 Motor determinista de diagnóstico para **Familia 3 — DETERIORO Y RED FLAGS** sobre organización comercial. Versión interna actual: `0.3`.
