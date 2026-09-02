@@ -17,6 +17,8 @@ jobs:
           node-version: 20
       - run: npm install --no-audit --no-fund
       - run: node --test test/dealer-inventory-aging-v01.test.js
+      - name: Refresh main before ROM patch
+        run: git pull --rebase origin main
       - run: node scripts/patch-dealer-aging-rom.mjs
       - name: Commit ROM if changed
         run: |
