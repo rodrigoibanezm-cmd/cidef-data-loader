@@ -2206,6 +2206,41 @@ Cada fila de señal contiene `month`, `sales`, `baseline`, `error`, `deviation_m
 
 `future_evaluation` permanece separado y nunca participa en `signal_evidence`. Validaciones explícitas: `episode_signal_evidence_complete` y `signal_context_uses_no_future_rows`. Output acotado reporta `matched_rows`, `returned_rows` y `truncated`.
 
+### `org_sales_deterioration_status_v01`
+
+Motor productivo de **Familia 3 — DETERIORO Y RED FLAGS**. Versión interna actual: `0.1`.
+
+Pregunta:
+
+> ¿Qué tiendas están actualmente en deterioro, desde cuándo y qué evidencia lo sustenta?
+
+Input:
+
+```text
+cutoff_month: YYYY-MM
+```
+
+Sólo acepta meses calendario cerrados en `America/Santiago`. No expone knobs de laboratorio. Regla certificada fija:
+
+```text
+grain = tienda
+baseline = moving_average_12
+deviation = historical_percentile
+persistence = deepening_2
+```
+
+Reutiliza `buildOrgDeteriorationRuntime()` y la semántica sparse de v0.4. Un episodio queda `DETERIORATING` desde su confirmación y permanece activo mientras las observaciones siguientes sigan adversas; una observación no adversa o un gap `UNKNOWN` rompe continuidad. No exige que cada mes posterior vuelva a profundizar.
+
+Estados:
+
+```text
+DETERIORATING
+NOT_DETERIORATING
+UNKNOWN
+```
+
+`UNKNOWN` preserva falta de observación actual, baseline insuficiente o desviación no evaluable; nunca se convierte en cero ni en estado saludable. Cada unidad devuelve observación actual, ventas, MA12, error, historical percentile y, cuando aplica, onset, confirmation y las filas que originalmente confirmaron el episodio.
+
 ### `org_sales_observation_semantics_audit_v01`
 
 Capacidad determinista **AUDIT_ONLY / DISCOVERY_ONLY** para Familia 3. Versión interna actual: `0.2`. No es una nueva familia ni modifica `org_sales_deterioration_backtest_v01`.
