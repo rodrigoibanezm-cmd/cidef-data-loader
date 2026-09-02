@@ -29,7 +29,8 @@ jobs:
           node --check lib/motors/competitive-signal-backtest-v01.js
           node --check lib/custom-gpt-router.js
       - name: Verify custom router registration
-        run: node -e "const s=require('fs').readFileSync('lib/custom-gpt-router.js','utf8'); if(!s.includes('competitive_signal_backtest_v01: competitiveSignalBacktestV01')) process.exit(1)"
+        run: |
+          node -e "const s=require('fs').readFileSync('lib/custom-gpt-router.js','utf8'); if(!s.includes('competitive_signal_backtest_v01: competitiveSignalBacktestV01')) process.exit(1)"
       - name: Patch ROM files
         run: node scripts/patch-competitive-signal-backtest-roms.mjs
       - name: Validate schema JSON
