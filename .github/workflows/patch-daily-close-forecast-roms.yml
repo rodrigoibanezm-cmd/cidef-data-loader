@@ -22,7 +22,7 @@ jobs:
       - name: Rebase latest main
         run: git pull --rebase origin main
       - name: Install dependencies
-        run: npm ci
+        run: npm install --ignore-scripts
       - name: Test productive daily close forecast
         run: |
           node --test test/daily-close-forecast.test.js
