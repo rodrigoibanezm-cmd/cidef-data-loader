@@ -1,0 +1,199 @@
+name: Finalize RVM market history v0.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rvm-market-history-finalize.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run affected tests
+        run: node --test test/rvm-market-history.test.js test/competitive-context.test.js test/competitive-share-trajectory.test.js
+      - name: Update ROM after tests pass
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          schema_path = Path('rom/schema.json')
+          schema = json.loads(schema_path.read_text())
+          schema['info']['version'] = '1.44.0'
+          action_enum = schema['components']['schemas']['CustomGptRequest']['properties']['action']['enum']
+          if 'rvm_market_history_v01' not in action_enum:
+              anchor = action_enum.index('competitive_inverse_share_movement_v01') + 1
+              action_enum.insert(anchor, 'rvm_market_history_v01')
+
+          schemas = schema['components']['schemas']
+          schemas['RvmPeriod'] = {
+              'type': 'object',
+              'required': ['kind'],
+              'properties': {
+                  'kind': {'type': 'string', 'enum': ['MONTH', 'YEAR', 'YTD', 'CUSTOM_RANGE']},
+                  'month': {'type': 'string', 'pattern': '^\\d{4}-(0[1-9]|1[0-2])$'},
+                  'year': {'type': 'integer', 'minimum': 1900, 'maximum': 2200},
+                  'through_date': {'type': 'string', 'format': 'date'},
+                  'date_from': {'type': 'string', 'format': 'date'},
+                  'date_to': {'type': 'string', 'format': 'date'}
+              },
+              'additionalProperties': False
+          }
+          schemas['RvmGeography'] = {
+              'type': 'object', 'required': ['level', 'values'],
+              'properties': {
+                  'level': {'type': 'string', 'enum': ['REGION', 'COMUNA']},
+                  'values': {'type': 'array', 'minItems': 1, 'maxItems': 100, 'uniqueItems': True, 'items': {'type': 'string'}}
+              }, 'additionalProperties': False
+          }
+          schemas['RvmUniverseDefinition'] = {
+              'type': 'object',
+              'properties': {
+                  'segment': {'type': 'string'}, 'type': {'type': 'string'}, 'fuel': {'type': 'string'},
+                  'geography': {'$ref': '#/components/schemas/RvmGeography'}
+              }, 'additionalProperties': False
+          }
+
+          action_input = schemas['ActionInput']
+          action_input['x-rvm-market-history-v01'] = {
+              'version': '0.1', 'availability': 'AVAILABLE',
+              'business_question': 'How did an explicitly defined RVM universe evolve through time, optionally broken down by one requested dimension?',
+              'units': 'SUM(rvm_raw.cantidad); never COUNT(*)',
+              'period_semantics': 'period OR period_a+period_b; MONTH/YEAR/YTD/CUSTOM_RANGE inclusive; open years are not accepted as full YEAR',
+              'universe_semantics': 'caller-explicit segment/type/fuel/geography filters using competitive_context_v01 normalization semantics; empty object means total RVM market',
+              'breakdown': 'optional one of SEGMENT, TYPE, FUEL, BRAND, MODEL, REGION, COMUNA; VERSION excluded',
+              'identity': 'BRAND/MODEL reuse the contextual/generic RVM->MASTER primitive from the competitive stack; ambiguous and unresolved units remain in the denominator',
+              'coverage': 'identity coverage is COMPLETE only with zero ambiguous and unresolved units; otherwise PARTIAL; no percentage threshold',
+              'reconciliation': 'all exhaustive breakdown buckets must sum to universe_units; resolved+ambiguous+unresolved must reconcile for identity breakdowns',
+              'comparison': 'delta_units=B-A; delta_pct=(B-A)/A; ZERO_BASE when A=0; comparability metadata is explicit and non-blocking',
+              'states': ['INVALID_PERIOD','INVALID_UNIVERSE_DIMENSION','NO_RVM_EVIDENCE','ZERO_BASE','IDENTITY_PARTIAL','IDENTITY_AMBIGUOUS_PRESENT','IDENTITY_UNRESOLVED_PRESENT','RECONCILIATION_FAILED','RESPONSE_TOO_LARGE'],
+              'exclusions': ['target CIDEF','target share/rank','product contribution','VERSION identity','materiality','Pareto','causal attribution','narrative']
+          }
+          props = action_input['properties']
+          props['period'] = {'$ref': '#/components/schemas/RvmPeriod'}
+          old_a = props['period_a']
+          old_b = props['period_b']
+          if 'oneOf' not in old_a:
+              props['period_a'] = {'oneOf': [old_a, {'$ref': '#/components/schemas/RvmPeriod'}], 'description': 'Closed YYYY-MM for sales contribution motors OR an RVM period object for rvm_market_history_v01.'}
+          if 'oneOf' not in old_b:
+              props['period_b'] = {'oneOf': [old_b, {'$ref': '#/components/schemas/RvmPeriod'}], 'description': 'Closed YYYY-MM for sales contribution motors OR an RVM period object for rvm_market_history_v01.'}
+          props['time_grain'] = {'type': 'string', 'enum': ['MONTH', 'YEAR'], 'default': 'MONTH', 'description': 'rvm_market_history_v01 output time grain.'}
+          props['universe_definition'] = {'$ref': '#/components/schemas/RvmUniverseDefinition'}
+          props['breakdown'] = {'type': 'string', 'enum': ['SEGMENT','TYPE','FUEL','BRAND','MODEL','REGION','COMUNA'], 'description': 'Optional single exhaustive breakdown for rvm_market_history_v01.'}
+          marker = 'rvm_market_history_v01 accepts period OR period_a+period_b'
+          if marker not in action_input.get('description',''):
+              action_input['description'] = action_input.get('description','') + ' ' + marker + ', time_grain MONTH|YEAR, explicit universe_definition, and one optional breakdown.'
+          schema_path.write_text(json.dumps(schema, ensure_ascii=False, indent=2) + '\n')
+
+          motors_path = Path('rom/motors.md')
+          motors = motors_path.read_text()
+          if '### `rvm_market_history_v01`' not in motors:
+              section = r'''### `rvm_market_history_v01`
+
+Motor determinista productivo v0.1 de historia de mercado RVM.
+
+Pregunta:
+
+> ¿Cómo evolucionó un universo RVM explícitamente definido a través del tiempo y, opcionalmente, cómo se compone por una dimensión solicitada?
+
+Inputs:
+
+```text
+period OR period_a + period_b
+period.kind: MONTH | YEAR | YTD | CUSTOM_RANGE
+time_grain: MONTH | YEAR
+universe_definition?:
+  segment?
+  type?
+  fuel?
+  geography?: { level: REGION | COMUNA, values[] }
+breakdown?: SEGMENT | TYPE | FUEL | BRAND | MODEL | REGION | COMUNA
+```
+
+Semántica:
+
+- unidad analítica = `SUM(rvm_raw.cantidad)`; nunca `COUNT(*)`;
+- períodos son inclusivos; YEAR sólo representa años completos, YTD exige `through_date` y CUSTOM_RANGE exige ambos límites;
+- comparación A/B no exige comparabilidad perfecta: devuelve metadata `SAME_YTD_BOUNDARY`, `DIFFERENT_YTD_BOUNDARY`, `SAME_CALENDAR_WINDOW`, `SAME_DURATION` o `DIFFERENT_DURATION` según corresponda;
+- el universo siempre lo entrega el caller; `{}` significa mercado RVM total;
+- `segment`, `type` y `fuel` reutilizan normalización exacta del stack `competitive_context_v01`; geografía reutiliza `region` / `comuna_adquisicion` normalizados;
+- el breakdown se aplica después de fijar el universo y no redefine el denominador;
+- BRAND/MODEL reutilizan exactamente la primitive compartida de aliases RVM contextuales/genéricos y resolución `RESUELTO / AMBIGUO / NO_RESUELTO` del stack competitivo;
+- unidades ambiguas/no resueltas nunca desaparecen del denominador.
+
+Output:
+
+```text
+scope
+periods[]
+series[]: period + universe_units
+comparison?: period_a_units, period_b_units, delta_units, delta_pct, comparability
+breakdown[]?: identity_status cuando aplica, units, share_of_universe
+coverage
+validation
+warnings
+```
+
+Coverage identitaria BRAND/MODEL:
+
+```text
+total_rows
+total_units
+resolved_units
+ambiguous_units
+unresolved_units
+resolved_unit_pct
+ambiguous_unit_pct
+unresolved_unit_pct
+corrections_negative_units
+non_standard_quantity_rows
+status = COMPLETE | PARTIAL
+```
+
+`COMPLETE` exige cero unidades ambiguas y cero no resueltas. No existe threshold porcentual.
+
+Reconciliación:
+
+```text
+SUM(all exhaustive breakdown buckets) = universe_units
+RESOLVED + AMBIGUOUS + UNRESOLVED = universe_units  # BRAND/MODEL
+```
+
+Si falla, `validation.reconciliation_status = RECONCILIATION_FAILED`. Si A=0, `delta_pct=null` y `reason=ZERO_BASE`. Estados/warnings soportados: `INVALID_PERIOD`, `INVALID_UNIVERSE_DIMENSION`, `NO_RVM_EVIDENCE`, `ZERO_BASE`, `IDENTITY_PARTIAL`, `IDENTITY_AMBIGUOUS_PRESENT`, `IDENTITY_UNRESOLVED_PRESENT`, `RECONCILIATION_FAILED`, `RESPONSE_TOO_LARGE`.
+
+Exclusiones V0.1: no conoce target CIDEF, no calcula share/rank de target, no calcula contribución de producto, no soporta VERSION identity, materialidad, Pareto, causalidad ni narrativa.
+
+Availability:
+
+```text
+AVAILABLE
+version = 0.1
+endpoint = /api/custom-gpt
+```
+
+'''
+              motors = motors.replace('## NOT AVAILABLE', section + '## NOT AVAILABLE')
+              motors_path.write_text(motors)
+          PY
+      - name: Validate ROM JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('rom/schema.json','utf8')); console.log('ROM_SCHEMA_OK')"
+      - name: Commit final ROM and remove temporary workflow
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/rvm-market-history-finalize.yml
+          git add rom/schema.json rom/motors.md
+          git commit -m "Finalize rvm_market_history_v01 v0.1"
+          git push origin main
