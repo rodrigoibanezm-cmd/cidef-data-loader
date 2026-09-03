@@ -1,6 +1,6 @@
 import { listCustomGptActions, runCustomGptAction } from '../lib/custom-gpt-router.js';
 
-const ROUTER_VERSION = '1.40.0';
+const ROUTER_VERSION = '1.41.0';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {

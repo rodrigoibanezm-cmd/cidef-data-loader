@@ -3013,6 +3013,73 @@ Política:
 
 Devuelve `period`, `monthly[]`, `coverage`, `validation` y `warnings`; cada Pareto incluye modelo canónico, ventas, share y share acumulado.
 
+### `ventas_product_change_contribution_v01`
+
+Motor determinista productivo v0.1 de contribución aritmética del producto al cambio de ventas CIDEF.
+
+Pregunta:
+
+> ¿Qué modelos explican aritméticamente el cambio de ventas CIDEF entre dos meses cerrados?
+
+Inputs:
+
+```text
+period_a: YYYY-MM
+period_b: YYYY-MM
+```
+
+Contrato:
+
+- exige `period_a < period_b` y ambos meses calendario cerrados en `America/Santiago`;
+- compara exactamente dos meses individuales; el caller define la comparación;
+- usa `cutoff_month = period_b`;
+- reconoce ventas primero con `ventas_context_v01` y después aplica la misma identidad de producto de `ventas_product_concentration_v01` v0.2 mediante `buildProductModelResolutionContext`;
+- identidad = alias certificado de ventas y luego evidencia VIN exacta sólo cuando converge determinísticamente; no usa fuzzy, substring, majority vote ni inferencia;
+- grain principal = una fila por `modelo_id` RESOLVED observado en al menos uno de los dos meses;
+- un modelo ausente en un período conserva venta `0`; nunca se representa como missing;
+- `UNRESOLVED` y `AMBIGUOUS` no son modelos ficticios y permanecen separados en `identity_residual`.
+
+Cálculos:
+
+```text
+model.delta_sales = sales_period_b - sales_period_a
+delta_cidef = cidef.period_b_sales - cidef.period_a_sales
+contribution_pct_of_cidef_delta = 100 * model.delta_sales / delta_cidef
+```
+
+Si `delta_cidef = 0`, la contribución porcentual es `null`; los deltas por modelo permanecen válidos. No aplica valor absoluto, epsilon, caps, Pareto, top-N, materialidad ni causalidad. Por eso son válidas contribuciones mayores a 100% o menores a 0%.
+
+Ranking y orden:
+
+```text
+models[]: ABS(delta_sales) DESC, modelo_id ASC
+support_rank: sólo delta_sales > 0; delta_sales DESC, modelo_id ASC
+drag_rank: sólo delta_sales < 0; delta_sales ASC, modelo_id ASC
+delta_sales = 0: ambos ranks null
+```
+
+Devuelve `cidef`, todos los `models[]`, `identity_residual`, cobertura por período, validaciones y warnings. Si falta metadata de catálogo conserva `modelo_id`, devuelve `marca/modelo = null` y emite warning.
+
+Reconciliaciones:
+
+```text
+cidef por período = resolved + unresolved + ambiguous
+SUM(models.sales_period_x) = resolved_x
+SUM(models.delta_sales) = resolved_b - resolved_a
+identity_residual.total.delta_sales = unresolved_delta + ambiguous_delta
+delta_cidef = SUM(models.delta_sales) + identity_residual.total.delta_sales
+delta_cidef = cidef.period_b_sales - cidef.period_a_sales
+modelo_id es único en models[]
+```
+
+Availability:
+
+```text
+AVAILABLE
+version = 0.1
+endpoint = /api/custom-gpt
+```
+
 ### `dealer_inventory_aging_v01`
 
 Motor productivo read-only de aging de inventario dealer sobre el estado actual canónico.
