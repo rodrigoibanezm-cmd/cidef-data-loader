@@ -2279,6 +2279,7 @@ origin_group: CHINESE | NON_CHINESE   required
 geography?: region | comuna
 pair_offset?: integer >= 0            default 0
 pair_limit?: integer 1..50            default 20
+min_evaluable_transitions?: integer >= 1
 ```
 
 Dependencias compartidas:
@@ -2334,7 +2335,19 @@ BIDIRECTIONAL           se observaron ambos sentidos
 NO_CLEAR_PATTERN        no se observó ningún movimiento inverso evaluable
 ```
 
-No existe score, probabilidad, threshold adicional, causalidad ni sustitución. `inverseDirectionRate = inverseDirectionOccurrences / jointEvaluableTransitions` es una proporción transparente, no una probabilidad.
+No existe score, probabilidad, threshold hardcodeado, causalidad ni sustitución. `inverseDirectionRate = inverseDirectionOccurrences / jointEvaluableTransitions` es una proporción transparente, no una probabilidad.
+
+Filtro opcional de evidencia:
+
+```text
+min_evaluable_transitions informado
+→ sólo jointEvaluableTransitions >= min_evaluable_transitions participa del ranking
+
+min_evaluable_transitions omitido
+→ no se filtran relaciones por cantidad de evidencia
+```
+
+El filtro no cambia `date_from/date_to`, no define una ventana temporal y no altera el cálculo de relaciones ni movimientos.
 
 Grain:
 
@@ -2367,6 +2380,15 @@ transitionDetail[]
 
 `transitionDetail[]` conserva todas las transiciones candidatas. Las no evaluables incluyen `exclusionReason` y deltas nulos.
 
+Metadata de filtro y transporte:
+
+```text
+totalRelations
+eligibleRelations
+excludedByMinEvidence
+returnedRelations
+```
+
 Orden de transporte:
 
 ```text
@@ -2376,7 +2398,7 @@ jointEvaluableTransitions DESC
 pairKey ASC
 ```
 
-`pair_offset/pair_limit` se aplican después de calcular todas las relaciones y son sólo paginación.
+El orden se aplica sólo a relaciones elegibles. `pair_offset/pair_limit` se aplican después del filtro y son sólo paginación.
 
 Validaciones:
 
@@ -2394,6 +2416,8 @@ geography_preserved
 share_delta_reconciles
 transition_counts_reconcile
 detail_reconciles_with_summary
+evidence_filter_reconciles
+pagination_after_evidence_filter
 no_causal_claims_encoded
 ```
 

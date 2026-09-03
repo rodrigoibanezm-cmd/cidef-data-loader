@@ -15,6 +15,6 @@ test('custom GPT endpoint exposes router contract version on every response', as
   for (const req of [{ method: 'GET' }, { method: 'POST', body: {} }]) {
     const res = response();
     await handler(req, res);
-    assert.equal(res.body.router_version, '1.39.0');
+    assert.equal(res.body.router_version, '1.40.0');
   }
 });
