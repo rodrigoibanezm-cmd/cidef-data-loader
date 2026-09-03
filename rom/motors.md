@@ -3264,6 +3264,58 @@ Política:
 
 Devuelve agregados por dealer/grupo, detalle acotado, cobertura, reconciliación y warnings.
 
+### `rvm_market_history_v01`
+
+Motor determinista productivo v0.1 de historia de mercado RVM.
+
+Pregunta:
+
+> ¿Cómo evolucionó un universo RVM explícitamente definido a través del tiempo y, opcionalmente, cómo se compone por una dimensión solicitada?
+
+Inputs:
+
+```text
+period OR period_a + period_b
+period.kind: MONTH | YEAR | YTD | CUSTOM_RANGE
+time_grain: MONTH | YEAR
+universe_definition?: segment?, type?, fuel?, geography?: { level: REGION | COMUNA, values[] }
+breakdown?: SEGMENT | TYPE | FUEL | BRAND | MODEL | REGION | COMUNA
+```
+
+Semántica:
+
+- unidad analítica = `SUM(rvm_raw.cantidad)`; nunca `COUNT(*)`;
+- períodos inclusivos; YEAR sólo años completos, YTD exige `through_date`, CUSTOM_RANGE exige ambos límites;
+- A/B devuelve comparabilidad explícita y no bloqueante: `SAME_YTD_BOUNDARY`, `DIFFERENT_YTD_BOUNDARY`, `SAME_CALENDAR_WINDOW`, `SAME_DURATION`, `DIFFERENT_DURATION`;
+- el universo siempre lo entrega el caller; `{}` significa mercado total;
+- `segment`, `type`, `fuel` y geografía reutilizan normalización exacta del stack competitivo;
+- breakdown se aplica después del universo y no redefine el denominador;
+- BRAND/MODEL reutilizan la primitive compartida de aliases RVM contextuales/genéricos y estados `RESUELTO / AMBIGUO / NO_RESUELTO`;
+- ambiguos/no resueltos nunca desaparecen del denominador.
+
+Output: `scope`, `periods[]`, `series[]`, `comparison?`, `breakdown?`, `coverage`, `validation`, `warnings`.
+
+Coverage BRAND/MODEL incluye `total_rows`, `total_units`, `resolved_units`, `ambiguous_units`, `unresolved_units`, sus proporciones, `corrections_negative_units` y `non_standard_quantity_rows`. `COMPLETE` exige cero ambiguous y cero unresolved; de lo contrario `PARTIAL`, sin threshold porcentual.
+
+Reconciliación:
+
+```text
+SUM(all exhaustive breakdown buckets) = universe_units
+RESOLVED + AMBIGUOUS + UNRESOLVED = universe_units  # BRAND/MODEL
+```
+
+Si A=0, `delta_pct=null` y `reason=ZERO_BASE`. Estados/warnings: `INVALID_PERIOD`, `INVALID_UNIVERSE_DIMENSION`, `NO_RVM_EVIDENCE`, `ZERO_BASE`, `IDENTITY_PARTIAL`, `IDENTITY_AMBIGUOUS_PRESENT`, `IDENTITY_UNRESOLVED_PRESENT`, `RECONCILIATION_FAILED`, `RESPONSE_TOO_LARGE`.
+
+Exclusiones V0.1: target CIDEF, share/rank target, contribución de producto, VERSION identity, materialidad, Pareto, causalidad y narrativa.
+
+Availability:
+
+```text
+AVAILABLE
+version = 0.1
+endpoint = /api/custom-gpt
+```
+
 ## NOT AVAILABLE
 
 No forman parte de la superficie actual del agente:
