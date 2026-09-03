@@ -372,11 +372,12 @@ Política:
 - cada evento reconocido conserva las llaves fuente exactas `id_sucursal_vta` y `nombre_usuario` antes de cualquier `trim` usado para campos descriptivos;
 - identidad tienda = igualdad exacta de la llave fuente del evento contra `sucursales_master.id_sucursal_vta`;
 - identidad persona = igualdad exacta de la llave fuente del evento contra `personas_master.usuario_canonico`;
-- pertenencia vendedor = resolver persona y aplicar la regla compartida `VENDEDOR_CIDEF(persona_id, fecha_factura)`;
-- `VENDEDOR_CIDEF` exige rol `VENDEDOR_TIENDA` y asignación `VENDEDOR_TIENDA` vigentes en la fecha, con `sucursales_master.tipo_canal='CIDEF'`;
+- pertenencia vendedor = resolver persona y aplicar la regla compartida `VENDEDOR_CIDEF(persona_id, sucursal_id, fecha_factura)`;
+- `VENDEDOR_CIDEF` exige rol `VENDEDOR_TIENDA` y asignación `VENDEDOR_TIENDA` vigentes en la fecha, con `sucursales_master.tipo_canal='CIDEF'` y coincidencia exacta con la sucursal observada;
 - `ventas_raw` aporta actividad e identidad fuente, pero nunca crea pertenencia vendedor;
 - la sucursal histórica sale del mismo evento reconocido y nunca se reasigna mediante `persona_sucursal` vigente;
-- una persona puede aparecer en sucursales distintas a través del tiempo o dentro del mismo mes si así lo observa la venta reconocida;
+- una persona puede aparecer en sucursales distintas a través del tiempo sólo cuando la asignación MASTER vigente en cada fecha coincide con la sucursal observada;
+- `seller_attribution_monthly` conserva por tienda las ventas elegibles y los residuales `NO_RESUELTA`, `AMBIGUA`, `RESOLVED_NOT_VENDEDOR_CIDEF` y `VENDEDOR_CIDEF_STORE_MISMATCH`;
 - persistencia exclusivamente runtime; no crea tabla, fact, mart ni cubo.
 
 Grains:
@@ -418,9 +419,17 @@ seller_monthly[]:
   month
   sucursal_id
   persona_id
+  tipo_canal
   sales
   store_sales
   share_of_store
+  temporal_membership_verified
+  observed_store_assignment_match
+seller_attribution_monthly[]:
+  month
+  sucursal_id
+  seller_attribution_status
+  sales
 store_identity_monthly[]:
   month
   store_identity_status
@@ -442,6 +451,7 @@ recognized_sales_with_store_identity
 recognized_sales_with_seller_identity
 seller_eligible_sales
 seller_non_eligible_sales
+seller_store_mismatch_sales
 recognized_sales_with_both_identities
 unresolved_store
 unresolved_seller
@@ -456,10 +466,12 @@ Validaciones principales:
 ventas_context_reconciles
 monthly_cidef_reconciles_with_ventas_context
 sum(store_sales) por mes = cidef_sales
-seller_eligible_sales + seller_non_eligible_sales + unresolved_seller + ambiguous_seller = ventas reconocidas, en categorías mutuamente excluyentes
+seller_eligible_sales + seller_non_eligible_sales + seller_store_mismatch_sales + unresolved_seller + ambiguous_seller = ventas reconocidas, en categorías mutuamente excluyentes
 seller_store_sales_reconcile
 no_out_of_universe_seller
 no_seller_without_store
+seller_temporal_membership_verified
+seller_observed_store_assignment_matches
 uses_observed_store_only
 store_identity_keys_unique
 seller_identity_keys_unique
@@ -1389,11 +1401,11 @@ Universo vendedor V0.2:
 
 ```text
 persona resuelta
-AND VENDEDOR_CIDEF(persona_id, fecha_factura)
+AND VENDEDOR_CIDEF(persona_id, sucursal_id observado, fecha_factura)
 AND actual_close > 0 para sucursal observada + persona
 ```
 
-La pertenencia proviene de MASTER temporal; `ventas_raw` nunca crea rol ni asignación. La sucursal del grain permanece siendo la observada en la venta y no se reescribe con la asignación actual.
+La pertenencia proviene de MASTER temporal; `ventas_raw` nunca crea rol ni asignación. La sucursal del grain permanece siendo la observada en la venta, debe coincidir con la asignación efectiva y no se reescribe con la asignación actual.
 
 Semántica:
 
@@ -2563,7 +2575,7 @@ Política temporal:
 Identidad:
 
 - tienda se resuelve por igualdad exacta `ventas_raw.id_sucursal_vta -> sucursales_master.id_sucursal_vta`;
-- vendedor primero resuelve identidad exacta `ventas_raw.nombre_usuario -> personas_master.usuario_canonico` y luego exige `VENDEDOR_CIDEF(persona_id, fecha_factura)`;
+- vendedor primero resuelve identidad exacta `ventas_raw.nombre_usuario -> personas_master.usuario_canonico` y luego exige `VENDEDOR_CIDEF(persona_id, sucursal_id observado, fecha_factura)`;
 - una persona resuelta fuera del rol/asignación `VENDEDOR_TIENDA` CIDEF vigente para la fecha no entra al grain vendedor;
 - no existe fuzzy fallback;
 - `persona_sucursal` vigente no se usa para reescribir la historia;
@@ -3145,6 +3157,80 @@ delta_cidef = cidef.period_b_sales - cidef.period_a_sales
 sucursal_id es único en stores[]
 stores[] contiene exclusivamente tipo_canal=CIDEF
 ```
+
+Availability:
+
+```text
+AVAILABLE
+version = 0.1
+endpoint = /api/custom-gpt
+```
+
+### `ventas_seller_change_contribution_v01`
+
+Motor determinista productivo v0.1 de contribución aritmética de vendedores al cambio de ventas de cada tienda CIDEF.
+
+Pregunta:
+
+> ¿Qué vendedores explican aritméticamente el aumento o caída de ventas de cada tienda CIDEF entre dos meses cerrados?
+
+Inputs:
+
+```text
+period_a: YYYY-MM
+period_b: YYYY-MM
+```
+
+Contrato y universo:
+
+- exige `period_a < period_b` y meses calendario cerrados en `America/Santiago`;
+- compara exactamente los dos meses individuales definidos por el caller y usa `cutoff_month = period_b` antes del reconocimiento LAST-by-VIN;
+- grain principal = `sucursal_id × persona_id`; una persona puede aparecer en dos tiendas si su pertenencia temporal válida cambia entre A y B;
+- `VENDEDOR_CIDEF(fecha)` exige persona canónica resuelta, rol `VENDEDOR_TIENDA`, asignación `persona_sucursal` con ese rol válida en la fecha, sucursal `tipo_canal=CIDEF` y coincidencia con la tienda observada en la venta;
+- `valid_from`/`valid_to` se evalúan sobre cada fecha de venta; `vigente=true` actual nunca reasigna ventas históricas;
+- `ventas_raw` nunca crea pertenencia; supervisores, dealers, administrativos y personas fuera de asignación no entran en `sellers[]`;
+- la superficie usa la unión de las combinaciones válidas observadas en A o B y completa el período ausente con `0`.
+
+Cálculos:
+
+```text
+seller.delta_sales = seller.sales_period_b - seller.sales_period_a
+store.delta_sales = store.sales_period_b - store.sales_period_a
+delta_cidef = cidef.period_b_sales - cidef.period_a_sales
+contribution_pct_of_store_delta = 100 * seller.delta_sales / store.delta_sales
+contribution_pct_of_cidef_delta = 100 * seller.delta_sales / delta_cidef
+```
+
+Cada contribución porcentual es `null` cuando su denominador es `0`; los deltas permanecen válidos. No aplica valor absoluto a las fórmulas, epsilon, caps, normalización, Pareto, top-N, materialidad, causalidad ni evaluación subjetiva.
+
+Residual y metadata:
+
+- cada tienda devuelve `seller_residual` con ventas A/B/delta y desglose de persona no resuelta, persona ambigua, persona resuelta fuera de `VENDEDOR_CIDEF` y descalce entre asignación temporal y tienda observada;
+- `organizational_residual` se reutiliza sin cambios desde `ventas_store_change_contribution_v01`;
+- si falta metadata descriptiva se conserva `persona_id` o `sucursal_id`, el nombre queda `null` y se emite warning.
+
+Ranking dentro de cada tienda:
+
+```text
+sellers[]: ABS(delta_sales) DESC, persona_id ASC
+store_support_rank: sólo delta_sales > 0; delta_sales DESC, persona_id ASC
+store_drag_rank: sólo delta_sales < 0; delta_sales ASC, persona_id ASC
+delta_sales = 0: ambos ranks null
+```
+
+Reconciliaciones:
+
+```text
+por tienda y período: SUM(seller sales) + seller_residual = store sales
+por tienda: SUM(seller delta) + seller_residual delta = store delta
+global: SUM(store delta) + organizational_residual delta = delta_cidef
+delta_cidef = cidef.period_b_sales - cidef.period_a_sales
+sucursal_id × persona_id es único
+toda fila principal tiene pertenencia temporal VENDEDOR_CIDEF y coincide con su tienda observada
+cutoff_month = period_b y recognized_sales_after_cutoff = 0
+```
+
+`coverage`, `validation` y `warnings` exponen residuales, metadata faltante, evidencia temporal y reconciliación por tienda.
 
 Availability:
 

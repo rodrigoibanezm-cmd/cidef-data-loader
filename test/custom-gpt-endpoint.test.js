@@ -15,8 +15,23 @@ test('custom GPT endpoint exposes router contract version on every response', as
   for (const req of [{ method: 'GET' }, { method: 'POST', body: {} }]) {
     const res = response();
     await handler(req, res);
-    assert.equal(res.body.router_version, '1.42.0');
+    assert.equal(res.body.router_version, '1.43.0');
   }
+});
+
+test('custom GPT endpoint advertises and dispatches seller change contribution action', async () => {
+  const advertised = response();
+  await handler({ method: 'POST', body: {} }, advertised);
+  assert.ok(advertised.body.allowedActions.includes('ventas_seller_change_contribution_v01'));
+
+  const dispatched = response();
+  await handler({ method: 'POST', body: {
+    action: 'ventas_seller_change_contribution_v01',
+    input: { period_a: '2026-07', period_b: '2026-07' },
+  } }, dispatched);
+  assert.equal(dispatched.body.action, 'ventas_seller_change_contribution_v01');
+  assert.match(dispatched.body.error, /period_a must be before period_b/);
+  assert.doesNotMatch(dispatched.body.error, /Unknown Custom GPT action/);
 });
 
 test('custom GPT endpoint advertises and dispatches store change contribution action', async () => {

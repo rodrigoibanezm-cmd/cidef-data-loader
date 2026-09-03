@@ -5,15 +5,18 @@ import { calculateVentasOrganizationalContext } from '../lib/ventas-org/buildVen
 function identityMaps() {
   return {
     stores: new Map([
-      ['10 ', { canonical_id: '1', nombre_canonico: 'TIENDA A', match_count: 1 }],
-      ['20', { canonical_id: '2', nombre_canonico: 'TIENDA B', match_count: 1 }],
+      ['10 ', { canonical_id: '1', nombre_canonico: 'TIENDA A', tipo_canal: 'CIDEF', match_count: 1 }],
+      ['20', { canonical_id: '2', nombre_canonico: 'TIENDA B', tipo_canal: 'CIDEF', match_count: 1 }],
     ]),
     sellers: new Map([
       ['SELLER1', { canonical_id: '101', nombre_canonico: 'UNO', validated: true, match_count: 1 }],
       ['SELLER2', { canonical_id: '102', nombre_canonico: 'DOS', validated: true, match_count: 1 }],
     ]),
     vendedorCidef: new Map([
-      ['101', [{ sucursal_id: '1', valid_from: null, valid_to: null, vigente: true }]],
+      ['101', [
+        { sucursal_id: '1', valid_from: null, valid_to: null, vigente: true },
+        { sucursal_id: '2', valid_from: null, valid_to: null, vigente: true },
+      ]],
       ['102', [{ sucursal_id: '1', valid_from: null, valid_to: null, vigente: true }]],
     ]),
   };
@@ -101,8 +104,8 @@ test('resolved people outside VENDEDOR_CIDEF never enter seller_monthly', () => 
 test('VENDEDOR_CIDEF eligibility follows historical reassignment intervals', () => {
   const maps = identityMaps();
   maps.vendedorCidef.set('101', [
-    { sucursal_id: '9', valid_from: null, valid_to: '2026-06-30', vigente: false },
-    { sucursal_id: '8', valid_from: '2026-07-01', valid_to: null, vigente: true },
+    { sucursal_id: '1', valid_from: null, valid_to: '2026-06-30', vigente: false },
+    { sucursal_id: '2', valid_from: '2026-07-01', valid_to: null, vigente: true },
   ]);
   const source = ventasContext([
     { source_id: '1', fecha_venta_iso: '2026-06-30T00:00:00.000Z', mes_venta: '2026-06', sucursal_source_key: '10 ', vendedor_source_key: 'SELLER1' },
@@ -113,5 +116,26 @@ test('VENDEDOR_CIDEF eligibility follows historical reassignment intervals', () 
     source, maps, { startMonth: '2026-06', endMonth: '2026-07' },
   );
   assert.equal(result.seller_monthly.reduce((sum, row) => sum + row.sales, 0), 2);
+  assert.ok(result.seller_monthly.every((row) => row.observed_store_assignment_match));
   assert.equal(result.validation.no_out_of_universe_seller, true);
+});
+
+test('VENDEDOR_CIDEF never crosses an observed store assignment', () => {
+  const maps = identityMaps();
+  maps.vendedorCidef.set('101', [
+    { sucursal_id: '1', valid_from: null, valid_to: '2026-06-30', vigente: false },
+    { sucursal_id: '2', valid_from: '2026-07-01', valid_to: null, vigente: true },
+  ]);
+  const source = ventasContext([
+    { source_id: '1', fecha_venta_iso: '2026-06-15T00:00:00.000Z', mes_venta: '2026-06', sucursal_source_key: '20', vendedor_source_key: 'SELLER1' },
+  ], [{ month: '2026-06', sales: 1 }]);
+  const result = calculateVentasOrganizationalContext(
+    source, maps, { startMonth: '2026-06', endMonth: '2026-06' },
+  );
+  assert.equal(result.seller_monthly.length, 0);
+  assert.deepEqual(result.seller_attribution_monthly, [{
+    month: '2026-06', sucursal_id: '2',
+    seller_attribution_status: 'VENDEDOR_CIDEF_STORE_MISMATCH', sales: 1,
+  }]);
+  assert.equal(result.coverage.seller_store_mismatch_sales, 1);
 });
