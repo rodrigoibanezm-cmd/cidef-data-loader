@@ -410,6 +410,7 @@ cidef_monthly[]:
 store_monthly[]:
   month
   sucursal_id
+  tipo_canal
   sales
   cidef_sales
   share_of_cidef
@@ -420,8 +421,14 @@ seller_monthly[]:
   sales
   store_sales
   share_of_store
+store_identity_monthly[]:
+  month
+  store_identity_status
+  tipo_canal
+  sales
 identity_metadata
 coverage
+temporal_evidence
 validation
 warnings
 ```
@@ -3070,6 +3077,73 @@ identity_residual.total.delta_sales = unresolved_delta + ambiguous_delta
 delta_cidef = SUM(models.delta_sales) + identity_residual.total.delta_sales
 delta_cidef = cidef.period_b_sales - cidef.period_a_sales
 modelo_id es único en models[]
+```
+
+Availability:
+
+```text
+AVAILABLE
+version = 0.1
+endpoint = /api/custom-gpt
+```
+
+### `ventas_store_change_contribution_v01`
+
+Motor determinista productivo v0.1 de contribución aritmética de tiendas al cambio de ventas CIDEF.
+
+Pregunta:
+
+> ¿Qué tiendas explican aritméticamente el cambio de ventas CIDEF entre dos meses cerrados?
+
+Inputs:
+
+```text
+period_a: YYYY-MM
+period_b: YYYY-MM
+```
+
+Contrato:
+
+- exige `period_a < period_b` y ambos meses calendario cerrados en `America/Santiago`;
+- compara exactamente dos meses individuales definidos por el caller;
+- construye `ventas_organizational_context_v01` con `cutoff_month = period_b` aplicado antes del reconocimiento LAST-by-VIN;
+- reutiliza exclusivamente la identidad exacta de sucursal y `tipo_canal` del contexto organizacional;
+- grain principal = una fila por `sucursal_id` resuelta con `tipo_canal=CIDEF`, observada en A o B;
+- una tienda ausente en un período conserva venta `0`; nunca se representa como missing;
+- `DEALER`, `DEALER_AGREGADO` y `NO_COMERCIAL` nunca entran en `stores[]`;
+- ventas `NO_RESUELTA`, `AMBIGUA` o resueltas a un canal no CIDEF permanecen explícitas en `organizational_residual`.
+
+Cálculos:
+
+```text
+store.delta_sales = sales_period_b - sales_period_a
+delta_cidef = cidef.period_b_sales - cidef.period_a_sales
+contribution_pct_of_cidef_delta = 100 * store.delta_sales / delta_cidef
+```
+
+Si `delta_cidef = 0`, la contribución porcentual es `null`; los deltas por tienda permanecen válidos. No aplica valor absoluto a la fórmula, epsilon, caps, Pareto, top-N, materialidad ni causalidad. Son válidas contribuciones mayores a 100% o menores a 0%.
+
+Ranking y orden:
+
+```text
+stores[]: ABS(delta_sales) DESC, sucursal_id ASC
+support_rank: sólo delta_sales > 0; delta_sales DESC, sucursal_id ASC
+drag_rank: sólo delta_sales < 0; delta_sales ASC, sucursal_id ASC
+delta_sales = 0: ambos ranks null
+```
+
+Devuelve `cidef`, todos los `stores[]`, `organizational_residual`, cobertura por período, validaciones y warnings. El residual conserva por separado `unresolved_store`, `ambiguous_store` y el detalle de canales en `resolved_non_cidef`. Si falta metadata descriptiva conserva `sucursal_id`, devuelve `sucursal=null` y emite warning.
+
+Reconciliaciones:
+
+```text
+cidef por período = resolved_store_sales + organizational_residual
+SUM(stores.sales_period_x) = resolved_store_sales_x
+SUM(stores.delta_sales) = resolved_store_sales_b - resolved_store_sales_a
+delta_cidef = SUM(stores.delta_sales) + organizational_residual.total.delta_sales
+delta_cidef = cidef.period_b_sales - cidef.period_a_sales
+sucursal_id es único en stores[]
+stores[] contiene exclusivamente tipo_canal=CIDEF
 ```
 
 Availability:
