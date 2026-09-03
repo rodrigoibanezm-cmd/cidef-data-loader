@@ -96,6 +96,13 @@ OUTPUT debe indicar:
 
 NO afirmar causalidad de transferencia de clientes sin evidencia adicional.
 
+Implementación productiva vigente:
+
+- `competitive_relation_v01` define los peers relacionados mediante la regla temporal certificada;
+- `competitive_inverse_share_movement_v01` describe movimientos inversos de share entre meses consecutivos joint-active dentro del período solicitado;
+- múltiples targets se analizan como modelos individuales; no existe todavía una entidad competitiva agregada CIDEF;
+- ausencias synthetic zero-fill, entradas tardías, desapariciones y gaps no generan deltas observados.
+
 ### COMPETIDOR GANA TERRENO A CIDEF
 
 Aplicar contrato inverso con las mismas exigencias de evidencia.

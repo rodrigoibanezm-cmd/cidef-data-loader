@@ -1734,6 +1734,28 @@ last_evaluable_day
 
 No hardcodea los días resultantes, no optimiza el forecast y no calcula todavía el forecast live del mes actual.
 
+### `intramonth_sales_history_context_v01`
+
+Contexto determinista v0.1 de historia diaria intrames para Familia 1.
+
+Inputs:
+
+```text
+start_month: YYYY-MM
+end_month: YYYY-MM
+```
+
+Política:
+
+- reconocimiento cutoff-safe LAST-by-VIN; filtra evidencia temporal antes de reconocer;
+- acepta meses cerrados y el mes actual abierto hasta la fecha observable en `America/Santiago`;
+- devuelve grain CIDEF `target_month × cutoff_date` y grain tienda `target_month × cutoff_date × sucursal_id`;
+- tienda usa semántica `SPARSE_POSITIVE`; ausencia de fila no significa cero;
+- `actual_close` es `LABEL_RETROSPECTIVE` sólo para meses cerrados y es null en el mes abierto;
+- no calcula ratios, trayectorias, forecasts, thresholds ni alertas.
+
+Devuelve `cidef_daily`, `store_daily`, cobertura cutoff-safe, validaciones temporales y warnings.
+
 
 ### `ventas_product_sales_v01`
 
@@ -2238,6 +2260,144 @@ no_self_relations
 ```
 
 Warnings del stack competitivo se propagan. Persistencia exclusivamente runtime; no crea tabla de competidores. Esta V0.1 no afirma sustitución causal ni que un modelo robe ventas a otro: certifica únicamente una relación competitiva temporal bajo la regla cerrada.
+
+### `competitive_inverse_share_movement_v01`
+
+Motor productivo determinista v0.1 para **Familia 2 — POSICIÓN COMPETITIVA**.
+
+Pregunta:
+
+> Durante el período solicitado, cuando un modelo target gana o pierde share, ¿qué movimientos inversos se observan en sus peers relacionados?
+
+Inputs:
+
+```text
+target_model_ids: bigint[]
+date_from: YYYY-MM-DD
+date_to: YYYY-MM-DD
+origin_group: CHINESE | NON_CHINESE   required
+geography?: region | comuna
+pair_offset?: integer >= 0            default 0
+pair_limit?: integer 1..50            default 20
+```
+
+Dependencias compartidas:
+
+```text
+competitive_relation_v01 rule v0.1
+competitive_signal_backtest_v01 monthly pair evidence v0.2
+```
+
+El motor ejecuta el stack competitivo una sola vez. Selecciona peers exclusivamente con la regla certificada de `competitive_relation_v01` y calcula cambios de share desde la matriz mensual ya construida; no vuelve a leer RVM, no redefine identidad, universo, denominador, share, rank, `origin_group`, `observed` ni `joint-active`.
+
+Unidad target V0.1:
+
+```text
+modelo_id individual
+```
+
+Varios `target_model_ids` se procesan por separado. La superficie competitiva vigente no define una entidad agregada CIDEF, por lo que este motor no suma modelos para simularla.
+
+Transición evaluable:
+
+```text
+meses calendario adyacentes dentro del request
+AND target observed=true en ambos extremos
+AND peer observed=true en ambos extremos
+AND share finito para ambas entidades en ambos extremos
+```
+
+Una fila synthetic zero-fill permanece inactiva. Las apariciones, desapariciones y gaps no se convierten en share cero observado y nunca se cruzan para calcular deltas.
+
+Clasificación por transición:
+
+```text
+target_delta_share_pp > 0 AND peer_delta_share_pp < 0
+  => TARGET_GAIN_PEER_LOSS
+
+target_delta_share_pp < 0 AND peer_delta_share_pp > 0
+  => TARGET_LOSS_PEER_GAIN
+
+mismo signo estricto
+  => SAME_DIRECTION
+
+al menos un delta igual a cero
+  => FLAT_OR_ONE_SIDED
+```
+
+`relationshipSummary` es descriptivo:
+
+```text
+TARGET_GAIN_PEER_LOSS   sólo se observó ese movimiento inverso
+TARGET_LOSS_PEER_GAIN   sólo se observó el movimiento inverso opuesto
+BIDIRECTIONAL           se observaron ambos sentidos
+NO_CLEAR_PATTERN        no se observó ningún movimiento inverso evaluable
+```
+
+No existe score, probabilidad, threshold adicional, causalidad ni sustitución. `inverseDirectionRate = inverseDirectionOccurrences / jointEvaluableTransitions` es una proporción transparente, no una probabilidad.
+
+Grain:
+
+```text
+target_model_id × peer_entity_key relacionado × peer_universe × requested period
+```
+
+Cada fila devuelve:
+
+```text
+pairKey
+targetModelId
+peer
+peerUniverse
+period
+relationEvidence
+candidateTransitions
+jointEvaluableTransitions
+targetGainMonths[]
+targetLossMonths[]
+targetGainPeerLoss { occurrences, targetShareChangePp, peerShareChangePp }
+targetLossPeerGain { occurrences, targetShareChangePp, peerShareChangePp }
+sameDirectionOccurrences
+flatOrOneSidedOccurrences
+inverseDirectionOccurrences
+inverseDirectionRate
+relationshipSummary
+transitionDetail[]
+```
+
+`transitionDetail[]` conserva todas las transiciones candidatas. Las no evaluables incluyen `exclusionReason` y deltas nulos.
+
+Orden de transporte:
+
+```text
+inverseDirectionRate DESC NULLS LAST
+inverseDirectionOccurrences DESC
+jointEvaluableTransitions DESC
+pairKey ASC
+```
+
+`pair_offset/pair_limit` se aplican después de calcular todas las relaciones y son sólo paginación.
+
+Validaciones:
+
+```text
+source_signal_backtest_ok
+source_monthly_share_reconciles
+relation_count_reconciles
+selected_pair_keys_unique
+no_out_of_period_evidence
+no_invalid_temporal_crossing
+no_self_pair
+peer_universe_preserved
+origin_group_preserved
+geography_preserved
+share_delta_reconciles
+transition_counts_reconcile
+detail_reconciles_with_summary
+no_causal_claims_encoded
+```
+
+Persistencia exclusivamente runtime. El resultado describe co-movimientos inversos observados; no afirma que una venta o cliente se haya transferido entre modelos.
 
 ### `product_generation_context_v01`
 
@@ -2773,44 +2933,6 @@ La versión `0.2` no cambia OLD, NEW, reconocimiento, identidad, baseline, desvi
 
 Esta capacidad conserva la evidencia diagnóstica que validó `OBSERVED_POSITIVE / ACTIVE_ZERO / UNKNOWN` antes de incorporarla a `org_sales_deterioration_backtest_v01` v0.4. Sigue siendo AUDIT_ONLY y no selecciona la regla final de deterioro.
 
-## NOT AVAILABLE
-
-No forman parte de la superficie actual del agente:
-
-- `join_tables`
-- `vin_olap`
-- `contextual_slice`
-- imports
-- refresh
-- operaciones MASTER/canónicas temporales
-- DDL/DML
-- SQL libre
-
-Pueden existir internamente en el repositorio o en el router multi-tenant, pero el agente no debe asumir que están disponibles.
-
-## Cómo nace un motor nuevo
-
-Cuando una pregunta no puede cerrarse con evidencia exploratoria simple, el objetivo no es simular el cálculo manualmente indefinidamente.
-
-Se debe especificar un motor determinista con:
-
-```text
-name
-business_question
-inputs
-source_tables
-identity_dependencies
-calculation
-filters
-output
-coverage
-warnings
-validation
-shared_dependencies
-```
-
-Después de implementado y validado, ese motor puede incorporarse a la superficie dedicada del agente si resulta útil para seguir diseñando o probando familias superiores.
-
 ### `ventas_product_model_resolution_v01`
 
 Motor determinista productivo de identidad de producto para ventas reconocidas.
@@ -2866,3 +2988,65 @@ Política:
 - no etiqueta el resultado como sano/frágil ni crea historia materializada.
 
 Devuelve `period`, `monthly[]`, `coverage`, `validation` y `warnings`; cada Pareto incluye modelo canónico, ventas, share y share acumulado.
+
+### `dealer_inventory_aging_v01`
+
+Motor productivo read-only de aging de inventario dealer sobre el estado actual canónico.
+
+Inputs:
+
+```text
+min_days?: integer >= 0       default 60; threshold exclusivo
+as_of?: YYYY-MM-DD            default CURRENT_DATE
+dealer_id?: bigint
+dealer_group_id?: bigint
+detail_limit?: integer 1..200
+```
+
+Política:
+
+- consume `vehiculo_canonico` y las identidades canónicas de dealer/dealer group;
+- aging = `as_of - fecha_ingreso_stock`; nunca usa `fecha_eta`;
+- devuelve vehículos con `aging_days > min_days`;
+- conserva identidad dealer no resuelta explícitamente;
+- `min_days` es caller-configurable y no forma parte de una etiqueta de negocio fija.
+
+Devuelve agregados por dealer/grupo, detalle acotado, cobertura, reconciliación y warnings.
+
+## NOT AVAILABLE
+
+No forman parte de la superficie actual del agente:
+
+- `join_tables`
+- `vin_olap`
+- `contextual_slice`
+- imports
+- refresh
+- operaciones MASTER/canónicas temporales
+- DDL/DML
+- SQL libre
+
+Pueden existir internamente en el repositorio o en el router multi-tenant, pero el agente no debe asumir que están disponibles.
+
+## Cómo nace un motor nuevo
+
+Cuando una pregunta no puede cerrarse con evidencia exploratoria simple, el objetivo no es simular el cálculo manualmente indefinidamente.
+
+Se debe especificar un motor determinista con:
+
+```text
+name
+business_question
+inputs
+source_tables
+identity_dependencies
+calculation
+filters
+output
+coverage
+warnings
+validation
+shared_dependencies
+```
+
+Después de implementado y validado, ese motor puede incorporarse a la superficie dedicada del agente si resulta útil para seguir diseñando o probando familias superiores.
