@@ -3,7 +3,7 @@
   "info": {
     "title": "CIDEF Agent Domain API",
     "version": "1.50.0",
-    "description": "Read-only Action surface for the CIDEF agent. The public contract exposes four bounded domain operations instead of physical motor names. Each endpoint accepts a capability plus an input object and delegates through the single central custom-gpt router. Physical actions, audit motors, backtests, support motors and out-of-scope motors are not part of this public OpenAPI surface."
+    "description": "Public read-only OpenAPI surface for the CIDEF agent."
   },
   "servers": [
     {
@@ -15,7 +15,7 @@
       "post": {
         "operationId": "cidefSales",
         "summary": "Run one bounded CIDEF sales capability",
-        "description": "Use for certified commercial scope, internal CIDEF sales results, forecasts, product sales, contribution, organizational relative performance and deterioration status. COMMERCIAL_CONTEXT certifies COMPANY, OWN_STORES or DEALERS using vehiculo_canonico. Do not use for RVM market analysis, raw-table discovery or standalone longitudinal context.",
+        "description": "CIDEF sales and certified commercial scope.",
         "requestBody": {
           "required": true,
           "content": {
@@ -38,7 +38,7 @@
       "post": {
         "operationId": "cidefMarket",
         "summary": "Run one bounded RVM market capability",
-        "description": "Use for competitive context, market-share trajectory, competitive relations, inverse share movement and explicit RVM market history. Do not use for CIDEF internal sales or raw-table discovery.",
+        "description": "RVM market and competitive analysis.",
         "requestBody": {
           "required": true,
           "content": {
@@ -61,7 +61,7 @@
       "post": {
         "operationId": "cidefDiscovery",
         "summary": "Run one controlled CIDEF data-discovery capability",
-        "description": "Use only when table/schema/profile/query exploration is needed. Query capability is controlled and does not accept free SQL, DDL or DML.",
+        "description": "Controlled data discovery without free SQL.",
         "requestBody": {
           "required": true,
           "content": {
@@ -84,7 +84,7 @@
       "post": {
         "operationId": "cidefLongitudinal",
         "summary": "Run one explicit longitudinal context capability",
-        "description": "Use when the analytical answer requires understanding how a variable moved through multiple periods. The capability selects VENTAS, RVM or CRM longitudinal semantics explicitly. VENTAS and CRM require commercial_universe so domain is fixed before grain/filter/metric; CRM currently certifies COMPANY and OWN_STORES only. This endpoint does not infer a domain from keywords and does not run another analytical capability in parallel.",
+        "description": "Longitudinal context for VENTAS, RVM and CRM.",
         "requestBody": {
           "required": true,
           "content": {
@@ -190,7 +190,7 @@
       },
       "SalesInput": {
         "type": "object",
-        "description": "Bounded union of public SALES capability inputs. The selected capability remains authoritative about which fields are required or supported. COMMERCIAL_CONTEXT requires commercial_universe explicitly; backend validation remains authoritative.",
+        "description": "Public SALES capability input.",
         "properties": {
           "commercial_universe": { "type": "string", "enum": ["COMPANY", "OWN_STORES", "DEALERS"] },
           "period": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
@@ -215,7 +215,7 @@
       },
       "MarketInput": {
         "type": "object",
-        "description": "Bounded union of public MARKET capability inputs. Competitive capabilities operate on explicit target and universe semantics; contribution or causal substitution must not be inferred from these outputs.",
+        "description": "Public MARKET capability input.",
         "properties": {
           "target_model_ids": {
             "type": "array",
@@ -243,7 +243,7 @@
       },
       "DiscoveryInput": {
         "type": "object",
-        "description": "Controlled discovery input. QUERY_TABLE never accepts free SQL.",
+        "description": "Controlled discovery input; no free SQL.",
         "properties": {
           "table": { "$ref": "#/components/schemas/AllowedTable" },
           "tables": {
@@ -263,10 +263,10 @@
       },
       "LongitudinalInput": {
         "type": "object",
-        "description": "Shared V0.2 longitudinal envelope. Capability VENTAS, RVM or CRM determines valid metric, grain, filters and temporal semantics. VENTAS and CRM require commercial_universe explicitly and validate domain before grain/filter/metric; CRM DEALERS is not currently evaluable. SAME_DAY means comparable calendar-position truncation, not historical recognition-state reconstruction.",
+        "description": "Shared longitudinal input for VENTAS, RVM and CRM.",
         "required": ["metric", "grain", "filters", "date_from", "date_to", "time_grain"],
         "properties": {
-          "commercial_universe": { "type": "string", "enum": ["COMPANY", "OWN_STORES", "DEALERS"], "description": "Required when capability=VENTAS or CRM. Fixes the certified commercial domain before grain, filters and metric are evaluated. CRM supports COMPANY and OWN_STORES; DEALERS fails explicitly until certified CRM dealer identity exists." },
+          "commercial_universe": { "type": "string", "enum": ["COMPANY", "OWN_STORES", "DEALERS"], "description": "Required for VENTAS and CRM; CRM supports COMPANY and OWN_STORES." },
           "metric": {
             "type": "string",
             "enum": [
