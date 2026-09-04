@@ -3318,7 +3318,7 @@ endpoint = /api/custom-gpt
 
 ### `ventas_longitudinal_context_v01`
 
-Motor determinista productivo v0.1, completamente **ON DEMAND**.
+Motor determinista productivo con action compatible `v01` y contrato longitudinal **V0.2**, completamente **ON DEMAND**.
 
 Pregunta: ¿cómo evolucionaron las ventas reconocidas CIDEF en N de VIN para el grano y filtros solicitados?
 
@@ -3330,11 +3330,15 @@ filters?: channel, store_id/store, dealer_id/dealer, dealer_group_id/dealer_grou
 date_from, date_to: YYYY-MM-DD inclusivos
 time_grain: MONTH | YEAR
 breakdown?: cualquier grano salvo TOTAL
+cutoff_mode?: FULL_PERIOD | SAME_DAY (default FULL_PERIOD)
+cutoff_date?: YYYY-MM-DD
 ```
 
 Reutiliza `ventas_context_v01`: una venta por VIN mediante LAST `fecha_factura` dentro de `date_to`; VIN nulo conserva la regla vigente. La identidad viene de MASTER/helpers certificados. Un label RAW nunca crea una tienda. CHANNEL distingue CIDEF y DEALER. SELLER sólo contiene `VENDEDOR_CIDEF` con pertenencia temporal válida en la tienda CIDEF observada. Lo no resuelto queda como `UNRESOLVED`; una dimensión que no corresponde al canal observado queda como `NOT_APPLICABLE`.
 
 `SHARE_WITHIN_CIDEF` = VIN del grano / VIN CIDEF del mismo período tras los filtros que no identifican ese grano. Expone `numerator`, `denominator` y `value`; no es MARKET_SHARE. La serie es densa, el primer cambio es `null` y el porcentaje con base cero es `null`. Breakdown conserva residual y reconcilia por numerador.
+
+`lastObservedDate` es el máximo `fecha_factura` de ventas reconocidas aplicables dentro del rango. `effectiveDateTo` es el mínimo entre `date_to`, `cutoff_date` cuando existe y esa evidencia observada. `lastPeriodComplete` sólo es true cuando la evidencia alcanza el cierre calendario del último período solicitado. En `SAME_DAY`, cada período se limita a la misma posición calendario derivada de `cutoff_date` o del último día efectivo observado; para `MONTH`, `comparisonDay=26` significa días 1..26 en todos los meses. Con cortes 29/30/31, los meses más cortos incluyen únicamente sus días reales: no se imputan días inexistentes.
 
 ```json
 {"action":"ventas_longitudinal_context_v01","input":{"metric":"VIN_SALES","grain":"BRAND","filters":{"brand":"DONGFENG"},"date_from":"2024-01-01","date_to":"2026-08-31","time_grain":"MONTH","breakdown":"MODEL"}}
@@ -3344,7 +3348,7 @@ No persiste, interpreta, detecta anomalías, genera tesis, aplica materialidad, 
 
 ### `rvm_longitudinal_context_v01`
 
-Motor determinista productivo v0.1, completamente **ON DEMAND**.
+Motor determinista productivo con action compatible `v01` y contrato longitudinal **V0.2**, completamente **ON DEMAND**.
 
 Pregunta: ¿cómo evolucionó en RVM una entidad o universo explícitamente solicitado?
 
@@ -3356,9 +3360,13 @@ entity?: las mismas dimensiones; obligatorio salvo MARKET_SIZE
 date_from, date_to: YYYY-MM-DD inclusivos
 time_grain: MONTH | YEAR
 breakdown?: BRAND | MODEL | SEGMENT | TYPE | REGION | COMUNA | FUEL
+cutoff_mode?: FULL_PERIOD | SAME_DAY (default FULL_PERIOD)
+cutoff_date?: YYYY-MM-DD
 ```
 
 Unidad = `SUM(rvm_raw.cantidad)`. BRAND/MODEL reutilizan la identidad RVM vigente; la identidad ausente queda en `UNRESOLVED`. El caller define `universe_filters`; el motor nunca selecciona un universo competitivo. MARKET_SHARE expone `numerator`, `denominator` y `value`. RANK usa `dense_rank` por unidades dentro del universo/período, exige una entidad del grain y no admite breakdown. Períodos sin mercado: unidades cero, share/rank `null`.
+
+Coverage BRAND/MODEL expone unidades `resolved`, `unresolved`, `ambiguous`, `notApplicable`, `total` y sus ratios. El universo y los denominadores siguen siendo explícitos. RVM no admite STORE, SELLER ni CHANNEL y no infiere territorio hacia tiendas.
 
 ```json
 {"action":"rvm_longitudinal_context_v01","input":{"metric":"MARKET_SHARE","grain":"BRAND","entity":{"brand":"DONGFENG"},"universe_filters":{"segment":["SUV","VEHICULO DE PASAJEROS"]},"date_from":"2024-01-01","date_to":"2026-08-31","time_grain":"MONTH","breakdown":"REGION"}}
@@ -3368,27 +3376,33 @@ No persiste, interpreta, selecciona competidores, detecta anomalías, genera tes
 
 ### `crm_longitudinal_context_v01`
 
-Motor determinista productivo v0.1, completamente **ON DEMAND** sobre `CRM_Cidef_raw`.
+Motor determinista productivo con action compatible `v01` y contrato longitudinal **V0.2**, completamente **ON DEMAND** sobre `CRM_Cidef_raw`.
 
 Pregunta: ¿cómo evolucionó una variable CRM demostrable bajo un eje temporal explícito?
 
 ```text
-metric: LEADS_CREATED | SOLD | NOT_SOLD | UNMANAGED | IN_MANAGEMENT |
+metric: LEADS_CREATED | SOLD | NOT_SOLD | MANAGED | UNMANAGED |
+        MANAGEMENT_COVERAGE | CONVERSION_ON_MANAGED | IN_MANAGEMENT |
         OPPORTUNITY | CLOSED | DESISTED | CONVERSION_RATE
 grain: TOTAL | BRAND | PRODUCT_INTEREST | ORIGIN | SUBORIGIN | STATUS |
        STORE | SELLER | INTEREST_LEVEL | DESIST_REASON
 mode: EVENT | COHORT
 date_axis/cohort_axis: CREATED_AT | ASSIGNED_AT | MANAGED_AT | DESISTED_AT
-filters?: brand, product_interest, origin, suborigin, status, store_raw,
-          seller_raw, interest_level, desist_reason
+filters?: brand, product_interest, origin, suborigin, status,
+          store_id/store/store_raw, seller_id/seller/seller_raw,
+          interest_level, desist_reason
 date_from, date_to: YYYY-MM-DD inclusivos
 time_grain: MONTH | YEAR
 breakdown?: cualquier grano salvo TOTAL
+cutoff_mode?: FULL_PERIOD | SAME_DAY (default FULL_PERIOD)
+cutoff_date?: YYYY-MM-DD
 ```
 
-Mapeo: CREATED_AT=`Creado el`, ASSIGNED_AT=`Asignado el`, MANAGED_AT=`Gestionado el`, DESISTED_AT=`Desistido el`. EVENT sólo admite LEADS_CREATED/CREATED_AT y DESISTED/DESISTED_AT. Estados y `Vendido` se leen como resultado de una cohorte; no se reconstruye cuándo cambió el estado. CONVERSION_RATE = `Vendido=Sí` / registros de cohorte y expone numerador/denominador.
+Mapeo: CREATED_AT=`Creado el`, ASSIGNED_AT=`Asignado el`, MANAGED_AT=`Gestionado el`, DESISTED_AT=`Desistido el`. EVENT admite LEADS_CREATED/CREATED_AT, MANAGED/MANAGED_AT y DESISTED/DESISTED_AT. Estados y `Vendido` se leen como resultado de una cohorte; no se reconstruye cuándo cambió el estado. CONVERSION_RATE = `Vendido=Sí` / registros de cohorte y expone numerador/denominador.
 
-Usa la última carga por `ID`; IDs vacíos quedan separados. Fechas faltantes/no parseables aparecen en coverage. PRODUCT_INTEREST, STORE y SELLER son explícitamente RAW, nunca MASTER. Snapshot histórico (`mode=SNAPSHOT` o `as_of`) falla con `UNSUPPORTED_TEMPORAL_RECONSTRUCTION`.
+`MANAGED` exige que `Gestionado el` sea una fecha parseable. `UNMANAGED` es su complemento exacto dentro de la cohorte. `MANAGEMENT_COVERAGE = MANAGED / (MANAGED + UNMANAGED)`. `CONVERSION_ON_MANAGED = (Vendido afirmativo AND MANAGED) / MANAGED`; un SOLD sin fecha válida de gestión no entra al numerador ni al denominador managed.
+
+Usa la última carga por `ID`; IDs vacíos quedan separados. Fechas faltantes/no parseables aparecen en coverage/warnings. STORE se resuelve por igualdad normalizada exacta contra aliases validados/nombre MASTER. SELLER se resuelve por igualdad normalizada exacta contra aliases validados, nombre o usuario MASTER y sólo queda RESOLVED cuando cumple `VENDEDOR_CIDEF` en la tienda CIDEF resuelta a la fecha del eje elegido. Los valores RAW se preservan en `rawValues`; no hay similitud ni fuzzy matching. Snapshot histórico (`mode=SNAPSHOT` o `as_of`) falla con `UNSUPPORTED_TEMPORAL_RECONSTRUCTION`.
 
 ```json
 {"action":"crm_longitudinal_context_v01","input":{"metric":"SOLD","grain":"ORIGIN","mode":"COHORT","cohort_axis":"CREATED_AT","filters":{"origin":"Web"},"date_from":"2026-01-01","date_to":"2026-08-31","time_grain":"MONTH","breakdown":"PRODUCT_INTEREST"}}
@@ -3396,7 +3410,7 @@ Usa la última carga por `ID`; IDs vacíos quedan separados. Fechas faltantes/no
 
 No persiste snapshots/series, estima ventas perdidas, une CRM→VIN, interpreta, detecta anomalías, genera tesis, aplica materialidad, proyecta ni recomienda acciones.
 
-Los tres outputs comparten: `motor`, `version`, `domain`, `metric`, `grain`, `timeGrain`, `dateFrom`, `dateTo`, `filters`, `series[]`, `breakdown`, `seriesByBreakdown?`, `metadata`. Cada punto contiene `period`, `value`, `absoluteChange`, `pctChange`; shares agregan denominadores explícitos.
+Los tres outputs V0.2 comparten: `motor`, `version`, `domain`, `metric`, `grain`, `timeGrain`, `dateFrom`, `dateTo`, `filters`, `series[]`, `breakdown`, `seriesByBreakdown?`, `temporalSemantics`, `coverage`, `warnings` y `metadata`. Cada punto contiene `period`, `value`, `absoluteChange`, `pctChange`; ratios agregan numeradores/denominadores explícitos. `temporalSemantics` declara `requestedDateFrom`, `requestedDateTo`, `effectiveDateFrom`, `effectiveDateTo`, `lastObservedDate`, `lastPeriodComplete`, `cutoffMode` y `comparisonDay` cuando aplica. `coverage.dimensionCoverage[]` usa una forma común con conteos y ratios para `resolved`, `unresolved`, `ambiguous`, `notApplicable` y `total`, sin clasificar si la cobertura es buena o mala.
 
 ### Activación semántica de contexto longitudinal
 
@@ -3406,7 +3420,8 @@ El request de `/api/custom-gpt` acepta:
 requires_longitudinal_context: boolean
 longitudinal_context?: {
   domain, metric, grain, filters, date_from, date_to, time_grain,
-  breakdown?, entity?, universe_filters?, date_axis?, mode?, cohort_axis?
+  breakdown?, entity?, universe_filters?, date_axis?, mode?, cohort_axis?,
+  cutoff_date?, cutoff_mode?
 }
 ```
 

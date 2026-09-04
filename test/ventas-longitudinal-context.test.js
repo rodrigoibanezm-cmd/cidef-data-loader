@@ -57,7 +57,39 @@ test('share within CIDEF exposes numerator and denominator', () => {
 
 test('unknown sales filter is rejected', () => assert.throws(() => parsed({ filters: { raw_store: 'Casa Matriz' } }), /UNSUPPORTED_FILTER/));
 
-test('dimension residual metadata is scoped to requested dates and filters', () => {
+test('dimension coverage is scoped to requested dates and filters', () => {
   const result = calculateVentasLongitudinal(events, parsed({ date_from: '2026-03-01', filters: { brand: 'DONGFENG' } }));
-  assert.equal(result.metadata.dimensionResidualCounts.DEALER.notApplicable, 1);
+  assert.equal(result.coverage.dimensionCoverage.find((row) => row.dimension === 'STORE').resolved, 1);
+  assert.equal(result.temporalSemantics.lastObservedDate, '2026-03-02');
+  assert.ok(result.warnings.includes('LAST_PERIOD_INCOMPLETE'));
+});
+
+test('SAME_DAY day 26 truncates every historical month at day 26', () => {
+  const sample = [
+    ...events,
+    { ...events[0], fecha_venta_iso: '2026-01-27T00:00:00Z' },
+    { ...events[0], fecha_venta_iso: '2026-02-26T00:00:00Z' },
+    { ...events[0], fecha_venta_iso: '2026-02-27T00:00:00Z' },
+    { ...events[0], fecha_venta_iso: '2026-03-26T00:00:00Z' },
+  ];
+  const result = calculateVentasLongitudinal(sample, parsed({ cutoff_mode: 'SAME_DAY', cutoff_date: '2026-03-26' }));
+  assert.equal(result.temporalSemantics.comparisonDay, 26);
+  assert.equal(result.temporalSemantics.effectiveDateTo, '2026-03-26');
+  assert.deepEqual(result.series.map((row) => row.value), [3, 1, 2]);
+});
+
+test('last requested period completeness follows observed evidence', () => {
+  const complete = calculateVentasLongitudinal([{ ...events[0], fecha_venta_iso: '2026-02-28T00:00:00Z' }], parsed({ date_from: '2026-02-01', date_to: '2026-02-28' }));
+  assert.equal(complete.temporalSemantics.lastPeriodComplete, true);
+  const incomplete = calculateVentasLongitudinal(events, parsed());
+  assert.equal(incomplete.temporalSemantics.lastPeriodComplete, false);
+  assert.ok(incomplete.warnings.includes('REQUESTED_DATE_TO_AFTER_LAST_OBSERVED_DATE'));
+});
+
+test('SAME_DAY cutoff 29/30/31 includes real shorter-month days only', () => {
+  const february = [{ ...events[0], fecha_venta_iso: '2026-02-28T00:00:00Z' }];
+  for (const day of [29, 30, 31]) {
+    const result = calculateVentasLongitudinal(february, parsed({ date_from: '2026-02-01', cutoff_mode: 'SAME_DAY', cutoff_date: `2026-03-${day}` }));
+    assert.equal(result.series[0].value, 1);
+  }
 });

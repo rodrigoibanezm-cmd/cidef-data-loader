@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.47.0",
+    "version": "1.48.0",
     "x-seller-membership-contract": "VENDEDOR_CIDEF requires resolved persona plus date-effective VENDEDOR_TIENDA role and assignment to the observed CIDEF store; ventas_raw never creates membership; seller daily forecast backtest is exposed as VENDEDOR_CIDEF_POOLED validation evidence only",
     "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, monthly and daily cutoff-safe sales context, daily organizational cutoff-safe sales context, historical intramonth cutoff-safe sales context with sparse-positive store semantics and retrospective close labels, product sales, recognized product detail, deterministic SKU-to-model resolution, parameterized product sales concentration/Pareto trend, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with null-safe relative-gap detail, productive organizational relative performance over closed months using certified grain-specific baselines, shared competitive context with optional Chile market-origin peer filtering, bounded competitive share trajectory with compact trajectory and explicit monthly detail outputs over the same peer semantics, paginated competitive signal backtesting across target×peer×universe without competitor labels, productive competitive relation selection under a fixed V0.1 temporal rule, and auditable inverse share movements across consecutive joint-active transitions for those related peers. Also includes canonical product GENERATION membership context, bounded organization sales deterioration backtesting with sparse observation semantics, deterioration episode evidence with ex-ante signal rows, productive store deterioration status over a fixed certified rule, and an AUDIT_ONLY observation-semantics comparison with explicit ACTIVE_ZERO evidence and temporal/unit-universe validations for Family 3. Includes a productive current-month close forecast using prior closed-month completion evidence. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface. Includes canonical dealer inventory aging over current vehiculo_canonico state using the previously validated dealer-stock aging contract."
   },
@@ -179,7 +179,7 @@
           "domain": { "type": "string", "enum": ["VENTAS", "RVM", "CRM"] },
           "metric": {
             "type": "string",
-            "enum": ["VIN_SALES", "SHARE_WITHIN_CIDEF", "MARKET_SIZE", "ENTITY_VIN", "MARKET_SHARE", "RANK", "LEADS_CREATED", "SOLD", "NOT_SOLD", "UNMANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"]
+            "enum": ["VIN_SALES", "SHARE_WITHIN_CIDEF", "MARKET_SIZE", "ENTITY_VIN", "MARKET_SHARE", "RANK", "LEADS_CREATED", "SOLD", "NOT_SOLD", "MANAGED", "UNMANAGED", "MANAGEMENT_COVERAGE", "CONVERSION_ON_MANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"]
           },
           "grain": {
             "type": "string",
@@ -191,6 +191,8 @@
           "date_from": { "type": "string", "format": "date" },
           "date_to": { "type": "string", "format": "date" },
           "time_grain": { "type": "string", "enum": ["MONTH", "YEAR"] },
+          "cutoff_date": { "type": "string", "format": "date" },
+          "cutoff_mode": { "type": "string", "enum": ["FULL_PERIOD", "SAME_DAY"], "default": "FULL_PERIOD" },
           "breakdown": {
             "type": "string",
             "enum": ["CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "BRAND", "MODEL", "VERSION", "SEGMENT", "TYPE", "REGION", "COMUNA", "FUEL", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "INTEREST_LEVEL", "DESIST_REASON"]
@@ -329,32 +331,34 @@
       "ActionInput": {
         "type": "object",
         "x-ventas-longitudinal-context-v01": {
-          "version": "0.1",
+          "version": "0.2",
           "availability": "AVAILABLE",
           "business_question": "How did recognized CIDEF VIN sales move through time for an explicitly requested canonical grain and filters?",
           "metrics": ["VIN_SALES", "SHARE_WITHIN_CIDEF"],
           "grains": ["TOTAL", "CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "BRAND", "MODEL", "VERSION"],
-          "time": "inclusive date_from/date_to; MONTH or YEAR; dense zero periods; changes come only from the calculated series",
+          "time": "inclusive requested range; FULL_PERIOD or SAME_DAY; explicit requested/effective/observed boundaries and period completeness",
           "identity": "canonical MASTER only; SELLER is date-effective VENDEDOR_CIDEF at the observed canonical CIDEF store; unresolved stays visible",
           "execution": "ON_DEMAND; no persistence, interpretation, anomaly detection, thesis, materiality, forecasting or actions"
         },
         "x-rvm-longitudinal-context-v01": {
-          "version": "0.1",
+          "version": "0.2",
           "availability": "AVAILABLE",
           "business_question": "How did an explicitly requested entity or universe move through time in RVM?",
           "metrics": ["MARKET_SIZE", "ENTITY_VIN", "MARKET_SHARE", "RANK"],
           "grains": ["TOTAL", "BRAND", "MODEL", "SEGMENT", "TYPE", "REGION", "COMUNA", "FUEL"],
           "universe": "caller-explicit universe_filters; no automatic competitive universe",
           "share": "every point exposes numerator, denominator and value",
+          "coverage": "BRAND and MODEL resolved/unresolved/ambiguous/notApplicable counts and ratios are explicit",
           "execution": "ON_DEMAND; no persistence, interpretation, anomaly detection, thesis, materiality, forecasting or actions"
         },
         "x-crm-longitudinal-context-v01": {
-          "version": "0.1",
+          "version": "0.2",
           "availability": "AVAILABLE",
           "business_question": "How did a directly observable CRM variable move through time under an explicit event or cohort axis?",
-          "metrics": ["LEADS_CREATED", "SOLD", "NOT_SOLD", "UNMANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"],
+          "metrics": ["LEADS_CREATED", "SOLD", "NOT_SOLD", "MANAGED", "UNMANAGED", "MANAGEMENT_COVERAGE", "CONVERSION_ON_MANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"],
           "date_axes": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"],
-          "identity": "PRODUCT_INTEREST, STORE and SELLER remain explicitly RAW",
+          "identity": "STORE and SELLER use exact validated MASTER evidence, preserve RAW audit values, and SELLER applies date-effective VENDEDOR_CIDEF at the selected event axis",
+          "management": "MANAGED requires a parseable Gestionado el; MANAGEMENT_COVERAGE=MANAGED/(MANAGED+UNMANAGED); CONVERSION_ON_MANAGED=sold_managed/MANAGED",
           "restriction": "historical state snapshots return UNSUPPORTED_TEMPORAL_RECONSTRUCTION",
           "execution": "ON_DEMAND; no persistence, interpretation, anomaly detection, thesis, materiality, forecasting or actions"
         },
@@ -443,8 +447,8 @@
           },
           "metric": {
             "type": "string",
-            "enum": ["VIN_SALES", "SHARE_WITHIN_CIDEF", "MARKET_SIZE", "ENTITY_VIN", "MARKET_SHARE", "RANK", "LEADS_CREATED", "SOLD", "NOT_SOLD", "UNMANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"],
-            "description": "Metric for one of the three longitudinal v0.1 motors; domain validation is strict."
+            "enum": ["VIN_SALES", "SHARE_WITHIN_CIDEF", "MARKET_SIZE", "ENTITY_VIN", "MARKET_SHARE", "RANK", "LEADS_CREATED", "SOLD", "NOT_SOLD", "MANAGED", "UNMANAGED", "MANAGEMENT_COVERAGE", "CONVERSION_ON_MANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"],
+            "description": "Metric for one of the three longitudinal actions using contract V0.2; domain validation is strict."
           },
           "mode": {
             "type": "string",
@@ -532,6 +536,12 @@
             "type": "string",
             "format": "date",
             "description": "Inclusive calendar cutoff for cutoff-safe daily sales contexts and daily_close_forecast_v01. The productive forecast requires the cutoff to belong to the current open America/Santiago month and not be in the future."
+          },
+          "cutoff_mode": {
+            "type": "string",
+            "enum": ["FULL_PERIOD", "SAME_DAY"],
+            "default": "FULL_PERIOD",
+            "description": "Longitudinal V0.2 comparison cutoff. SAME_DAY uses the same calendar position in every period."
           },
           "target_month": {
             "type": "string",
@@ -803,7 +813,7 @@
               "YEAR"
             ],
             "default": "MONTH",
-            "description": "rvm_market_history_v01 output time grain."
+            "description": "RVM market-history or longitudinal output time grain."
           },
           "universe_definition": {
             "$ref": "#/components/schemas/RvmUniverseDefinition"
@@ -820,7 +830,7 @@
               "COMUNA"
               ,"CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "VERSION", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "INTEREST_LEVEL", "DESIST_REASON"
             ],
-            "description": "Optional single exhaustive breakdown for rvm_market_history_v01 or a longitudinal v0.1 motor."
+            "description": "Optional single exhaustive breakdown for rvm_market_history_v01 or a longitudinal action using contract V0.2."
           }
         },
         "additionalProperties": false,

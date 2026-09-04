@@ -88,6 +88,14 @@ test('unsupported longitudinal fields are never ignored silently', async () => {
   assert.equal(log.calls.length, 0);
 });
 
+test('V0.2 cutoff inputs pass unchanged to the selected motor', async () => {
+  const log = executorLog();
+  await runCustomGptActionWithContext({ action: 'analytical_motor_v01', input: {}, requires_longitudinal_context: true,
+    longitudinal_context: { ...base, domain: 'VENTAS', cutoff_mode: 'SAME_DAY', cutoff_date: '2026-03-26' } }, log.executor);
+  assert.equal(log.calls[1].input.cutoff_mode, 'SAME_DAY');
+  assert.equal(log.calls[1].input.cutoff_date, '2026-03-26');
+});
+
 test('CRM activation requires explicit mode and matching axis field', async () => {
   const log = executorLog();
   await assert.rejects(() => runCustomGptActionWithContext({

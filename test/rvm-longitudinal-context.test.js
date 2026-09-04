@@ -6,7 +6,7 @@ function parsed(extra = {}) {
   return parseRvmLongitudinalInput({ metric: 'MARKET_SIZE', grain: 'TOTAL', date_from: '2026-01-01', date_to: '2026-02-28', time_grain: 'MONTH', ...extra });
 }
 const totals = [
-  { period: '2026-01', row_type: 'TOTAL', bucket_key: null, numerator: '20', denominator: '100', value: '100' },
+  { period: '2026-01', row_type: 'TOTAL', bucket_key: null, numerator: '20', denominator: '100', value: '100', last_observed_date: '2026-02-26', effective_date_to: '2026-02-26', identity_resolved: '90', identity_unresolved: '7', identity_ambiguous: '3', identity_total: '100' },
   { period: '2026-02', row_type: 'TOTAL', bucket_key: null, numerator: '0', denominator: '0', value: '0' },
 ];
 
@@ -47,6 +47,24 @@ test('brand and model breakdown remain explicit including unresolved', () => {
     assert.equal(result.seriesByBreakdown.length, 2);
     assert.equal(result.seriesByBreakdown.find((row) => row.key === 'UNRESOLVED').identityStatus, 'UNRESOLVED');
   }
+});
+
+test('BRAND and MODEL identity coverage reports unresolved and ambiguous units', () => {
+  const result = assembleRvmLongitudinal(parsed(), totals);
+  for (const dimension of ['BRAND', 'MODEL']) {
+    const coverage = result.coverage.dimensionCoverage.find((row) => row.dimension === dimension);
+    assert.deepEqual([coverage.resolved, coverage.unresolved, coverage.ambiguous, coverage.total], [90, 7, 3, 100]);
+  }
+  assert.ok(result.warnings.includes('BRAND_IDENTITY_UNRESOLVED_PRESENT'));
+  assert.ok(result.warnings.includes('MODEL_IDENTITY_AMBIGUOUS_PRESENT'));
+});
+
+test('SAME_DAY and cutoff are explicit without changing the competitive universe', () => {
+  const scope = parsed({ cutoff_mode: 'SAME_DAY', cutoff_date: '2026-02-26', universe_filters: { segment: 'SUV' } });
+  const query = buildRvmLongitudinalQuery(scope);
+  assert.match(query.sql, /extract\(day from r.fecha\)/);
+  assert.ok(query.params.some((value) => Array.isArray(value) && value.includes('SUV')));
+  assert.ok(query.params.includes('2026-02-26'));
 });
 
 test('invalid metric and invalid universe filter are rejected', () => {
