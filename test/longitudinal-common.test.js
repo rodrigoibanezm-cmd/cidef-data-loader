@@ -12,6 +12,14 @@ test('FULL_PERIOD and SAME_DAY cutoff inputs validate deterministically', () => 
   assert.throws(() => parseCutoff({ cutoff_mode: 'LATEST' }), /INVALID_CUTOFF_MODE/);
 });
 
+test('database Date objects normalize to ISO temporal semantics', () => {
+  const parsed = { dateFrom: '2026-01-01', dateTo: '2026-08-31', timeGrain: 'MONTH', cutoffMode: 'SAME_DAY', cutoffDate: null };
+  const temporal = buildTemporalSemantics(parsed, new Date('2026-08-25T00:00:00.000Z'));
+  assert.equal(temporal.lastObservedDate, '2026-08-25');
+  assert.equal(temporal.effectiveDateTo, '2026-08-25');
+  assert.equal(temporal.comparisonDay, 25);
+});
+
 test('common envelope exposes V0.2 temporal semantics, coverage and warnings', () => {
   const parsed = { metric: 'X', grain: 'TOTAL', timeGrain: 'MONTH', dateFrom: '2026-01-01', dateTo: '2026-01-31', filters: {}, breakdown: null };
   const temporalSemantics = buildTemporalSemantics({ ...parsed, cutoffMode: 'FULL_PERIOD', cutoffDate: null }, '2026-01-31');
