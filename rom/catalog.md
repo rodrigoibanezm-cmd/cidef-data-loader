@@ -1,8 +1,8 @@
 # Catálogo de datos — CIDEF Motor Lab
 
-Este catálogo describe la superficie de datos que el Custom GPT puede explorar mediante `/api/custom-gpt`.
+Este catálogo describe la superficie de datos que el Custom GPT puede explorar mediante el dominio público `DISCOVERY` y sus capabilities declaradas en `rom/schema.json`.
 
-La allowlist real vive en backend. Si existe discrepancia, ejecutar `list_tables` y tomar esa respuesta como autoridad operacional.
+La allowlist real vive en backend. Si existe discrepancia, usar `DISCOVERY / LIST_TABLES` y tomar esa respuesta como autoridad operacional.
 
 ## RAW
 
@@ -10,6 +10,7 @@ La allowlist real vive en backend. Si existe discrepancia, ejecutar `list_tables
 - `ventas_raw`: evidencia de ventas reconocidas por la fuente.
 - `notas_venta_raw`: evidencia de notas de venta y proceso comercial disponible.
 - `rvm_raw`: inscripciones/matriculaciones de mercado.
+- `CRM_Cidef_raw`: evidencia CRM disponible para demanda, gestión, conversión y estados comerciales.
 
 ## MASTER V0.1 — Producto
 
@@ -65,4 +66,8 @@ BRAND
 - No usar tablas legacy fuera de esta lista como autoridad.
 - No asumir joins por parecido textual.
 - Si una relación RAW→MASTER no está demostrada, debe permanecer explícitamente abierta.
-- Antes de usar una columna desconocida, consultar `table_schema`.
+- Antes de usar una columna desconocida, usar `DISCOVERY / TABLE_SCHEMA`.
+- Para cardinalidad, nulos, extremos o valores frecuentes, usar `DISCOVERY / PROFILE_TABLE`.
+- Para slices o agregados acotados sobre una tabla permitida, usar `DISCOVERY / QUERY_TABLE`.
+- No usar DISCOVERY para reconstruir manualmente una lógica que ya pertenezca a una capability determinista AVAILABLE de SALES, MARKET o LONGITUDINAL.
+- `rom/schema.json` es la autoridad operacional sobre las capabilities públicas disponibles.
