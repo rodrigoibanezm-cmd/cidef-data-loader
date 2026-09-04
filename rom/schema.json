@@ -1,10 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "CIDEF Agent Motor Lab",
-    "version": "1.48.1",
-    "x-seller-membership-contract": "VENDEDOR_CIDEF requires resolved persona plus date-effective VENDEDOR_TIENDA role and assignment to the observed CIDEF store; ventas_raw never creates membership; seller daily forecast backtest is exposed as VENDEDOR_CIDEF_POOLED validation evidence only",
-    "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, monthly and daily cutoff-safe sales context, daily organizational cutoff-safe sales context, historical intramonth cutoff-safe sales context with sparse-positive store semantics and retrospective close labels, product sales, recognized product detail, deterministic SKU-to-model resolution, parameterized product sales concentration/Pareto trend, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with null-safe relative-gap detail, productive organizational relative performance over closed months using certified grain-specific baselines, shared competitive context with optional Chile market-origin peer filtering, bounded competitive share trajectory with compact trajectory and explicit monthly detail outputs over the same peer semantics, paginated competitive signal backtesting across target×peer×universe without competitor labels, productive competitive relation selection under a fixed V0.1 temporal rule, and auditable inverse share movements across consecutive joint-active transitions for those related peers. Also includes canonical product GENERATION membership context, bounded organization sales deterioration backtesting with sparse observation semantics, deterioration episode evidence with ex-ante signal rows, productive store deterioration status over a fixed certified rule, and an AUDIT_ONLY observation-semantics comparison with explicit ACTIVE_ZERO evidence and temporal/unit-universe validations for Family 3. Includes a productive current-month close forecast using prior closed-month completion evidence. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface. Includes canonical dealer inventory aging over current vehiculo_canonico state using the previously validated dealer-stock aging contract."
+    "title": "CIDEF Agent Domain API",
+    "version": "1.49.0",
+    "description": "Read-only Action surface for the CIDEF agent. The public contract exposes four bounded domain operations instead of physical motor names. Each endpoint accepts a capability plus an input object and delegates through the single central custom-gpt router. Physical actions, audit motors, backtests, support motors and out-of-scope motors are not part of this public OpenAPI surface."
   },
   "servers": [
     {
@@ -12,117 +11,320 @@
     }
   ],
   "paths": {
-    "/api/custom-gpt": {
+    "/api/custom-gpt/sales": {
       "post": {
-        "operationId": "cidefMotorLab",
-        "summary": "Run one read-only deterministic action through the dedicated CIDEF agent endpoint",
+        "operationId": "cidefSales",
+        "summary": "Run one bounded CIDEF sales capability",
+        "description": "Use for internal CIDEF sales results, forecasts, product sales, contribution, organizational relative performance and deterioration status. Do not use for RVM market analysis, raw-table discovery or standalone longitudinal context.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CustomGptRequest"
+                "$ref": "#/components/schemas/SalesRequest"
               }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "Action completed"
-          },
-          "400": {
-            "description": "Invalid action or input"
-          },
-          "500": {
-            "description": "Backend execution error"
+          "200": { "description": "Capability completed" },
+          "400": { "description": "Invalid capability or input" },
+          "405": { "description": "POST required" },
+          "500": { "description": "Backend execution error" }
+        }
+      }
+    },
+    "/api/custom-gpt/market": {
+      "post": {
+        "operationId": "cidefMarket",
+        "summary": "Run one bounded RVM market capability",
+        "description": "Use for competitive context, market-share trajectory, competitive relations, inverse share movement and explicit RVM market history. Do not use for CIDEF internal sales or raw-table discovery.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarketRequest"
+              }
+            }
           }
+        },
+        "responses": {
+          "200": { "description": "Capability completed" },
+          "400": { "description": "Invalid capability or input" },
+          "405": { "description": "POST required" },
+          "500": { "description": "Backend execution error" }
+        }
+      }
+    },
+    "/api/custom-gpt/discovery": {
+      "post": {
+        "operationId": "cidefDiscovery",
+        "summary": "Run one controlled CIDEF data-discovery capability",
+        "description": "Use only when table/schema/profile/query exploration is needed. Query capability is controlled and does not accept free SQL, DDL or DML.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscoveryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Capability completed" },
+          "400": { "description": "Invalid capability or input" },
+          "405": { "description": "POST required" },
+          "500": { "description": "Backend execution error" }
+        }
+      }
+    },
+    "/api/custom-gpt/longitudinal": {
+      "post": {
+        "operationId": "cidefLongitudinal",
+        "summary": "Run one explicit longitudinal context capability",
+        "description": "Use when the analytical answer requires understanding how a variable moved through multiple periods. The capability selects VENTAS, RVM or CRM longitudinal semantics explicitly. This endpoint does not infer a domain from keywords and does not run another analytical capability in parallel.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LongitudinalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Capability completed" },
+          "400": { "description": "Invalid capability or input" },
+          "405": { "description": "POST required" },
+          "500": { "description": "Backend execution error" }
         }
       }
     }
   },
   "components": {
     "schemas": {
-      "CustomGptRequest": {
+      "SalesRequest": {
         "type": "object",
-        "x-vendedor-cidef-policy": "ventas_identity_coverage_v01 separates resolved identity from seller eligibility; ventas_organizational_context_v01 includes only date-effective VENDEDOR_CIDEF rows whose assignment matches the observed CIDEF store",
-        "x-longitudinal-activation": "Activate when answering the analytical question requires understanding how the requested variable evolved across multiple periods, even if the user does not explicitly ask for a series. The LLM sets the flag semantically; the router never infers it from keywords.",
-        "required": [
-          "action",
-          "input"
-        ],
+        "required": ["capability", "input"],
         "properties": {
-          "action": {
+          "capability": {
             "type": "string",
             "enum": [
-              "list_tables",
-              "table_schema",
-              "profile_table",
-              "query_table",
-              "ventas_monthly_dedup_sensitivity_v01",
-              "ventas_cross_month_first_last_audit_v01",
-              "ventas_hybrid_unresolved_sensitivity_v01",
-              "ventas_unresolved_recognition_evidence_v01",
-              "ventas_identity_coverage_v01",
-              "ventas_monthly_actual_v01",
-              "ventas_daily_context_v01",
-              "ventas_daily_organizational_context_v01",
-              "daily_close_backtest_context_v01",
-              "daily_close_forecast_backtest_v01",
-              "daily_close_forecast_v01",
-              "current_month_close_forecast_v01",
-              "predictability_day_v01",
-              "intramonth_sales_history_context_v01",
-              "ventas_product_sales_v01",
-              "ventas_product_detail_v01",
-              "ventas_product_model_resolution_v01",
-              "ventas_product_concentration_v01",
-              "ventas_product_change_contribution_v01",
-              "ventas_store_change_contribution_v01",
-              "ventas_seller_change_contribution_v01",
-              "ventas_organizational_context_v01",
-              "expected_monthly_backtest_v01",
-              "expected_monthly_stability_v01",
-              "expected_monthly_candidates_v01",
-              "competitive_context_v01",
-              "competitive_share_trajectory_v01",
-              "competitive_signal_backtest_v01",
-              "competitive_relation_v01",
-              "competitive_inverse_share_movement_v01",
-              "rvm_market_history_v01",
-              "ventas_longitudinal_context_v01",
-              "rvm_longitudinal_context_v01",
-              "crm_longitudinal_context_v01",
-              "product_generation_context_v01",
-              "organizational_share_expectation_backtest_v01",
-              "organizational_relative_performance_v01",
-              "org_sales_deterioration_backtest_v01",
-              "org_sales_deterioration_episode_evidence_v01",
-              "org_sales_deterioration_status_v01",
-              "org_sales_observation_semantics_audit_v01",
-              "dealer_inventory_aging_v01"
+              "MONTHLY_ACTUAL",
+              "DAILY_CLOSE_FORECAST",
+              "CURRENT_MONTH_CLOSE_FORECAST",
+              "PREDICTABILITY_DAY",
+              "INTRAMONTH_HISTORY",
+              "PRODUCT_SALES",
+              "PRODUCT_DETAIL",
+              "PRODUCT_CONCENTRATION",
+              "PRODUCT_CHANGE_CONTRIBUTION",
+              "STORE_CHANGE_CONTRIBUTION",
+              "SELLER_CHANGE_CONTRIBUTION",
+              "RELATIVE_PERFORMANCE",
+              "DETERIORATION_STATUS"
             ]
           },
           "input": {
-            "$ref": "#/components/schemas/ActionInput"
-          },
-          "requires_longitudinal_context": {
-            "type": "boolean",
-            "default": false,
-            "description": "Explicit semantic flag. Set true when the analytical answer requires temporal evolution across multiple periods, including trajectory, growth, decline, change, acceleration, deceleration, participation through time, period comparison, persistence or historical behavior. Do not depend on exact words: a question such as 'Is Dongfeng losing ground?' can require true. False or absent preserves legacy execution and runs no additional longitudinal motor."
-          },
-          "longitudinal_context": {
-            "$ref": "#/components/schemas/LongitudinalContextInput"
+            "$ref": "#/components/schemas/SalesInput"
           }
         },
-        "allOf": [
-          {
-            "if": {
-              "required": ["requires_longitudinal_context"],
-              "properties": { "requires_longitudinal_context": { "const": true } }
-            },
-            "then": { "required": ["longitudinal_context"] }
+        "additionalProperties": false
+      },
+      "MarketRequest": {
+        "type": "object",
+        "required": ["capability", "input"],
+        "properties": {
+          "capability": {
+            "type": "string",
+            "enum": [
+              "COMPETITIVE_CONTEXT",
+              "SHARE_TRAJECTORY",
+              "COMPETITIVE_RELATION",
+              "INVERSE_SHARE_MOVEMENT",
+              "MARKET_HISTORY"
+            ]
+          },
+          "input": {
+            "$ref": "#/components/schemas/MarketInput"
           }
-        ],
+        },
+        "additionalProperties": false
+      },
+      "DiscoveryRequest": {
+        "type": "object",
+        "required": ["capability", "input"],
+        "properties": {
+          "capability": {
+            "type": "string",
+            "enum": [
+              "LIST_TABLES",
+              "TABLE_SCHEMA",
+              "PROFILE_TABLE",
+              "QUERY_TABLE"
+            ]
+          },
+          "input": {
+            "$ref": "#/components/schemas/DiscoveryInput"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LongitudinalRequest": {
+        "type": "object",
+        "required": ["capability", "input"],
+        "properties": {
+          "capability": {
+            "type": "string",
+            "enum": ["VENTAS", "RVM", "CRM"]
+          },
+          "input": {
+            "$ref": "#/components/schemas/LongitudinalInput"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SalesInput": {
+        "type": "object",
+        "description": "Bounded union of public SALES capability inputs. The selected capability remains authoritative about which fields are required or supported.",
+        "properties": {
+          "period": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+          "period_a": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+          "period_b": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+          "start_month": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+          "end_month": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+          "cutoff_month": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
+          "cutoff_date": { "type": "string", "format": "date" },
+          "modelo_id": { "type": "integer" },
+          "model_id": { "type": "integer" },
+          "grain": { "type": "string" },
+          "pareto_threshold_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+          "median_ape_threshold_pct": { "type": "number", "minimum": 0 },
+          "p90_ape_threshold_pct": { "type": "number", "minimum": 0 },
+          "detail_unit_id": { "oneOf": [{ "type": "integer" }, { "type": "string" }] },
+          "detail_limit": { "type": "integer", "minimum": 1 },
+          "limit": { "type": "integer", "minimum": 1 },
+          "offset": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": true
+      },
+      "MarketInput": {
+        "type": "object",
+        "description": "Bounded union of public MARKET capability inputs. Competitive capabilities operate on explicit target and universe semantics; contribution or causal substitution must not be inferred from these outputs.",
+        "properties": {
+          "target_model_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "integer" }
+          },
+          "date_from": { "type": "string", "format": "date" },
+          "date_to": { "type": "string", "format": "date" },
+          "origin_group": { "type": "string", "enum": ["CHINESE", "NON_CHINESE"] },
+          "geography": { "$ref": "#/components/schemas/Geography" },
+          "output_mode": { "type": "string", "enum": ["trajectory", "monthly"] },
+          "entity_keys": { "type": "array", "items": { "type": "string" } },
+          "min_evaluable_transitions": { "type": "integer", "minimum": 1 },
+          "pair_offset": { "type": "integer", "minimum": 0 },
+          "pair_limit": { "type": "integer", "minimum": 1 },
+          "period": { "type": "string" },
+          "period_a": { "type": "string" },
+          "period_b": { "type": "string" },
+          "time_grain": { "type": "string", "enum": ["MONTH", "YEAR"] },
+          "universe_definition": { "type": "object", "additionalProperties": true },
+          "breakdown": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "DiscoveryInput": {
+        "type": "object",
+        "description": "Controlled discovery input. QUERY_TABLE never accepts free SQL.",
+        "properties": {
+          "table": { "$ref": "#/components/schemas/AllowedTable" },
+          "tables": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AllowedTable" }
+          },
+          "operation": { "type": "string", "enum": ["select", "aggregate"] },
+          "columns": { "type": "array", "items": { "type": "string" } },
+          "filters": { "type": "array", "items": { "$ref": "#/components/schemas/Filter" } },
+          "metrics": { "type": "array", "items": { "$ref": "#/components/schemas/Metric" } },
+          "group_by": { "type": "array", "maxItems": 4, "items": { "type": "string" } },
+          "order_by": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 1000 },
+          "offset": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": true
+      },
+      "LongitudinalInput": {
+        "type": "object",
+        "description": "Shared V0.2 longitudinal envelope. Capability VENTAS, RVM or CRM determines valid metric, grain, filters and temporal semantics. SAME_DAY means comparable calendar-position truncation, not historical recognition-state reconstruction.",
+        "required": ["metric", "grain", "filters", "date_from", "date_to", "time_grain"],
+        "properties": {
+          "metric": {
+            "type": "string",
+            "enum": [
+              "VIN_SALES",
+              "SHARE_WITHIN_CIDEF",
+              "MARKET_SIZE",
+              "ENTITY_VIN",
+              "MARKET_SHARE",
+              "RANK",
+              "LEADS_CREATED",
+              "SOLD",
+              "NOT_SOLD",
+              "MANAGED",
+              "UNMANAGED",
+              "MANAGEMENT_COVERAGE",
+              "CONVERSION_ON_MANAGED",
+              "IN_MANAGEMENT",
+              "OPPORTUNITY",
+              "CLOSED",
+              "DESISTED",
+              "CONVERSION_RATE"
+            ]
+          },
+          "grain": {
+            "type": "string",
+            "enum": [
+              "TOTAL",
+              "CHANNEL",
+              "STORE",
+              "DEALER",
+              "DEALER_GROUP",
+              "SELLER",
+              "BRAND",
+              "MODEL",
+              "VERSION",
+              "SEGMENT",
+              "TYPE",
+              "REGION",
+              "COMUNA",
+              "FUEL",
+              "PRODUCT_INTEREST",
+              "ORIGIN",
+              "SUBORIGIN",
+              "STATUS",
+              "INTEREST_LEVEL",
+              "DESIST_REASON"
+            ]
+          },
+          "filters": { "$ref": "#/components/schemas/LongitudinalFilterMap" },
+          "entity": { "$ref": "#/components/schemas/LongitudinalFilterMap" },
+          "universe_filters": { "$ref": "#/components/schemas/LongitudinalFilterMap" },
+          "date_from": { "type": "string", "format": "date" },
+          "date_to": { "type": "string", "format": "date" },
+          "time_grain": { "type": "string", "enum": ["MONTH", "YEAR"] },
+          "cutoff_date": { "type": "string", "format": "date" },
+          "cutoff_mode": { "type": "string", "enum": ["FULL_PERIOD", "SAME_DAY"], "default": "FULL_PERIOD" },
+          "breakdown": { "type": "string" },
+          "date_axis": { "type": "string", "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"] },
+          "mode": { "type": "string", "enum": ["EVENT", "COHORT"] },
+          "cohort_axis": { "type": "string", "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"] }
+        },
         "additionalProperties": false
       },
       "LongitudinalFilterValue": {
@@ -132,13 +334,17 @@
           {
             "type": "array",
             "minItems": 1,
-            "items": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+            "items": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "integer" }
+              ]
+            }
           }
         ]
       },
       "LongitudinalFilterMap": {
         "type": "object",
-        "description": "Closed union of exact filter keys supported by the VENTAS, RVM and CRM longitudinal motors. Domain-specific unsupported keys are still rejected by the selected motor.",
         "properties": {
           "channel": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
           "store_id": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
@@ -169,52 +375,6 @@
           "interest_level": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
           "desist_reason": { "$ref": "#/components/schemas/LongitudinalFilterValue" }
         },
-        "additionalProperties": false
-      },
-      "LongitudinalContextInput": {
-        "type": "object",
-        "description": "Inputs for the automatically selected longitudinal motor. Routing is fixed: VENTAS -> ventas_longitudinal_context_v01; RVM -> rvm_longitudinal_context_v01; CRM -> crm_longitudinal_context_v01.",
-        "required": ["domain", "metric", "grain", "filters", "date_from", "date_to", "time_grain"],
-        "properties": {
-          "domain": { "type": "string", "enum": ["VENTAS", "RVM", "CRM"] },
-          "metric": {
-            "type": "string",
-            "enum": ["VIN_SALES", "SHARE_WITHIN_CIDEF", "MARKET_SIZE", "ENTITY_VIN", "MARKET_SHARE", "RANK", "LEADS_CREATED", "SOLD", "NOT_SOLD", "MANAGED", "UNMANAGED", "MANAGEMENT_COVERAGE", "CONVERSION_ON_MANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"]
-          },
-          "grain": {
-            "type": "string",
-            "enum": ["TOTAL", "CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "BRAND", "MODEL", "VERSION", "SEGMENT", "TYPE", "REGION", "COMUNA", "FUEL", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "INTEREST_LEVEL", "DESIST_REASON"]
-          },
-          "filters": { "$ref": "#/components/schemas/LongitudinalFilterMap" },
-          "entity": { "$ref": "#/components/schemas/LongitudinalFilterMap" },
-          "universe_filters": { "$ref": "#/components/schemas/LongitudinalFilterMap" },
-          "date_from": { "type": "string", "format": "date" },
-          "date_to": { "type": "string", "format": "date" },
-          "time_grain": { "type": "string", "enum": ["MONTH", "YEAR"] },
-          "cutoff_date": { "type": "string", "format": "date" },
-          "cutoff_mode": { "type": "string", "enum": ["FULL_PERIOD", "SAME_DAY"], "default": "FULL_PERIOD" },
-          "breakdown": {
-            "type": "string",
-            "enum": ["CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "BRAND", "MODEL", "VERSION", "SEGMENT", "TYPE", "REGION", "COMUNA", "FUEL", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "INTEREST_LEVEL", "DESIST_REASON"]
-          },
-          "date_axis": { "type": "string", "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"] },
-          "mode": { "type": "string", "enum": ["EVENT", "COHORT"] },
-          "cohort_axis": { "type": "string", "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"] }
-        },
-        "allOf": [
-          {
-            "if": { "properties": { "domain": { "const": "CRM" } }, "required": ["domain"] },
-            "then": { "required": ["mode"] }
-          },
-          {
-            "if": { "properties": { "domain": { "const": "CRM" }, "mode": { "const": "EVENT" } }, "required": ["domain", "mode"] },
-            "then": { "required": ["date_axis"] }
-          },
-          {
-            "if": { "properties": { "domain": { "const": "CRM" }, "mode": { "const": "COHORT" } }, "required": ["domain", "mode"] },
-            "then": { "required": ["cohort_axis"] }
-          }
-        ],
         "additionalProperties": false
       },
       "AllowedTable": {
@@ -250,28 +410,12 @@
       },
       "Filter": {
         "type": "object",
-        "required": [
-          "column",
-          "op"
-        ],
+        "required": ["column", "op"],
         "properties": {
-          "column": {
-            "type": "string"
-          },
+          "column": { "type": "string" },
           "op": {
             "type": "string",
-            "enum": [
-              "eq",
-              "neq",
-              "gt",
-              "gte",
-              "lt",
-              "lte",
-              "contains",
-              "in",
-              "is_null",
-              "not_null"
-            ]
+            "enum": ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "in", "is_null", "not_null"]
           },
           "value": {}
         },
@@ -279,675 +423,25 @@
       },
       "Metric": {
         "type": "object",
-        "required": [
-          "op"
-        ],
+        "required": ["op"],
         "properties": {
-          "op": {
-            "type": "string",
-            "enum": [
-              "count",
-              "sum",
-              "avg",
-              "min",
-              "max"
-            ]
-          },
-          "column": {
-            "type": "string"
-          },
-          "as": {
-            "type": "string"
-          }
+          "op": { "type": "string", "enum": ["count", "sum", "avg", "min", "max"] },
+          "column": { "type": "string" },
+          "as": { "type": "string" }
         },
         "additionalProperties": false
       },
       "Geography": {
         "type": "object",
-        "required": [
-          "level",
-          "values"
-        ],
+        "required": ["level", "values"],
         "properties": {
-          "level": {
-            "type": "string",
-            "enum": [
-              "region",
-              "comuna"
-            ]
-          },
+          "level": { "type": "string", "enum": ["region", "comuna"] },
           "values": {
             "type": "array",
             "minItems": 1,
             "maxItems": 100,
             "uniqueItems": true,
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "additionalProperties": false
-      },
-      "ActionInput": {
-        "type": "object",
-        "x-ventas-longitudinal-context-v01": {
-          "version": "0.2",
-          "availability": "AVAILABLE",
-          "business_question": "How did recognized CIDEF VIN sales move through time for an explicitly requested canonical grain and filters?",
-          "metrics": ["VIN_SALES", "SHARE_WITHIN_CIDEF"],
-          "grains": ["TOTAL", "CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "BRAND", "MODEL", "VERSION"],
-          "time": "inclusive requested range; FULL_PERIOD or SAME_DAY; explicit requested/effective/observed boundaries and period completeness; SAME_DAY is comparable calendar-day truncation over recognized sales, not historical recognition-state reconstruction",
-          "identity": "canonical MASTER only; SELLER is date-effective VENDEDOR_CIDEF at the observed canonical CIDEF store; unresolved stays visible",
-          "execution": "ON_DEMAND; no persistence, interpretation, anomaly detection, thesis, materiality, forecasting or actions"
-        },
-        "x-rvm-longitudinal-context-v01": {
-          "version": "0.2",
-          "availability": "AVAILABLE",
-          "business_question": "How did an explicitly requested entity or universe move through time in RVM?",
-          "metrics": ["MARKET_SIZE", "ENTITY_VIN", "MARKET_SHARE", "RANK"],
-          "grains": ["TOTAL", "BRAND", "MODEL", "SEGMENT", "TYPE", "REGION", "COMUNA", "FUEL"],
-          "universe": "caller-explicit universe_filters; no automatic competitive universe",
-          "share": "every point exposes numerator, denominator and value",
-          "coverage": "PRODUCT_IDENTITY reports resolved/unresolved/ambiguous/notApplicable units and ratios once; it is the joint model-alias resolution that supplies brand_id and model_id, not independent BRAND and MODEL measurements",
-          "execution": "ON_DEMAND; no persistence, interpretation, anomaly detection, thesis, materiality, forecasting or actions"
-        },
-        "x-crm-longitudinal-context-v01": {
-          "version": "0.2",
-          "availability": "AVAILABLE",
-          "business_question": "How did a directly observable CRM variable move through time under an explicit event or cohort axis?",
-          "metrics": ["LEADS_CREATED", "SOLD", "NOT_SOLD", "MANAGED", "UNMANAGED", "MANAGEMENT_COVERAGE", "CONVERSION_ON_MANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"],
-          "date_axes": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"],
-          "identity": "STORE and SELLER use exact validated MASTER evidence, preserve RAW audit values, and SELLER applies date-effective VENDEDOR_CIDEF at the selected event axis",
-          "management": "MANAGED requires a parseable Gestionado el. UNMANAGED means Gestionado el does not parse to a valid date, including missing/empty and present-but-unparseable values; the latter are counted separately as invalidManagedDateRecords and emit CRM_INVALID_MANAGED_DATE_PRESENT. MANAGEMENT_COVERAGE=MANAGED/(MANAGED+UNMANAGED); CONVERSION_ON_MANAGED=sold_managed/MANAGED",
-          "restriction": "historical state snapshots return UNSUPPORTED_TEMPORAL_RECONSTRUCTION",
-          "execution": "ON_DEMAND; no persistence, interpretation, anomaly detection, thesis, materiality, forecasting or actions"
-        },
-        "x-ventas-product-change-contribution-v01": {
-          "version": "0.1",
-          "availability": "AVAILABLE",
-          "business_question": "What models arithmetically explain the change in CIDEF sales between two closed months?",
-          "required_inputs": [
-            "period_a",
-            "period_b"
-          ],
-          "grain": "one row per RESOLVED modelo_id observed in period_a or period_b",
-          "cutoff_policy": "period_a and period_b are closed America/Santiago months, period_a < period_b, cutoff_month = period_b",
-          "product_identity": "ventas_product_concentration_v01 V0.2 semantics through buildProductModelResolutionContext; no fuzzy, substring, majority vote or inference",
-          "delta_formula": "sales_period_b - sales_period_a",
-          "contribution_formula": "100 * model delta_sales / CIDEF delta_sales; null when CIDEF delta_sales = 0",
-          "identity_residual": "UNRESOLVED and AMBIGUOUS remain separate and reconcile with resolved model deltas to total CIDEF delta",
-          "ordering": "ABS(delta_sales) DESC, modelo_id ASC; support and drag ranks are sign-specific",
-          "coverage_warnings": "identity residuals and missing catalog metadata are explicit; valid modelo_id is never dropped"
-        },
-        "x-ventas-store-change-contribution-v01": {
-          "version": "0.1",
-          "availability": "AVAILABLE",
-          "business_question": "What stores arithmetically explain the change in CIDEF sales between two closed months?",
-          "required_inputs": [
-            "period_a",
-            "period_b"
-          ],
-          "grain": "one row per resolved tipo_canal=CIDEF sucursal_id observed in period_a or period_b",
-          "cutoff_policy": "period_a and period_b are closed America/Santiago months, period_a < period_b, cutoff_month = period_b",
-          "organizational_identity": "ventas_organizational_context_v01 exact certified store identity and tipo_canal; dealers are excluded",
-          "delta_formula": "sales_period_b - sales_period_a",
-          "contribution_formula": "100 * store delta_sales / CIDEF delta_sales; null when CIDEF delta_sales = 0",
-          "organizational_residual": "unresolved, ambiguous and resolved non-CIDEF sales remain explicit and reconcile with store deltas to total CIDEF delta",
-          "ordering": "ABS(delta_sales) DESC, sucursal_id ASC; support and drag ranks are sign-specific",
-          "coverage_warnings": "organizational residual and missing store metadata are explicit; valid CIDEF sucursal_id is never dropped"
-        },
-        "x-ventas-seller-change-contribution-v01": {
-          "version": "0.1",
-          "availability": "AVAILABLE",
-          "business_question": "What sellers arithmetically explain the rise or fall in each CIDEF store's sales between two closed months?",
-          "required_inputs": [
-            "period_a",
-            "period_b"
-          ],
-          "grain": "sucursal_id x persona_id union observed validly in period_a or period_b",
-          "cutoff_policy": "period_a and period_b are closed America/Santiago months, period_a < period_b, cutoff_month = period_b",
-          "seller_universe": "resolved persona with date-effective VENDEDOR_TIENDA role and persona_sucursal assignment matching the observed tipo_canal=CIDEF store",
-          "temporal_membership": "valid_from/valid_to are evaluated on each sale date; current vigente never rewrites historical store membership",
-          "delta_formulas": "seller/store/CIDEF delta_sales = sales_period_b - sales_period_a",
-          "contribution_formulas": "100 * seller delta / store delta and 100 * seller delta / CIDEF delta; null when the corresponding denominator is zero",
-          "residuals": "seller residual is explicit by CIDEF store and preserves unresolved, ambiguous, resolved non-seller and store-assignment mismatch categories; organizational residual is unchanged",
-          "ordering": "within each store ABS(delta_sales) DESC, persona_id ASC; store support and drag ranks are sign-specific",
-          "reconciliations": "seller plus seller residual equals each store; stores plus organizational residual equal CIDEF",
-          "coverage_warnings": "residuals and missing person/store metadata are explicit; valid IDs and sales are never dropped"
-        },
-        "description": "Action-specific input. ventas_product_change_contribution_v01, ventas_store_change_contribution_v01 and ventas_seller_change_contribution_v01 require period_a and period_b. product_generation_context_v01 accepts optional modelo_id, version_id, generation_id, membership_status, include_evidence and a bounded limit; it reads canonical GENERATION identity/membership only and never performs backfill. ventas_identity_coverage_v01, expected_monthly_backtest_v01 and expected_monthly_stability_v01 use an empty object. ventas_daily_context_v01 requires cutoff_date and exposes the cutoff-safe recognized-sales snapshot without organizational filtering or forecasting. ventas_daily_organizational_context_v01 also requires cutoff_date and exposes sparse positive recognized sales by resolved historical store and MASTER tipo_canal plus a derived CIDEF-owned total; it never fabricates store zeroes and does not forecast. intramonth_sales_history_context_v01 requires start_month and end_month, accepts closed history plus the current open month through the current America/Santiago date, emits CIDEF daily rows and sparse-positive store rows, and exposes actual_close only as a retrospective label for closed months; it does not calculate ratios, trajectory benchmarks, forecasts, thresholds or alerts. ventas_organizational_context_v01 requires start_month and end_month. organizational_share_expectation_backtest_v01 requires grain, start_month, end_month and candidate_baselines; monthly detail returns relative_gap_pp=null whenever expected_share is unavailable/non-evaluable. organizational_relative_performance_v01 requires only grain, start_month and end_month; v0.1 is CURRENT_SNAPSHOT only, rejects open months and laboratory/cutoff knobs, and applies fixed certified baselines median_3 for tienda and moving_average_5 for vendedor. ventas_product_sales_v01 and ventas_product_detail_v01 require modelo_id, start_month, end_month and cutoff_month=end_month. competitive_context_v01 and competitive_share_trajectory_v01 require target_model_ids, date_from and date_to; geography and origin_group are optional. competitive_share_trajectory_v01 defaults to output_mode=trajectory; output_mode=monthly requires entity_keys. org_sales_deterioration_backtest_v01 requires grain, start_month, end_month and the three candidate arrays; deterioration v0.4 uses sparse observation semantics: tienda uses NV-backed ACTIVE_ZERO while other missing months remain UNKNOWN and vendedor stays positive-only/UNKNOWN until independent activity evidence exists. org_sales_observation_semantics_audit_v01 is AUDIT_ONLY/DISCOVERY_ONLY, requires only start_month and end_month, fixes tienda + last_year + relative + deepening_2, accepts detail_limit plus optional detail_unit_id, and exposes bounded ACTIVE_ZERO unit-month evidence plus explicit temporal and unit-universe validations. daily_close_backtest_context_v01 requires start_month and end_month, rejects open months, and returns cutoff-safe company/store observations with actual_close as LABEL_ONLY. Store-months are emitted only when month-end CIDEF actual_close > 0; an absent daily row inside that cohort is CERTIFIED_ZERO. It does not forecast or calculate predictability. org_sales_deterioration_episode_evidence_v01 requires grain, start_month, end_month and exactly one value in each deterioration candidate array; it returns bounded ex-ante onset/confirmation/persistence evidence plus separate future evaluation and accepts optional context_months and detail_unit_id. ventas_product_concentration_v01 requires start_month and end_month over closed America/Santiago months and accepts pareto_threshold_pct (default 80); V0.2 consumes ventas_product_model_resolution_v01 semantics, returns period and monthly Pareto sets, and keeps unresolved/ambiguous identity explicit in coverage. org_sales_deterioration_status_v01 accepts only cutoff_month, requires a closed calendar month in America/Santiago, fixes grain=tienda + moving_average_12 + historical_percentile + deepening_2, and returns DETERIORATING / NOT_DETERIORATING / UNKNOWN by store. competitive_relation_v01 and competitive_inverse_share_movement_v01 require target_model_ids, date_from, date_to and explicit CHINESE or NON_CHINESE origin_group; the inverse movement motor consumes the certified relation rule and only evaluates consecutive months where both entities are observed at both endpoints. It optionally accepts min_evaluable_transitions as a caller-provided evidence filter before ranking and pagination; omission preserves the full related-peer universe. Both competitive motors accept pair_offset/pair_limit only as transport pagination. predictability_day_v01 requires start_month and end_month, accepts optional median_ape_threshold_pct and p90_ape_threshold_pct (defaults 20 and 40), consumes daily_close_forecast_backtest_v01, and returns the earliest day whose median/p90 APE meet both thresholds and remain within them through all later evaluable calendar days. daily_close_forecast_v01 requires cutoff_date inside the current open America/Santiago month and forecasts CIDEF plus currently observed positive CIDEF stores using same-day median completion from prior closed months; historical accuracy is walk-forward and current actual_close is never used. dealer_inventory_aging_v01 accepts optional min_days (default 60, exclusive threshold), as_of, canonical dealer_id/dealer_group_id filters and detail_limit; it uses fecha_ingreso_stock, never fecha_eta, and preserves unresolved dealer identity. ventas_product_model_resolution_v01 requires start_month and end_month; it maps ventas_raw technical SKU to canonical modelo_id using certified ventas aliases first and exact VIN evidence from vehiculo_canonico/RVM only when that evidence is deterministic, while preserving AMBIGUOUS and UNRESOLVED explicitly. No fuzzy, substring or majority-vote resolution is allowed. current_month_close_forecast_v01 requires cutoff_date, rejects future dates, uses cutoff-safe recognized CIDEF sales plus prior closed-month same-day median completion, densifies the current tipo_canal='CIDEF' roster with LIVE_ZERO, and returns forecast_close plus V0.1 predictability status. rvm_market_history_v01 accepts period OR period_a+period_b, time_grain MONTH|YEAR, explicit universe_definition, and one optional breakdown.",
-        "properties": {
-          "table": {
-            "$ref": "#/components/schemas/AllowedTable"
-          },
-          "tables": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AllowedTable"
-            }
-          },
-          "operation": {
-            "type": "string",
-            "enum": [
-              "select",
-              "aggregate"
-            ]
-          },
-          "columns": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "filters": {
-            "oneOf": [
-              { "type": "array", "items": { "$ref": "#/components/schemas/Filter" } },
-              { "$ref": "#/components/schemas/LongitudinalFilterMap" }
-            ]
-          },
-          "metric": {
-            "type": "string",
-            "enum": ["VIN_SALES", "SHARE_WITHIN_CIDEF", "MARKET_SIZE", "ENTITY_VIN", "MARKET_SHARE", "RANK", "LEADS_CREATED", "SOLD", "NOT_SOLD", "MANAGED", "UNMANAGED", "MANAGEMENT_COVERAGE", "CONVERSION_ON_MANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"],
-            "description": "Metric for one of the three longitudinal actions using contract V0.2; domain validation is strict."
-          },
-          "mode": {
-            "type": "string",
-            "enum": ["EVENT", "COHORT"],
-            "description": "CRM longitudinal temporal mode. SNAPSHOT is intentionally unsupported."
-          },
-          "date_axis": {
-            "type": "string",
-            "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"]
-          },
-          "cohort_axis": {
-            "type": "string",
-            "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"]
-          },
-          "entity": {
-            "$ref": "#/components/schemas/LongitudinalFilterMap",
-            "description": "Explicit RVM entity filters for ENTITY_VIN, MARKET_SHARE or RANK."
-          },
-          "universe_filters": {
-            "$ref": "#/components/schemas/LongitudinalFilterMap",
-            "description": "Explicit RVM denominator universe; the motor never selects it automatically."
-          },
-          "group_by": {
-            "type": "array",
-            "maxItems": 4,
-            "items": {
-              "type": "string"
-            }
-          },
-          "metrics": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Metric"
-            }
-          },
-          "limit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 1000,
-            "default": 200,
-            "description": "Generic result bound. product_generation_context_v01 enforces a stricter maximum of 200 rows."
-          },
-          "start_month": {
-            "type": "string",
-            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
-            "description": "Start month for deterministic monthly motors, format YYYY-MM"
-          },
-          "end_month": {
-            "type": "string",
-            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
-            "description": "End month for deterministic monthly motors, format YYYY-MM"
-          },
-          "period_a": {
-            "oneOf": [
-              {
-                "type": "string",
-                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
-                "description": "First closed calendar month for product/store change contribution motors; must be before period_b"
-              },
-              {
-                "$ref": "#/components/schemas/RvmPeriod"
-              }
-            ],
-            "description": "Closed YYYY-MM for existing sales contribution motors OR an RVM period object for rvm_market_history_v01."
-          },
-          "period_b": {
-            "oneOf": [
-              {
-                "type": "string",
-                "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
-                "description": "Second closed calendar month and identity/recognition cutoff for product/store change contribution motors"
-              },
-              {
-                "$ref": "#/components/schemas/RvmPeriod"
-              }
-            ],
-            "description": "Closed YYYY-MM for existing sales contribution motors OR an RVM period object for rvm_market_history_v01."
-          },
-          "cutoff_month": {
-            "type": "string",
-            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
-            "description": "Last month whose ventas_raw evidence may be used by cutoff-aware sales and expectation motors"
-          },
-          "cutoff_date": {
-            "type": "string",
-            "format": "date",
-            "description": "Inclusive calendar cutoff for cutoff-safe daily sales contexts and daily_close_forecast_v01. The productive forecast requires the cutoff to belong to the current open America/Santiago month and not be in the future."
-          },
-          "cutoff_mode": {
-            "type": "string",
-            "enum": ["FULL_PERIOD", "SAME_DAY"],
-            "default": "FULL_PERIOD",
-            "description": "Longitudinal V0.2 comparison cutoff. SAME_DAY uses the same calendar position in every period."
-          },
-          "target_month": {
-            "type": "string",
-            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
-            "description": "Target month. For expected_monthly_candidates_v01 it must immediately follow cutoff_month; for ventas_monthly_actual_v01 it must be <= cutoff_month"
-          },
-          "dominant_first_customers": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {
-              "type": "string"
-            },
-            "default": [
-              "77050575",
-              "96800910",
-              "96726670"
-            ],
-            "description": "FIRST customer codes treated as resolved-to-LAST by residual Family 1 motors"
-          },
-          "modelo_id": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Canonical modelo_id used by product sales/detail and optional product GENERATION filtering"
-          },
-          "version_id": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Optional canonical version_id filter for product_generation_context_v01"
-          },
-          "generation_id": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Optional canonical generation_id filter for product_generation_context_v01"
-          },
-          "membership_status": {
-            "type": "string",
-            "enum": [
-              "RESOLVED",
-              "UNRESOLVED",
-              "CONFLICT"
-            ],
-            "description": "Optional VERSION→GENERATION membership-state filter"
-          },
-          "include_evidence": {
-            "type": "boolean",
-            "default": false,
-            "description": "When true, product_generation_context_v01 also returns bounded generation_evidence_v01 rows"
-          },
-          "target_model_ids": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 50,
-            "uniqueItems": true,
-            "items": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "description": "Current CIDEF modelo_id values used to derive observable runtime competitive universes from RVM + MASTER"
-          },
-          "date_from": {
-            "type": "string",
-            "format": "date"
-          },
-          "date_to": {
-            "type": "string",
-            "format": "date"
-          },
-          "geography": {
-            "$ref": "#/components/schemas/Geography"
-          },
-          "origin_group": {
-            "type": "string",
-            "enum": [
-              "CHINESE",
-              "NON_CHINESE",
-              "UNKNOWN"
-            ],
-            "description": "Optional peer filter for competitive_context_v01, competitive_share_trajectory_v01 and competitive_signal_backtest_v01. competitive_relation_v01 and competitive_inverse_share_movement_v01 require an explicit known group: CHINESE or NON_CHINESE. Derived from the versioned Chile market-brand-origin lookup; missing origin never falls through to NON_CHINESE."
-          },
-          "grain": {
-            "type": "string",
-            "enum": [
-              "tienda",
-              "vendedor",
-              "TOTAL", "CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "BRAND", "MODEL", "VERSION",
-              "SEGMENT", "TYPE", "REGION", "COMUNA", "FUEL", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "INTEREST_LEVEL", "DESIST_REASON"
-            ],
-            "description": "Canonical organization grain for organizational motors"
-          },
-          "candidate_baselines": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "pattern": "^(last_year|adjusted_last_year|moving_average_[1-9][0-9]*|median_[1-9][0-9]*)$"
-            },
-            "description": "Caller-provided baseline candidates. organizational_share_expectation_backtest_v01 accepts last_year, moving_average_N and median_N; deterioration also supports adjusted_last_year. organizational_relative_performance_v01 does not accept this field."
-          },
-          "candidate_deviation_methods": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "enum": [
-                "relative",
-                "scaled_mad",
-                "historical_percentile"
-              ]
-            }
-          },
-          "candidate_persistence_rules": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "pattern": "^(consecutive_([2-9]|[1-9][0-9]+)|frequency_[1-9][0-9]*_of_[1-9][0-9]*|deepening_([2-9]|[1-9][0-9]+))$"
-            },
-            "description": "Caller-provided persistence candidates. The motor rejects frequency rules where required hits exceed window size."
-          },
-          "output_mode": {
-            "type": "string",
-            "enum": [
-              "summary",
-              "stability",
-              "episodes",
-              "units",
-              "monthly",
-              "trajectory",
-              "pair_detail"
-            ],
-            "description": "Action-specific output mode. competitive_share_trajectory_v01 uses trajectory by default and monthly requires entity_keys; competitive_signal_backtest_v01 uses paginated summary by default and pair_detail requires pair_keys. Other motors retain their documented defaults."
-          },
-          "detail_limit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 200,
-            "default": 100,
-            "description": "Maximum rows returned by bounded detail modes and audit-only evidence."
-          },
-          "detail_unit_id": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "Optional canonical unit_id filter for observation-semantics audit or deterioration episode evidence; applied before detail_limit."
-          },
-          "detail_candidate": {
-            "type": "string",
-            "pattern": "^(last_year|moving_average_[1-9][0-9]*|median_[1-9][0-9]*)$",
-            "description": "Optional organizational share backtest detail filter; must also appear in candidate_baselines."
-          },
-          "detail_baseline": {
-            "type": "string",
-            "pattern": "^(last_year|adjusted_last_year|moving_average_[1-9][0-9]*|median_[1-9][0-9]*)$",
-            "description": "Optional deterioration detail filter; must also appear in candidate_baselines."
-          },
-          "detail_deviation_method": {
-            "type": "string",
-            "enum": [
-              "relative",
-              "scaled_mad",
-              "historical_percentile"
-            ],
-            "description": "Optional deterioration detail filter; must also appear in candidate_deviation_methods."
-          },
-          "detail_persistence_rule": {
-            "type": "string",
-            "pattern": "^(consecutive_([2-9]|[1-9][0-9]+)|frequency_[1-9][0-9]*_of_[1-9][0-9]*|deepening_([2-9]|[1-9][0-9]+))$",
-            "description": "Optional deterioration detail filter; must also appear in candidate_persistence_rules."
-          },
-          "entity_keys": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 50,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "description": "Explicit market entity keys for competitive_share_trajectory_v01 when output_mode=monthly. Transport bound only; it does not define competitor relevance."
-          },
-          "pair_keys": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 50,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "minLength": 1
-            },
-            "description": "Explicit target×peer×universe pair keys for competitive_signal_backtest_v01 when output_mode=pair_detail. Transport bound only; it does not define competitor relevance."
-          },
-          "context_months": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 12,
-            "default": 3,
-            "description": "Transport-only number of contiguous evaluable months returned before episode onset by org_sales_deterioration_episode_evidence_v01; never part of signal generation."
-          },
-          "pair_offset": {
-            "type": "integer",
-            "minimum": 0,
-            "default": 0,
-            "description": "Zero-based transport offset for competitive_signal_backtest_v01 summary, competitive_relation_v01, or competitive_inverse_share_movement_v01 selected relations. Pagination only; all eligible pairs are still calculated."
-          },
-          "pair_limit": {
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 50,
-            "default": 20,
-            "description": "Maximum pair summaries, selected competitive relations, or inverse-share movement rows transported, depending on action. Range 1..50; pagination only and never a relevance threshold."
-          },
-          "min_evaluable_transitions": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "competitive_inverse_share_movement_v01 only. Optional caller-provided minimum jointEvaluableTransitions required before a related pair participates in ranking. Omission applies no evidence filter; this does not alter date_from/date_to or define a temporal window."
-          },
-          "pareto_threshold_pct": {
-            "type": "number",
-            "minimum": 0.01,
-            "maximum": 100,
-            "default": 80,
-            "description": "Sales-share threshold used by ventas_product_concentration_v01 to define the Pareto model set; caller-configurable, 80 by default."
-          },
-          "median_ape_threshold_pct": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1000,
-            "default": 20,
-            "description": "Median absolute percentage error ceiling for predictability_day_v01."
-          },
-          "p90_ape_threshold_pct": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 1000,
-            "default": 40,
-            "description": "P90 absolute percentage error ceiling for predictability_day_v01."
-          },
-          "min_days": {
-            "type": "integer",
-            "minimum": 0,
-            "default": 60,
-            "description": "dealer_inventory_aging_v01 only: exclusive runtime threshold; returns vehicles where aging_days > min_days."
-          },
-          "as_of": {
-            "type": "string",
-            "format": "date",
-            "description": "dealer_inventory_aging_v01 only: aging reference date YYYY-MM-DD; defaults to CURRENT_DATE."
-          },
-          "dealer_id": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "dealer_inventory_aging_v01 only: optional canonical dealers_master.dealer_id filter."
-          },
-          "dealer_group_id": {
-            "type": "integer",
-            "minimum": 1,
-            "description": "dealer_inventory_aging_v01 only: optional canonical dealer_groups.dealer_group_id filter."
-          },
-          "period": {
-            "$ref": "#/components/schemas/RvmPeriod"
-          },
-          "time_grain": {
-            "type": "string",
-            "enum": [
-              "MONTH",
-              "YEAR"
-            ],
-            "default": "MONTH",
-            "description": "RVM market-history or longitudinal output time grain."
-          },
-          "universe_definition": {
-            "$ref": "#/components/schemas/RvmUniverseDefinition"
-          },
-          "breakdown": {
-            "type": "string",
-            "enum": [
-              "SEGMENT",
-              "TYPE",
-              "FUEL",
-              "BRAND",
-              "MODEL",
-              "REGION",
-              "COMUNA"
-              ,"CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "VERSION", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "INTEREST_LEVEL", "DESIST_REASON"
-            ],
-            "description": "Optional single exhaustive breakdown for rvm_market_history_v01 or a longitudinal action using contract V0.2."
-          }
-        },
-        "additionalProperties": false,
-        "x-rvm-market-history-v01": {
-          "version": "0.1",
-          "availability": "AVAILABLE",
-          "business_question": "How did an explicitly defined RVM universe evolve through time, optionally broken down by one requested dimension?",
-          "units": "SUM(rvm_raw.cantidad); never COUNT(*)",
-          "period_semantics": "period OR period_a+period_b; MONTH/YEAR/YTD/CUSTOM_RANGE inclusive; open years are not accepted as full YEAR",
-          "universe_semantics": "caller-explicit segment/type/fuel/geography filters using competitive_context_v01 normalization semantics; empty object means total RVM market",
-          "breakdown": "optional one of SEGMENT, TYPE, FUEL, BRAND, MODEL, REGION, COMUNA; VERSION excluded",
-          "identity": "BRAND/MODEL reuse the contextual/generic RVM->MASTER primitive from the competitive stack; ambiguous and unresolved units remain in the denominator",
-          "coverage": "identity coverage is COMPLETE only with zero ambiguous and unresolved units; otherwise PARTIAL; no percentage threshold",
-          "reconciliation": "all exhaustive breakdown buckets must sum to universe_units; resolved+ambiguous+unresolved must reconcile for identity breakdowns",
-          "comparison": "delta_units=B-A; delta_pct=(B-A)/A; ZERO_BASE when A=0; comparability metadata is explicit and non-blocking",
-          "states": [
-            "INVALID_PERIOD",
-            "INVALID_UNIVERSE_DIMENSION",
-            "NO_RVM_EVIDENCE",
-            "ZERO_BASE",
-            "IDENTITY_PARTIAL",
-            "IDENTITY_AMBIGUOUS_PRESENT",
-            "IDENTITY_UNRESOLVED_PRESENT",
-            "RECONCILIATION_FAILED",
-            "RESPONSE_TOO_LARGE"
-          ],
-          "exclusions": [
-            "target CIDEF",
-            "target share/rank",
-            "product contribution",
-            "VERSION identity",
-            "materiality",
-            "Pareto",
-            "causal attribution",
-            "narrative"
-          ]
-        }
-      },
-      "RvmPeriod": {
-        "type": "object",
-        "required": [
-          "kind"
-        ],
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "MONTH",
-              "YEAR",
-              "YTD",
-              "CUSTOM_RANGE"
-            ]
-          },
-          "month": {
-            "type": "string",
-            "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
-          },
-          "year": {
-            "type": "integer",
-            "minimum": 1900,
-            "maximum": 2200
-          },
-          "through_date": {
-            "type": "string",
-            "format": "date"
-          },
-          "date_from": {
-            "type": "string",
-            "format": "date"
-          },
-          "date_to": {
-            "type": "string",
-            "format": "date"
-          }
-        },
-        "additionalProperties": false
-      },
-      "RvmGeography": {
-        "type": "object",
-        "required": [
-          "level",
-          "values"
-        ],
-        "properties": {
-          "level": {
-            "type": "string",
-            "enum": [
-              "REGION",
-              "COMUNA"
-            ]
-          },
-          "values": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 100,
-            "uniqueItems": true,
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "additionalProperties": false
-      },
-      "RvmUniverseDefinition": {
-        "type": "object",
-        "properties": {
-          "segment": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string"
-          },
-          "fuel": {
-            "type": "string"
-          },
-          "geography": {
-            "$ref": "#/components/schemas/RvmGeography"
+            "items": { "type": "string" }
           }
         },
         "additionalProperties": false
