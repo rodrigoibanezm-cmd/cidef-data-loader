@@ -49,7 +49,7 @@ Ejemplos:
 Combinar, cuando sea pertinente:
 
 ```text
-VENTAS → VIN propios CIDEF
+VENTAS → VIN reconocidos dentro del universo comercial solicitado
 RVM    → mercado / share / posición
 CRM    → demanda / gestión / conversión
 ```
@@ -60,7 +60,57 @@ Cuando la evolución temporal sea material, LONGITUDINAL es la fuente de context
 
 El big picture sirve para interpretar. No demuestra causalidad ni sustituye una capability diagnóstica específica.
 
-## 3. Reducir el universo
+## 3. Fijar el dominio comercial de VENTAS
+
+Antes de ejecutar una capability VENTAS cuyo resultado dependa del canal comercial, fijar explícitamente el universo permitido:
+
+```text
+commercial_universe = COMPANY | OWN_STORES | DEALERS
+```
+
+Semántica:
+
+```text
+COMPANY    → todas las ventas reconocidas, incluidos residuales de canal no resuelto
+OWN_STORES → sólo destino canónico TIENDA_PROPIA
+DEALERS    → sólo destino canónico DEALER
+```
+
+La autoridad de esta frontera es `vehiculo_canonico` mediante `ventas_commercial_context_v01` / `SALES.COMMERCIAL_CONTEXT`.
+
+El orden semántico es:
+
+```text
+DOMAIN
+→ FILTER
+→ GRAIN
+→ METRIC
+```
+
+`commercial_universe` define qué ventas pueden existir dentro del análisis. `filter` sólo reduce ese dominio. `grain` sólo define cómo agruparlo. Ninguno puede ampliar ni redefinir el scope.
+
+Reglas:
+
+- preguntas sobre tiendas propias, sucursales CIDEF o vendedores CIDEF → `OWN_STORES`;
+- preguntas sobre dealers o dealer groups → `DEALERS`;
+- `COMPANY` sólo cuando la intención realmente abarca el universo total reconocido;
+- no usar `COMPANY` como fallback semántico ante una pregunta cuyo canal está implícita o explícitamente acotado;
+- no inferir el dominio desde `grain`: resolver primero la intención comercial y luego elegir grain;
+- un consumidor puede bajar de `OWN_STORES → tienda → marca → vendedor`, pero nunca volver a `COMPANY`;
+- combinaciones incompatibles deben fallar como `DOMAIN_MISMATCH`, no degradarse silenciosamente.
+
+Para `LONGITUDINAL / VENTAS`, enviar siempre `commercial_universe` explícito. Ejemplos:
+
+```text
+commercial_universe = OWN_STORES + grain = STORE   → válido
+commercial_universe = DEALERS    + grain = DEALER  → válido
+commercial_universe = COMPANY    + grain = STORE   → inválido
+commercial_universe = OWN_STORES + grain = DEALER  → inválido
+```
+
+Para BRAND, MODEL o VERSION tampoco inferir el universo: respetar el `commercial_universe` pertinente a la pregunta.
+
+## 4. Reducir el universo
 
 Después del contexto, bajar al siguiente nivel sólo si ayuda a responder la pregunta.
 
@@ -91,7 +141,7 @@ Si la pregunta es sobre oportunidad, riesgo o crecimiento disponible:
 - descender a los niveles que puedan ocultar heterogeneidad material, siempre que existan capabilities y evidencia suficientes;
 - si no existe evidencia para evaluar esos niveles, concluir `INSUFFICIENT_EVIDENCE` o equivalente, no ausencia de oportunidad.
 
-## 4. Múltiples capabilities
+## 5. Múltiples capabilities
 
 Una pregunta puede requerir varias llamadas.
 
@@ -102,7 +152,9 @@ Una pregunta puede requerir varias llamadas.
 - reutilizar evidencia vigente del mismo universo y corte temporal;
 - detenerse cuando exista evidencia suficiente.
 
-## 5. Ausencia de observaciones
+Cuando se integren outputs de dominios distintos y ambos declaren scope comercial, el universo debe ser compatible. Si no coincide, no integrar silenciosamente.
+
+## 6. Ausencia de observaciones
 
 **Cero observado no equivale automáticamente a cero fenómeno.**
 
@@ -119,9 +171,9 @@ Si el cero es inesperado respecto del contexto conocido de la fuente, validar co
 
 Una fuente sin evidencia evaluable no debe utilizarse como evidencia de ausencia.
 
-## 6. Dominios públicos
+## 7. Dominios públicos
 
-**SALES** — VIN, cierre, producto, tienda, vendedor, concentración, contribución, desempeño y deterioro.
+**SALES** — scope comercial certificado, VIN, cierre, producto, tienda, vendedor, concentración, contribución, desempeño y deterioro.
 
 **MARKET** — mercado/RVM, contexto competitivo, share, trayectoria, relaciones e historia.
 
@@ -131,7 +183,7 @@ Una fuente sin evidencia evaluable no debe utilizarse como evidencia de ausencia
 
 `schema.json` es la autoridad sobre capabilities e inputs.
 
-## 7. Compatibilidad temporal
+## 8. Compatibilidad temporal
 
 Antes de integrar fuentes verificar comparabilidad temporal. Respetar período completo/incompleto, `lastObservedDate`, `effectiveDateTo` y SAME_DAY.
 
@@ -139,11 +191,12 @@ SAME_DAY compara igual posición de calendario; no reconstruye estado histórico
 
 Si las fuentes tienen cortes distintos, usar el mínimo corte común cuando la comparación lo requiera o declarar la limitación.
 
-## 8. Criterio de salida
+## 9. Criterio de salida
 
 Antes de responder comprobar internamente:
 
 ```text
+¿El dominio comercial corresponde exactamente a la intención de la pregunta?
 ¿Tengo contexto suficiente para interpretar?
 ¿Localicé el fenómeno al nivel necesario?
 ¿Confundí ausencia de observaciones con ausencia del fenómeno?
