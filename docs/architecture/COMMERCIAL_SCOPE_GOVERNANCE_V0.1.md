@@ -71,6 +71,15 @@ ventas_commercial_context_v01
 
 Responsibility: determine and certify the commercial universe on which downstream VENTAS motors may operate.
 
+The public SALES capability is:
+
+```text
+SALES / COMMERCIAL_CONTEXT
+→ ventas_commercial_context_v01
+```
+
+`commercial_universe` is mandatory at the public boundary. The capability fails closed with `MISSING_COMMERCIAL_UNIVERSE` instead of silently defaulting an omitted scope to COMPANY.
+
 Output contract begins with:
 
 ```json
@@ -102,10 +111,48 @@ Only sales whose canonical `canal_salida = DEALER` are admitted. Their commercia
 
 ## Current consumers
 
-`ventas_organizational_context_v01` now obtains a certified `OWN_STORES` domain before store/seller enrichment. Therefore store contribution, seller contribution, relative performance and deterioration consumers that depend on organizational context inherit the own-store boundary.
+`ventas_organizational_context_v01` obtains a certified `OWN_STORES` domain before store/seller enrichment. Therefore store contribution, seller contribution, relative performance and deterioration consumers that depend on organizational context inherit the own-store boundary.
 
 `ventas_longitudinal_context_v01` requires an explicit `commercial_universe`. STORE/SELLER analyses require `OWN_STORES`; DEALER/DEALER_GROUP analyses require `DEALERS`. Product grains can operate inside any explicitly selected commercial universe.
+
+The public longitudinal schema permits `commercial_universe = COMPANY | OWN_STORES | DEALERS`; it is required by the VENTAS capability and validated by the backend. `grain` never infers or changes this domain.
+
+## Agent surface
+
+Public OpenAPI V1.50.0 exposes the same semantics already enforced by the backend:
+
+```text
+POST /api/custom-gpt/sales
+capability = COMMERCIAL_CONTEXT
+input.commercial_universe = COMPANY | OWN_STORES | DEALERS
+```
+
+and:
+
+```text
+POST /api/custom-gpt/longitudinal
+capability = VENTAS
+input.commercial_universe = COMPANY | OWN_STORES | DEALERS
+```
+
+The capability registry, router, public schema and backend therefore share the same domain contract.
 
 ## Cross-domain integration
 
 The same contract is intended to be adopted later by CRM and other domains. Integration must compare declared commercial scopes before combining outputs. This version implements the pattern first in VENTAS and does not introduce a generic DOMAIN_CONTEXT abstraction yet.
+
+## Closure status
+
+```text
+VENTAS COMMERCIAL SCOPE GOVERNANCE V0.1 = CLOSED
+```
+
+Closed means:
+
+- commercial destination authority = `vehiculo_canonico`;
+- `COMPANY | OWN_STORES | DEALERS` are certified scopes;
+- public `COMMERCIAL_CONTEXT` is exposed;
+- public VENTAS longitudinal accepts explicit `commercial_universe`;
+- store/seller organizational consumers enter through `OWN_STORES`;
+- incompatible grain/domain combinations fail with `DOMAIN_MISMATCH`;
+- omitted public scope fails closed rather than silently widening to COMPANY.
