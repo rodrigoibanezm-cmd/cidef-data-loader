@@ -31,7 +31,10 @@ test('FOTON and DONGFENG resolved BRAND buckets remain canonical', () => {
 
 test('non-unique or missing product identity never invents BRAND and coverage reconciles', () => {
   const sql = buildCrmLongitudinalQuery(parsed({ breakdown: 'BRAND' })).sql;
-  assert.match(sql, /count\(DISTINCT modelo_id\)::int match_count/);
+  assert.match(sql, /count\(DISTINCT modelo_id\)::int model_match_count/);
+  assert.match(sql, /count\(DISTINCT marca_id\)::int brand_match_count/);
+  assert.match(sql, /CASE WHEN pr\.brand_match_count=1 THEN pr\.brand END brand/);
+  assert.doesNotMatch(sql, /model_match_count>1 THEN 'AMBIGUOUS'/);
   assert.match(sql, /brand_match_count>1 THEN 'AMBIGUOUS'/);
   assert.match(sql, /brand IS NULL THEN 'UNRESOLVED'/);
   const row = { period: '2026-01', row_type: 'TOTAL', numerator: '10', denominator: '10', value: '10', last_observed_date: '2026-01-31', identity_total: '10', brand_resolved: '6', brand_unresolved: '2', brand_ambiguous: '1', brand_not_applicable: '1' };
@@ -39,6 +42,26 @@ test('non-unique or missing product identity never invents BRAND and coverage re
   const coverage = result.coverage.dimensionCoverage.find((item) => item.dimension === 'BRAND');
   assert.equal(coverage.resolved + coverage.unresolved + coverage.ambiguous + coverage.notApplicable, coverage.total);
   assert.equal(coverage.total, 10);
+});
+
+
+test('multiple exact models within one brand keep BRAND resolved', () => {
+  const sql = buildCrmLongitudinalQuery(parsed({ breakdown: 'BRAND' })).sql;
+  assert.match(sql, /count\(DISTINCT modelo_id\)::int model_match_count,count\(DISTINCT marca_id\)::int brand_match_count/);
+  assert.match(sql, /CASE WHEN pr\.brand_match_count=1 THEN pr\.brand END brand/);
+  assert.match(sql, /brand_match_count>1 THEN 'AMBIGUOUS'/);
+});
+
+test('multiple exact brands keep BRAND ambiguous', () => {
+  const sql = buildCrmLongitudinalQuery(parsed({ breakdown: 'BRAND' })).sql;
+  assert.match(sql, /count\(DISTINCT marca_id\)::int brand_match_count/);
+  assert.match(sql, /brand_match_count>1 THEN 'AMBIGUOUS'/);
+});
+
+test('missing product stays unresolved and empty product stays not applicable', () => {
+  const sql = buildCrmLongitudinalQuery(parsed({ breakdown: 'BRAND' })).sql;
+  assert.match(sql, /brand IS NULL THEN 'UNRESOLVED'/);
+  assert.match(sql, /product_interest_norm IS NULL THEN 'NOT_APPLICABLE'/);
 });
 
 test('BRAND filters use canonical enriched brand, not CRM raw Marca', () => {
