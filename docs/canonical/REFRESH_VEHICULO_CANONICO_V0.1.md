@@ -35,7 +35,23 @@ La implementación conserva el contrato de `sql/vehiculo_canonico_v01.sql` y lue
 
 ## Salida comercial
 
-Se mantienen las reglas V0.1:
+La operación comercial actual se busca con precedencia estricta:
+
+```text
+1. ventas_raw: VIN + numero_factura exactos
+2. ventas_raw: VIN + fecha_factura exacta, sólo cuando no existe match por factura
+3. notas_venta_raw: VIN + fecha_factura + factura compatible, sólo cuando ventas_raw no contiene la operación
+4. sin evidencia convergente -> UNRESOLVED
+```
+
+Los fallbacks por fecha no interpretan ni corrigen números de factura defectuosos. Sólo identifican la misma operación mediante VIN y fecha y la salida se persiste únicamente cuando las filas candidatas convergen en una única sucursal/tipo de canal MASTER.
+
+Esto cubre explícitamente dos defectos observados de fuente:
+
+- `ventas_raw.nro_factura` puede venir truncado/negativo aunque VIN y fecha correspondan a la venta actual;
+- ventas históricas 2020 presentes en `vehiculos_raw` y `notas_venta_raw` pueden no existir en el snapshot actual de `ventas_raw`.
+
+Se mantienen además las reglas V0.1:
 
 - `TIENDA_PROPIA` sólo con sucursal MASTER CIDEF explícita;
 - dealer directo por comprador MASTER resuelto;
@@ -105,5 +121,5 @@ El motor entrega:
 
 - estado previo (`before`);
 - filas upsert/delete del rebuild base (`base`);
-- resumen del resolver de salida (`salida`);
+- resumen del resolver de salida (`salida`), incluyendo conteos por método de match;
 - auditoría final (`audit`).
