@@ -49,6 +49,19 @@ function executorFor(ventasUniverse, crmUniverse) {
     : { domain: 'VENTAS', commercial_scope: { universe: ventasUniverse } };
 }
 
+function executorWithMissingScope(missingDomain) {
+  return async (action) => {
+    if (action === 'crm_longitudinal_context_v01') {
+      return missingDomain === 'CRM'
+        ? { domain: 'CRM' }
+        : { domain: 'CRM', commercial_scope: { universe: 'OWN_STORES' } };
+    }
+    return missingDomain === 'VENTAS'
+      ? { domain: 'VENTAS' }
+      : { domain: 'VENTAS', commercial_scope: { universe: 'OWN_STORES' } };
+  };
+}
+
 test('multi-domain flow composes matching certified scopes', async () => {
   await assert.doesNotReject(() => runCustomGptActionWithContext({
     action: 'ventas_longitudinal_context_v01',
@@ -66,3 +79,15 @@ test('multi-domain flow rejects mismatched certified scopes before composition',
     longitudinal_context: crmContext('OWN_STORES'),
   }, executorFor('COMPANY', 'OWN_STORES')), (error) => error.code === 'DOMAIN_MISMATCH');
 });
+
+for (const missingDomain of ['VENTAS', 'CRM']) {
+  test(`multi-domain flow rejects missing ${missingDomain} commercial scope before composition`, async () => {
+    await assert.rejects(() => runCustomGptActionWithContext({
+      action: 'ventas_longitudinal_context_v01',
+      input: {},
+      requires_longitudinal_context: true,
+      longitudinal_context: crmContext('OWN_STORES'),
+    }, executorWithMissingScope(missingDomain)),
+    (error) => error.code === 'MISSING_COMMERCIAL_SCOPE');
+  });
+}
