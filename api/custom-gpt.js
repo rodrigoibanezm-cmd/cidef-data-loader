@@ -1,6 +1,6 @@
-import { listCustomGptActions, runCustomGptAction } from '../lib/custom-gpt-router.js';
+import { listCustomGptActions, runCustomGptActionWithContext } from '../lib/custom-gpt-router.js';
 
-const ROUTER_VERSION = '1.46.0';
+const ROUTER_VERSION = '1.47.0';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const result = await runCustomGptAction(action, req.body?.input ?? {});
+    const result = await runCustomGptActionWithContext(req.body);
     return res.status(200).json({
       ok: true,
       router_version: ROUTER_VERSION,

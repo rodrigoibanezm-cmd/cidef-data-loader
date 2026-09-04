@@ -3398,6 +3398,74 @@ No persiste snapshots/series, estima ventas perdidas, une CRM→VIN, interpreta,
 
 Los tres outputs comparten: `motor`, `version`, `domain`, `metric`, `grain`, `timeGrain`, `dateFrom`, `dateTo`, `filters`, `series[]`, `breakdown`, `seriesByBreakdown?`, `metadata`. Cada punto contiene `period`, `value`, `absoluteChange`, `pctChange`; shares agregan denominadores explícitos.
 
+### Activación semántica de contexto longitudinal
+
+El request de `/api/custom-gpt` acepta:
+
+```text
+requires_longitudinal_context: boolean
+longitudinal_context?: {
+  domain, metric, grain, filters, date_from, date_to, time_grain,
+  breakdown?, entity?, universe_filters?, date_axis?, mode?, cohort_axis?
+}
+```
+
+Definición para el LLM:
+
+> Activate when answering the analytical question requires understanding how the requested variable evolved across multiple periods, even if the user does not explicitly ask for a series.
+
+El flag es una decisión semántica explícita del LLM. Se usa cuando la respuesta necesita tendencia, trayectoria, crecimiento, caída, cambio, aceleración, desaceleración, participación a través del tiempo, comparación entre períodos, persistencia o comportamiento histórico. No depende de keywords: «¿Dongfeng está perdiendo terreno?» puede requerirlo aunque no diga serie, historia o tendencia. El router nunca infiere el flag.
+
+Routing cerrado:
+
+```text
+VENTAS -> ventas_longitudinal_context_v01
+RVM    -> rvm_longitudinal_context_v01
+CRM    -> crm_longitudinal_context_v01
+```
+
+Con `true`, `domain`, `metric`, `grain`, `filters`, `date_from`, `date_to` y `time_grain` son obligatorios. CRM exige además `mode` y `date_axis` para EVENT o `cohort_axis` para COHORT. Los requisitos propios de la métrica —por ejemplo `entity` en RVM— siguen siendo validados por el motor seleccionado. No hay defaults semánticos añadidos.
+
+La composición conserva ambas salidas sin reinterpretarlas:
+
+```json
+{
+  "result": {
+    "analytical_result": {},
+    "longitudinal_context": {}
+  }
+}
+```
+
+Con `false` o flag ausente, sólo se ejecuta la action solicitada y `result` conserva exactamente el envelope anterior. No se ejecuta ningún motor longitudinal adicional.
+
+Ejemplo `true`:
+
+```json
+{
+  "action": "competitive_relation_v01",
+  "input": {"target_model_ids":[481],"date_from":"2024-01-01","date_to":"2026-08-31","origin_group":"CHINESE"},
+  "requires_longitudinal_context": true,
+  "longitudinal_context": {
+    "domain":"RVM","metric":"MARKET_SHARE","grain":"BRAND","filters":{},
+    "entity":{"brand":"DONGFENG"},"universe_filters":{"segment":["SUV","VEHICULO DE PASAJEROS"]},
+    "date_from":"2024-01-01","date_to":"2026-08-31","time_grain":"MONTH"
+  }
+}
+```
+
+Ejemplo `false`:
+
+```json
+{
+  "action":"ventas_monthly_actual_v01",
+  "input":{"target_month":"2026-07","cutoff_month":"2026-07"},
+  "requires_longitudinal_context":false
+}
+```
+
+Esta activación no clasifica keywords, no selecciona motores fuera del mapping por dominio y no agrega interpretación, anomalías, materialidad, forecast, tesis, recomendaciones, alertas, pressures ni tasks.
+
 ## NOT AVAILABLE
 
 No forman parte de la superficie actual del agente:

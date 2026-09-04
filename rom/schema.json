@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.46.0",
+    "version": "1.47.0",
     "x-seller-membership-contract": "VENDEDOR_CIDEF requires resolved persona plus date-effective VENDEDOR_TIENDA role and assignment to the observed CIDEF store; ventas_raw never creates membership; seller daily forecast backtest is exposed as VENDEDOR_CIDEF_POOLED validation evidence only",
     "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, monthly and daily cutoff-safe sales context, daily organizational cutoff-safe sales context, historical intramonth cutoff-safe sales context with sparse-positive store semantics and retrospective close labels, product sales, recognized product detail, deterministic SKU-to-model resolution, parameterized product sales concentration/Pareto trend, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with null-safe relative-gap detail, productive organizational relative performance over closed months using certified grain-specific baselines, shared competitive context with optional Chile market-origin peer filtering, bounded competitive share trajectory with compact trajectory and explicit monthly detail outputs over the same peer semantics, paginated competitive signal backtesting across target×peer×universe without competitor labels, productive competitive relation selection under a fixed V0.1 temporal rule, and auditable inverse share movements across consecutive joint-active transitions for those related peers. Also includes canonical product GENERATION membership context, bounded organization sales deterioration backtesting with sparse observation semantics, deterioration episode evidence with ex-ante signal rows, productive store deterioration status over a fixed certified rule, and an AUDIT_ONLY observation-semantics comparison with explicit ACTIVE_ZERO evidence and temporal/unit-universe validations for Family 3. Includes a productive current-month close forecast using prior closed-month completion evidence. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface. Includes canonical dealer inventory aging over current vehiculo_canonico state using the previously validated dealer-stock aging contract."
   },
@@ -45,6 +45,7 @@
       "CustomGptRequest": {
         "type": "object",
         "x-vendedor-cidef-policy": "ventas_identity_coverage_v01 separates resolved identity from seller eligibility; ventas_organizational_context_v01 includes only date-effective VENDEDOR_CIDEF rows whose assignment matches the observed CIDEF store",
+        "x-longitudinal-activation": "Activate when answering the analytical question requires understanding how the requested variable evolved across multiple periods, even if the user does not explicitly ask for a series. The LLM sets the flag semantically; the router never infers it from keywords.",
         "required": [
           "action",
           "input"
@@ -103,8 +104,85 @@
           },
           "input": {
             "$ref": "#/components/schemas/ActionInput"
+          },
+          "requires_longitudinal_context": {
+            "type": "boolean",
+            "default": false,
+            "description": "Explicit semantic flag. Set true when the analytical answer requires temporal evolution across multiple periods, including trajectory, growth, decline, change, acceleration, deceleration, participation through time, period comparison, persistence or historical behavior. Do not depend on exact words: a question such as 'Is Dongfeng losing ground?' can require true. False or absent preserves legacy execution and runs no additional longitudinal motor."
+          },
+          "longitudinal_context": {
+            "$ref": "#/components/schemas/LongitudinalContextInput"
           }
         },
+        "allOf": [
+          {
+            "if": {
+              "required": ["requires_longitudinal_context"],
+              "properties": { "requires_longitudinal_context": { "const": true } }
+            },
+            "then": { "required": ["longitudinal_context"] }
+          }
+        ],
+        "additionalProperties": false
+      },
+      "LongitudinalFilterValue": {
+        "oneOf": [
+          { "type": "string" },
+          { "type": "integer" },
+          {
+            "type": "array",
+            "minItems": 1,
+            "items": { "oneOf": [{ "type": "string" }, { "type": "integer" }] }
+          }
+        ]
+      },
+      "LongitudinalFilterMap": {
+        "type": "object",
+        "description": "Domain-specific exact filters. Unsupported keys are rejected by the selected longitudinal motor.",
+        "additionalProperties": { "$ref": "#/components/schemas/LongitudinalFilterValue" }
+      },
+      "LongitudinalContextInput": {
+        "type": "object",
+        "description": "Inputs for the automatically selected longitudinal motor. Routing is fixed: VENTAS -> ventas_longitudinal_context_v01; RVM -> rvm_longitudinal_context_v01; CRM -> crm_longitudinal_context_v01.",
+        "required": ["domain", "metric", "grain", "filters", "date_from", "date_to", "time_grain"],
+        "properties": {
+          "domain": { "type": "string", "enum": ["VENTAS", "RVM", "CRM"] },
+          "metric": {
+            "type": "string",
+            "enum": ["VIN_SALES", "SHARE_WITHIN_CIDEF", "MARKET_SIZE", "ENTITY_VIN", "MARKET_SHARE", "RANK", "LEADS_CREATED", "SOLD", "NOT_SOLD", "UNMANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"]
+          },
+          "grain": {
+            "type": "string",
+            "enum": ["TOTAL", "CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "BRAND", "MODEL", "VERSION", "SEGMENT", "TYPE", "REGION", "COMUNA", "FUEL", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "INTEREST_LEVEL", "DESIST_REASON"]
+          },
+          "filters": { "$ref": "#/components/schemas/LongitudinalFilterMap" },
+          "entity": { "$ref": "#/components/schemas/LongitudinalFilterMap" },
+          "universe_filters": { "$ref": "#/components/schemas/LongitudinalFilterMap" },
+          "date_from": { "type": "string", "format": "date" },
+          "date_to": { "type": "string", "format": "date" },
+          "time_grain": { "type": "string", "enum": ["MONTH", "YEAR"] },
+          "breakdown": {
+            "type": "string",
+            "enum": ["CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "BRAND", "MODEL", "VERSION", "SEGMENT", "TYPE", "REGION", "COMUNA", "FUEL", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "INTEREST_LEVEL", "DESIST_REASON"]
+          },
+          "date_axis": { "type": "string", "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"] },
+          "mode": { "type": "string", "enum": ["EVENT", "COHORT"] },
+          "cohort_axis": { "type": "string", "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"] }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "domain": { "const": "CRM" } }, "required": ["domain"] },
+            "then": { "required": ["mode"] }
+          },
+          {
+            "if": { "properties": { "domain": { "const": "CRM" }, "mode": { "const": "EVENT" } }, "required": ["domain", "mode"] },
+            "then": { "required": ["date_axis"] }
+          },
+          {
+            "if": { "properties": { "domain": { "const": "CRM" }, "mode": { "const": "COHORT" } }, "required": ["domain", "mode"] },
+            "then": { "required": ["cohort_axis"] }
+          }
+        ],
         "additionalProperties": false
       },
       "AllowedTable": {
