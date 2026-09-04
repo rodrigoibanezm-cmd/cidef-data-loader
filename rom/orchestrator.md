@@ -156,6 +156,16 @@ Una pregunta puede requerir varias llamadas.
 
 Cuando se integren outputs de dominios distintos y ambos declaren scope comercial, el universo debe ser compatible. Si no coincide, no integrar silenciosamente.
 
+Para integración `VENTAS ↔ CRM`, la compatibilidad comercial es exacta:
+
+```text
+VENTAS COMPANY    ↔ CRM COMPANY    → COMPATIBLE
+VENTAS OWN_STORES ↔ CRM OWN_STORES → COMPATIBLE
+cualquier otro cruce               → DOMAIN_MISMATCH
+```
+
+La comparación usa el `commercial_scope` ya certificado por cada dominio y ocurre antes de componer sus resultados. No redefinir ni inferir el dominio desde grain, filtros, keywords o nombres de entidades. `CRM DEALERS` sigue siendo `UNSUPPORTED_COMMERCIAL_UNIVERSE` y debe fallar en CRM antes de cualquier validación cross-domain.
+
 ## 6. Ausencia de observaciones
 
 **Cero observado no equivale automáticamente a cero fenómeno.**
