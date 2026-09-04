@@ -138,8 +138,38 @@
       },
       "LongitudinalFilterMap": {
         "type": "object",
-        "description": "Domain-specific exact filters. Unsupported keys are rejected by the selected longitudinal motor.",
-        "additionalProperties": { "$ref": "#/components/schemas/LongitudinalFilterValue" }
+        "description": "Closed union of exact filter keys supported by the VENTAS, RVM and CRM longitudinal motors. Domain-specific unsupported keys are still rejected by the selected motor.",
+        "properties": {
+          "channel": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "store_id": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "store": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "dealer_id": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "dealer": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "dealer_group_id": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "dealer_group": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "seller_id": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "seller": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "brand_id": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "brand": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "model_id": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "model": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "version_id": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "version": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "segment": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "type": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "region": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "comuna": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "fuel": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "product_interest": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "origin": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "suborigin": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "status": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "store_raw": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "seller_raw": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "interest_level": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "desist_reason": { "$ref": "#/components/schemas/LongitudinalFilterValue" }
+        },
+        "additionalProperties": false
       },
       "LongitudinalContextInput": {
         "type": "object",
@@ -408,16 +438,7 @@
           "filters": {
             "oneOf": [
               { "type": "array", "items": { "$ref": "#/components/schemas/Filter" } },
-              {
-                "type": "object",
-                "description": "Longitudinal motor filters. Keys are domain-specific and unknown keys are rejected.",
-                "additionalProperties": {
-                  "oneOf": [
-                    { "type": "string" }, { "type": "integer" },
-                    { "type": "array", "minItems": 1, "items": { "oneOf": [{ "type": "string" }, { "type": "integer" }] } }
-                  ]
-                }
-              }
+              { "$ref": "#/components/schemas/LongitudinalFilterMap" }
             ]
           },
           "metric": {
@@ -439,14 +460,12 @@
             "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"]
           },
           "entity": {
-            "type": "object",
-            "description": "Explicit RVM entity filters for ENTITY_VIN, MARKET_SHARE or RANK.",
-            "additionalProperties": { "oneOf": [{ "type": "string" }, { "type": "integer" }, { "type": "array", "minItems": 1, "items": { "oneOf": [{ "type": "string" }, { "type": "integer" }] } }] }
+            "$ref": "#/components/schemas/LongitudinalFilterMap",
+            "description": "Explicit RVM entity filters for ENTITY_VIN, MARKET_SHARE or RANK."
           },
           "universe_filters": {
-            "type": "object",
-            "description": "Explicit RVM denominator universe; the motor never selects it automatically.",
-            "additionalProperties": { "oneOf": [{ "type": "string" }, { "type": "integer" }, { "type": "array", "minItems": 1, "items": { "oneOf": [{ "type": "string" }, { "type": "integer" }] } }] }
+            "$ref": "#/components/schemas/LongitudinalFilterMap",
+            "description": "Explicit RVM denominator universe; the motor never selects it automatically."
           },
           "group_by": {
             "type": "array",
