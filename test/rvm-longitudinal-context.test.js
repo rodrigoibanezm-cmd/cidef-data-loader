@@ -49,14 +49,16 @@ test('brand and model breakdown remain explicit including unresolved', () => {
   }
 });
 
-test('BRAND and MODEL identity coverage reports unresolved and ambiguous units', () => {
+test('joint product identity coverage reports unresolved and ambiguous units once', () => {
   const result = assembleRvmLongitudinal(parsed(), totals);
-  for (const dimension of ['BRAND', 'MODEL']) {
-    const coverage = result.coverage.dimensionCoverage.find((row) => row.dimension === dimension);
-    assert.deepEqual([coverage.resolved, coverage.unresolved, coverage.ambiguous, coverage.total], [90, 7, 3, 100]);
-  }
-  assert.ok(result.warnings.includes('BRAND_IDENTITY_UNRESOLVED_PRESENT'));
-  assert.ok(result.warnings.includes('MODEL_IDENTITY_AMBIGUOUS_PRESENT'));
+  assert.equal(result.coverage.dimensionCoverage.length, 1);
+  const coverage = result.coverage.dimensionCoverage[0];
+  assert.equal(coverage.dimension, 'PRODUCT_IDENTITY');
+  assert.deepEqual([coverage.resolved, coverage.unresolved, coverage.ambiguous, coverage.total], [90, 7, 3, 100]);
+  assert.equal(coverage.resolved + coverage.unresolved + coverage.ambiguous + coverage.notApplicable, coverage.total);
+  assert.ok(result.warnings.includes('PRODUCT_IDENTITY_UNRESOLVED_PRESENT'));
+  assert.ok(result.warnings.includes('PRODUCT_IDENTITY_AMBIGUOUS_PRESENT'));
+  assert.match(result.metadata.identityCoverageSemantics, /not measured independently/);
 });
 
 test('SAME_DAY and cutoff are explicit without changing the competitive universe', () => {

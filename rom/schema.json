@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.48.0",
+    "version": "1.48.1",
     "x-seller-membership-contract": "VENDEDOR_CIDEF requires resolved persona plus date-effective VENDEDOR_TIENDA role and assignment to the observed CIDEF store; ventas_raw never creates membership; seller daily forecast backtest is exposed as VENDEDOR_CIDEF_POOLED validation evidence only",
     "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, monthly and daily cutoff-safe sales context, daily organizational cutoff-safe sales context, historical intramonth cutoff-safe sales context with sparse-positive store semantics and retrospective close labels, product sales, recognized product detail, deterministic SKU-to-model resolution, parameterized product sales concentration/Pareto trend, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with null-safe relative-gap detail, productive organizational relative performance over closed months using certified grain-specific baselines, shared competitive context with optional Chile market-origin peer filtering, bounded competitive share trajectory with compact trajectory and explicit monthly detail outputs over the same peer semantics, paginated competitive signal backtesting across target×peer×universe without competitor labels, productive competitive relation selection under a fixed V0.1 temporal rule, and auditable inverse share movements across consecutive joint-active transitions for those related peers. Also includes canonical product GENERATION membership context, bounded organization sales deterioration backtesting with sparse observation semantics, deterioration episode evidence with ex-ante signal rows, productive store deterioration status over a fixed certified rule, and an AUDIT_ONLY observation-semantics comparison with explicit ACTIVE_ZERO evidence and temporal/unit-universe validations for Family 3. Includes a productive current-month close forecast using prior closed-month completion evidence. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface. Includes canonical dealer inventory aging over current vehiculo_canonico state using the previously validated dealer-stock aging contract."
   },
@@ -336,7 +336,7 @@
           "business_question": "How did recognized CIDEF VIN sales move through time for an explicitly requested canonical grain and filters?",
           "metrics": ["VIN_SALES", "SHARE_WITHIN_CIDEF"],
           "grains": ["TOTAL", "CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "BRAND", "MODEL", "VERSION"],
-          "time": "inclusive requested range; FULL_PERIOD or SAME_DAY; explicit requested/effective/observed boundaries and period completeness",
+          "time": "inclusive requested range; FULL_PERIOD or SAME_DAY; explicit requested/effective/observed boundaries and period completeness; SAME_DAY is comparable calendar-day truncation over recognized sales, not historical recognition-state reconstruction",
           "identity": "canonical MASTER only; SELLER is date-effective VENDEDOR_CIDEF at the observed canonical CIDEF store; unresolved stays visible",
           "execution": "ON_DEMAND; no persistence, interpretation, anomaly detection, thesis, materiality, forecasting or actions"
         },
@@ -348,7 +348,7 @@
           "grains": ["TOTAL", "BRAND", "MODEL", "SEGMENT", "TYPE", "REGION", "COMUNA", "FUEL"],
           "universe": "caller-explicit universe_filters; no automatic competitive universe",
           "share": "every point exposes numerator, denominator and value",
-          "coverage": "BRAND and MODEL resolved/unresolved/ambiguous/notApplicable counts and ratios are explicit",
+          "coverage": "PRODUCT_IDENTITY reports resolved/unresolved/ambiguous/notApplicable units and ratios once; it is the joint model-alias resolution that supplies brand_id and model_id, not independent BRAND and MODEL measurements",
           "execution": "ON_DEMAND; no persistence, interpretation, anomaly detection, thesis, materiality, forecasting or actions"
         },
         "x-crm-longitudinal-context-v01": {
@@ -358,7 +358,7 @@
           "metrics": ["LEADS_CREATED", "SOLD", "NOT_SOLD", "MANAGED", "UNMANAGED", "MANAGEMENT_COVERAGE", "CONVERSION_ON_MANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"],
           "date_axes": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"],
           "identity": "STORE and SELLER use exact validated MASTER evidence, preserve RAW audit values, and SELLER applies date-effective VENDEDOR_CIDEF at the selected event axis",
-          "management": "MANAGED requires a parseable Gestionado el; MANAGEMENT_COVERAGE=MANAGED/(MANAGED+UNMANAGED); CONVERSION_ON_MANAGED=sold_managed/MANAGED",
+          "management": "MANAGED requires a parseable Gestionado el. UNMANAGED means Gestionado el does not parse to a valid date, including missing/empty and present-but-unparseable values; the latter are counted separately as invalidManagedDateRecords and emit CRM_INVALID_MANAGED_DATE_PRESENT. MANAGEMENT_COVERAGE=MANAGED/(MANAGED+UNMANAGED); CONVERSION_ON_MANAGED=sold_managed/MANAGED",
           "restriction": "historical state snapshots return UNSUPPORTED_TEMPORAL_RECONSTRUCTION",
           "execution": "ON_DEMAND; no persistence, interpretation, anomaly detection, thesis, materiality, forecasting or actions"
         },

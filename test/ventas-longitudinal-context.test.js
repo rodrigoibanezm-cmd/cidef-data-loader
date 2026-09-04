@@ -76,6 +76,8 @@ test('SAME_DAY day 26 truncates every historical month at day 26', () => {
   assert.equal(result.temporalSemantics.comparisonDay, 26);
   assert.equal(result.temporalSemantics.effectiveDateTo, '2026-03-26');
   assert.deepEqual(result.series.map((row) => row.value), [3, 1, 2]);
+  assert.match(result.metadata.sameDaySemantics, /not historical recognition-state reconstruction/);
+  assert.match(result.metadata.recognition, /LAST-by-VIN/);
 });
 
 test('last requested period completeness follows observed evidence', () => {

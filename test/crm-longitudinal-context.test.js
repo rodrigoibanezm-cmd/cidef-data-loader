@@ -28,6 +28,11 @@ test('SOLD cohort by creation date and conversion rate are deterministic', () =>
 test('UNMANAGED is the exact complement of valid management-date evidence', () => {
   assert.match(buildCrmLongitudinalQuery(parsed({ metric: 'UNMANAGED', mode: 'COHORT', cohort_axis: 'CREATED_AT' })).sql, /NOT \(managed_date IS NOT NULL\)/);
   assert.match(buildCrmLongitudinalQuery(parsed({ metric: 'OPPORTUNITY', mode: 'COHORT', cohort_axis: 'CREATED_AT' })).sql, /OPORTUNIDAD/);
+  const result = assembleCrmLongitudinal(parsed({ metric: 'UNMANAGED', mode: 'COHORT', cohort_axis: 'CREATED_AT' }), rows);
+  assert.equal(result.coverage.eventDateCoverage.invalidManagedDateRecords, 1);
+  assert.ok(result.warnings.includes('CRM_INVALID_MANAGED_DATE_PRESENT'));
+  assert.match(result.metadata.managementDefinitions.unmanaged, /missing or empty values and present but unparseable values/);
+  assert.match(result.metadata.managementDefinitions.invalidManagedDate, /remain UNMANAGED/);
 });
 
 test('origin and raw product filters are explicit', () => {
@@ -82,6 +87,8 @@ test('management ratios expose reconciled numerator and denominator', () => {
   const coverage = assembleCrmLongitudinal(parsed({ metric: 'MANAGEMENT_COVERAGE', mode: 'COHORT', cohort_axis: 'CREATED_AT' }), [{ ...rows[0], numerator: '8', denominator: '10', value: '0.8' }]);
   assert.equal(coverage.series[0].numerator, 8);
   assert.equal(coverage.series[0].denominator, 10);
+  assert.equal(coverage.metadata.managementDefinitions.managed, 'Gestionado el parses to a valid date');
+  assert.equal(coverage.metadata.managementDefinitions.managementCoverage, 'MANAGED / (MANAGED + UNMANAGED)');
   const conversion = assembleCrmLongitudinal(parsed({ metric: 'CONVERSION_ON_MANAGED', mode: 'COHORT', cohort_axis: 'CREATED_AT' }), [{ ...rows[0], numerator: '3', denominator: '8', value: '0.375' }]);
   assert.equal(conversion.series[0].value, 0.375);
 });
