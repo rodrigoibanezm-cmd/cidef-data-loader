@@ -2,20 +2,21 @@
 
 ## Responsabilidad
 
-Transformar una pregunta de negocio en un **plan mínimo de evidencia** que permita demostrar una lógica determinista y, si corresponde, convertirla en un motor.
+Transformar una pregunta de negocio en un **plan mínimo de evidencia** usando las capabilities públicas AVAILABLE y, sólo cuando corresponda, demostrar la lógica necesaria para una nueva capacidad determinista.
 
 ```text
 pregunta natural
-→ respuesta esperada
-→ cálculo necesario
-→ variables mínimas
-→ evidencia requerida
-→ consultas exploratorias mínimas
-→ lógica demostrada
-→ contrato de motor
+→ intención
+→ dominio
+→ contexto necesario
+→ capability(s) mínima(s)
+→ evidencia
+→ reducción progresiva del universo
+→ respuesta o lógica demostrada
+→ contrato de motor, sólo si corresponde
 ```
 
-El intake NO parte desde tablas, hechos, cubos ni motores existentes.
+El intake NO parte desde tablas, motores físicos ni nombres internos.
 
 ---
 
@@ -26,157 +27,230 @@ Antes de consultar datos, formular una sola pregunta de negocio concreta.
 Ejemplos:
 
 ```text
-¿Cuánto debería vender CIDEF este mes?
-¿Por qué vendimos 18 VIN menos que el período comparable?
-¿Qué sucursales explican la mayor parte de la caída?
-¿Cuánto depende una tienda de los últimos 10 días del mes?
+¿Cuánto vendió CIDEF el último mes cerrado?
+¿Dongfeng está perdiendo participación?
+¿Qué tiendas explican la caída?
+¿Cómo está Bellavista?
 ```
 
-No mezclar varias preguntas superiores en una misma exploración.
+No mezclar varias preguntas superiores en una misma exploración salvo que el usuario pida explícitamente una lectura integrada.
 
 ---
 
-## 2. Definir la respuesta antes de buscar datos
+## 2. Clasificar la intención
 
-Precisar:
+Primero distinguir:
 
-```text
-objetivo
-unidad
-nivel de análisis
-período
-población
-output esperado
-```
+### DESCRIPTIVA
+
+Pide un hecho acotado y no requiere interpretación contextual amplia.
 
 Ejemplo:
 
 ```text
-objetivo: explicar delta de ventas
-unidad: VIN
-nivel: CIDEF
-período: mes A vs mes B
-output: delta total + contribución por sucursal
+¿Cuántos VIN vendió Bellavista en julio?
 ```
 
----
+→ usar directamente la capability mínima suficiente.
 
-## 3. Derivar el cálculo
+### ANALÍTICA / EVALUATIVA / DIAGNÓSTICA
 
-Escribir la lógica conceptual mínima sin nombres físicos de columnas.
+La interpretación puede cambiar según el contexto mayor.
 
-Ejemplo:
+Ejemplos:
 
 ```text
-delta_total = ventas_periodo_A - ventas_periodo_B
-contribucion_sucursal = ventas_A_sucursal - ventas_B_sucursal
-sum(contribucion_sucursal) = delta_total
+¿Cómo está Bellavista?
+¿Qué vendedor está peor?
+¿Dongfeng está perdiendo terreno?
+¿Qué explica la caída?
 ```
 
-No consultar data hasta poder decir qué variables hacen falta para probar esa lógica.
+→ obtener primero el contexto más amplio pertinente y reducir progresivamente el universo.
 
 ---
 
-## 4. Identificar variables mínimas
+## 3. Elegir dominio
 
-Separar:
+La superficie pública está separada en:
 
 ```text
-hechos observados
-identidades necesarias
-fechas necesarias
-filtros
-agrupaciones
+SALES
+MARKET
+DISCOVERY
+LONGITUDINAL
 ```
 
-Para cada variable preguntar:
+El endpoint determina el dominio. El agente selecciona una `capability` válida dentro de ese dominio.
 
-- ¿proviene de RAW?
-- ¿requiere identidad MASTER?
-- ¿la relación RAW→MASTER está ya demostrada?
-- ¿es necesaria para responder o solo sería interesante tenerla?
+No enviar ni razonar en términos de motores físicos internos.
 
-Eliminar variables no esenciales.
+`rom/schema.json` es la autoridad operacional sobre qué capabilities existen y qué inputs aceptan.
 
 ---
 
-## 5. Descubrimiento de evidencia
+## 4. Regla de profundidad
 
-Usar las acciones en este orden cuando sea necesario:
+Para análisis amplios usar, cuando corresponda:
 
-### `list_tables`
-Solo si existe duda sobre la superficie disponible.
+```text
+BIG PICTURE
+→ CONTEXTO
+→ UNIVERSO RELEVANTE
+→ MOVIMIENTO
+→ CONTRIBUCIÓN / SEGMENTACIÓN
+→ ENTIDAD ESPECÍFICA
+```
 
-### `table_schema`
-Cuando no se conoce con certeza la estructura física.
+Cada llamada debe justificar la siguiente reducción.
 
-### `profile_table`
-Cuando hay que entender calidad, cardinalidad, valores o rango de una variable.
+No comenzar por vendedor, modelo o tienda específica cuando una lectura más amplia sea necesaria para interpretar correctamente su situación.
 
-### `query_table`
-Cuando ya se sabe qué slice o agregado concreto se necesita.
+Si el usuario ya pide un hecho acotado, no ampliar innecesariamente.
 
-No ejecutar perfiles amplios por rutina.
+---
+
+## 5. Múltiples capabilities
+
+Una pregunta puede requerir varias llamadas.
+
+Reglas:
+
+- obtener evidencia base antes que evidencia derivada;
+- no ejecutar una llamada dependiente antes de conocer el resultado que define su universo;
+- detenerse cuando la evidencia sea suficiente;
+- reutilizar contexto ya obtenido si sigue vigente el mismo período y universo;
+- no invocar capabilities sólo porque están disponibles.
+
+Ejemplo conceptual:
+
+```text
+pregunta amplia
+→ contexto
+→ identificar dónde está el movimiento
+→ reducir a tienda/marca
+→ abrir vendedor/modelo sólo si la evidencia lo exige
+```
+
+---
+
+## 6. Uso de LONGITUDINAL
+
+Usar LONGITUDINAL cuando la pregunta requiera entender evolución temporal o big picture histórico de:
+
+```text
+VENTAS → VIN propios
+RVM    → mercado / share / posición
+CRM    → demanda / gestión / conversión
+```
+
+No usar LONGITUDINAL por rutina en consultas descriptivas simples.
+
+No forzar cortes temporales incompatibles entre fuentes.
+
+Respetar completitud de período, `lastObservedDate`, `effectiveDateTo` y semántica SAME_DAY.
+
+---
+
+## 7. Uso de DISCOVERY
+
+DISCOVERY existe para inspeccionar evidencia cuando:
+
+- hay duda sobre tablas o columnas disponibles;
+- debe validarse cobertura o estructura;
+- una relación necesaria todavía no está encapsulada en una capability determinista.
+
+Capabilities públicas:
+
+```text
+LIST_TABLES
+TABLE_SCHEMA
+PROFILE_TABLE
+QUERY_TABLE
+```
+
+Usarlas en este orden sólo cuando sea necesario:
+
+### LIST_TABLES
+Si existe duda sobre la superficie disponible.
+
+### TABLE_SCHEMA
+Si no se conoce con certeza la estructura física.
+
+### PROFILE_TABLE
+Si hay que entender cardinalidad, nulos, rango o valores frecuentes.
+
+### QUERY_TABLE
+Si ya se sabe qué slice o agregado concreto se necesita.
+
+No perfilar tablas por rutina.
 No descargar filas si basta un agregado.
-No explorar una tabla sin una necesidad analítica explícita.
+No usar DISCOVERY para reconstruir una lógica determinista ya AVAILABLE.
 
 ---
 
-## 6. RAW + MASTER
-
-RAW y MASTER cumplen funciones distintas:
+## 8. RAW + MASTER
 
 ```text
 RAW = evidencia de hechos/eventos/fuente
 MASTER = identidad estable compartida
 ```
 
-Una pregunta puede necesitar ambas.
-
 No reemplazar identidad MASTER por normalización textual ad hoc.
 
-Si la unión necesaria entre RAW y MASTER no puede probarse con las capacidades exploratorias actuales, documentar exactamente la relación requerida para que se implemente en backend como lógica fija.
+Para vendedores, aplicar exclusivamente la semántica `VENDEDOR_CIDEF` vigente para la fecha correspondiente.
+
+Si una unión o identidad requerida no puede demostrarse con las capacidades actuales, documentar exactamente qué relación falta. No simular joins complejos trayendo miles de filas al modelo.
 
 ---
 
-## 7. Runtime no significa SQL libre
+## 9. DISCOVERY de una nueva capacidad
 
-La lógica final puede ejecutarse en runtime sobre RAW + MASTER.
+Sólo cuando las capabilities AVAILABLE no respondan de forma confiable la pregunta.
 
-Eso NO autoriza al GPT a generar SQL arbitrario en producción.
-
-El patrón objetivo es:
+Trabajar hacia atrás:
 
 ```text
-motor predefinido
-→ SQL fijo parametrizado
-→ ejecución runtime
-→ resultado determinista
+pregunta final
+→ respuesta esperada
+→ cálculo necesario
+→ variables mínimas
+→ evidencia necesaria
+→ prueba mínima
+→ reconciliación
+→ lógica determinista demostrada
+→ contrato de motor
 ```
 
-Durante la etapa de diseño, las acciones exploratorias sirven para comprobar si el cálculo y sus mappings son válidos.
+Regla obligatoria:
+
+> No diseñar ni implementar un motor antes de demostrar su cálculo con evidencia real.
+
+No crear tablas, cubos, marts o abstracciones comunes por anticipación.
 
 ---
 
-## 8. Cuándo cerrar la exploración
+## 10. Cuándo cerrar la exploración
 
-La exploración debe terminar cuando ya estén demostrados:
+La exploración debe terminar cuando ya estén demostrados, según corresponda:
 
 1. universo;
 2. grain;
-3. variables;
-4. mappings de identidad necesarios;
-5. fórmula;
-6. casos límite materiales;
-7. reconciliación básica del resultado.
+3. período;
+4. variables;
+5. mappings de identidad necesarios;
+6. fórmula o relación observada;
+7. casos límite materiales;
+8. reconciliación básica;
+9. evidencia suficiente para responder o diseñar.
 
-No seguir consultando solo para acumular contexto.
+No seguir consultando sólo para acumular contexto.
 
 ---
 
-## 9. Contrato de motor propuesto
+## 11. Contrato de motor propuesto
 
-Cuando la lógica esté cerrada, producir:
+Cuando una nueva lógica esté demostrada:
 
 ```text
 name:
@@ -193,8 +267,6 @@ validation:
 shared_dependencies:
 ```
 
-### Validación mínima
-
 Todo motor debe permitir comprobar, cuando corresponda:
 
 ```text
@@ -205,29 +277,13 @@ reconciliación de agregados
 nulos/no resueltos
 ```
 
-Si una descomposición debe sumar un total, esa igualdad forma parte del contrato.
+No convertir asociación en causalidad.
 
 ---
 
-## 10. Motor específico vs común
+## 12. Missing capability
 
-Antes de proponer una pieza común, verificar que exista reutilización real.
-
-```text
-misma lógica usada por varios motores
-→ candidato a función/motor común
-
-lógica usada por una sola familia
-→ mantener dentro del motor específico
-```
-
-No anticipar una capa universal por elegancia arquitectónica.
-
----
-
-## 11. Missing capability
-
-Declarar una capacidad faltante solo cuando la pregunta requiera evidencia o combinación que las acciones actuales no pueden producir de forma confiable.
+Declarar una capacidad faltante sólo cuando la pregunta requiera evidencia o combinación que las capabilities actuales no pueden producir confiablemente.
 
 Describir:
 
@@ -237,23 +293,25 @@ missing_evidence
 required_relationship
 source_tables
 proposed_calculation
-why_current_actions_are_insufficient
+why_current_capabilities_are_insufficient
 ```
 
-No simular joins complejos o hechos canónicos trayendo miles de filas al modelo.
+No crear una capacidad nueva sólo porque una métrica sería interesante.
 
 ---
 
 ## Checklist previo a cada llamada
 
-- [ ] ¿Qué hecho concreto quiero demostrar?
-- [ ] ¿Esta llamada es la mínima suficiente?
-- [ ] ¿Conozco los nombres físicos reales?
-- [ ] ¿Necesito RAW, MASTER o ambos?
-- [ ] ¿Puedo agregar antes de traer detalle?
-- [ ] ¿La ventana temporal está acotada?
-- [ ] ¿La dimensión solicitada participa realmente del cálculo?
-- [ ] ¿Estoy evitando reconstrucciones manuales frágiles?
-- [ ] ¿El resultado de esta llamada puede cambiar o cerrar la lógica?
+- [ ] ¿La pregunta es descriptiva o analítica?
+- [ ] ¿Qué dominio corresponde?
+- [ ] ¿Necesito contexto amplio antes de profundizar?
+- [ ] ¿Qué hecho concreto quiero demostrar con esta llamada?
+- [ ] ¿Esta capability es la mínima suficiente?
+- [ ] ¿Depende de evidencia que todavía no tengo?
+- [ ] ¿Estoy reduciendo justificadamente el universo?
+- [ ] ¿Puedo reutilizar contexto ya obtenido?
+- [ ] ¿La ventana temporal es compatible y está acotada?
+- [ ] ¿Estoy evitando reconstrucciones manuales de capacidades ya AVAILABLE?
+- [ ] ¿El resultado de esta llamada puede cambiar, reducir o cerrar el análisis?
 
 Si la última respuesta es no, no ejecutar la llamada.
