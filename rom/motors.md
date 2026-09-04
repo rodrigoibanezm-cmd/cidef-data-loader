@@ -3316,6 +3316,88 @@ version = 0.1
 endpoint = /api/custom-gpt
 ```
 
+### `ventas_longitudinal_context_v01`
+
+Motor determinista productivo v0.1, completamente **ON DEMAND**.
+
+Pregunta: ¿cómo evolucionaron las ventas reconocidas CIDEF en N de VIN para el grano y filtros solicitados?
+
+```text
+metric: VIN_SALES | SHARE_WITHIN_CIDEF
+grain: TOTAL | CHANNEL | STORE | DEALER | DEALER_GROUP | SELLER | BRAND | MODEL | VERSION
+filters?: channel, store_id/store, dealer_id/dealer, dealer_group_id/dealer_group,
+          seller_id/seller, brand_id/brand, model_id/model, version_id/version
+date_from, date_to: YYYY-MM-DD inclusivos
+time_grain: MONTH | YEAR
+breakdown?: cualquier grano salvo TOTAL
+```
+
+Reutiliza `ventas_context_v01`: una venta por VIN mediante LAST `fecha_factura` dentro de `date_to`; VIN nulo conserva la regla vigente. La identidad viene de MASTER/helpers certificados. Un label RAW nunca crea una tienda. CHANNEL distingue CIDEF y DEALER. SELLER sólo contiene `VENDEDOR_CIDEF` con pertenencia temporal válida en la tienda CIDEF observada. Lo no resuelto queda como `UNRESOLVED`.
+
+`SHARE_WITHIN_CIDEF` = VIN del grano / VIN CIDEF del mismo período tras los filtros que no identifican ese grano. Expone `numerator`, `denominator` y `value`; no es MARKET_SHARE. La serie es densa, el primer cambio es `null` y el porcentaje con base cero es `null`. Breakdown conserva residual y reconcilia por numerador.
+
+```json
+{"action":"ventas_longitudinal_context_v01","input":{"metric":"VIN_SALES","grain":"BRAND","filters":{"brand":"DONGFENG"},"date_from":"2024-01-01","date_to":"2026-08-31","time_grain":"MONTH","breakdown":"MODEL"}}
+```
+
+No persiste, interpreta, detecta anomalías, genera tesis, aplica materialidad, proyecta ni recomienda acciones.
+
+### `rvm_longitudinal_context_v01`
+
+Motor determinista productivo v0.1, completamente **ON DEMAND**.
+
+Pregunta: ¿cómo evolucionó en RVM una entidad o universo explícitamente solicitado?
+
+```text
+metric: MARKET_SIZE | ENTITY_VIN | MARKET_SHARE | RANK
+grain: TOTAL | BRAND | MODEL | SEGMENT | TYPE | REGION | COMUNA | FUEL
+universe_filters?: brand_id/brand, model_id/model, segment, type, region, comuna, fuel
+entity?: las mismas dimensiones; obligatorio salvo MARKET_SIZE
+date_from, date_to: YYYY-MM-DD inclusivos
+time_grain: MONTH | YEAR
+breakdown?: BRAND | MODEL | SEGMENT | TYPE | REGION | COMUNA | FUEL
+```
+
+Unidad = `SUM(rvm_raw.cantidad)`. BRAND/MODEL reutilizan la identidad RVM vigente; la identidad ausente queda en `UNRESOLVED`. El caller define `universe_filters`; el motor nunca selecciona un universo competitivo. MARKET_SHARE expone `numerator`, `denominator` y `value`. RANK usa `dense_rank` por unidades dentro del universo/período, exige una entidad del grain y no admite breakdown. Períodos sin mercado: unidades cero, share/rank `null`.
+
+```json
+{"action":"rvm_longitudinal_context_v01","input":{"metric":"MARKET_SHARE","grain":"BRAND","entity":{"brand":"DONGFENG"},"universe_filters":{"segment":["SUV","VEHICULO DE PASAJEROS"]},"date_from":"2024-01-01","date_to":"2026-08-31","time_grain":"MONTH","breakdown":"REGION"}}
+```
+
+No persiste, interpreta, selecciona competidores, detecta anomalías, genera tesis, aplica materialidad, proyecta ni recomienda acciones.
+
+### `crm_longitudinal_context_v01`
+
+Motor determinista productivo v0.1, completamente **ON DEMAND** sobre `CRM_Cidef_raw`.
+
+Pregunta: ¿cómo evolucionó una variable CRM demostrable bajo un eje temporal explícito?
+
+```text
+metric: LEADS_CREATED | SOLD | NOT_SOLD | UNMANAGED | IN_MANAGEMENT |
+        OPPORTUNITY | CLOSED | DESISTED | CONVERSION_RATE
+grain: TOTAL | BRAND | PRODUCT_INTEREST | ORIGIN | SUBORIGIN | STATUS |
+       STORE | SELLER | INTEREST_LEVEL | DESIST_REASON
+mode: EVENT | COHORT
+date_axis/cohort_axis: CREATED_AT | ASSIGNED_AT | MANAGED_AT | DESISTED_AT
+filters?: brand, product_interest, origin, suborigin, status, store_raw,
+          seller_raw, interest_level, desist_reason
+date_from, date_to: YYYY-MM-DD inclusivos
+time_grain: MONTH | YEAR
+breakdown?: cualquier grano salvo TOTAL
+```
+
+Mapeo: CREATED_AT=`Creado el`, ASSIGNED_AT=`Asignado el`, MANAGED_AT=`Gestionado el`, DESISTED_AT=`Desistido el`. EVENT sólo admite LEADS_CREATED/CREATED_AT y DESISTED/DESISTED_AT. Estados y `Vendido` se leen como resultado de una cohorte; no se reconstruye cuándo cambió el estado. CONVERSION_RATE = `Vendido=Sí` / registros de cohorte y expone numerador/denominador.
+
+Usa la última carga por `ID`; IDs vacíos quedan separados. Fechas faltantes/no parseables aparecen en coverage. PRODUCT_INTEREST, STORE y SELLER son explícitamente RAW, nunca MASTER. Snapshot histórico (`mode=SNAPSHOT` o `as_of`) falla con `UNSUPPORTED_TEMPORAL_RECONSTRUCTION`.
+
+```json
+{"action":"crm_longitudinal_context_v01","input":{"metric":"SOLD","grain":"ORIGIN","mode":"COHORT","cohort_axis":"CREATED_AT","filters":{"origin":"Web"},"date_from":"2026-01-01","date_to":"2026-08-31","time_grain":"MONTH","breakdown":"PRODUCT_INTEREST"}}
+```
+
+No persiste snapshots/series, estima ventas perdidas, une CRM→VIN, interpreta, detecta anomalías, genera tesis, aplica materialidad, proyecta ni recomienda acciones.
+
+Los tres outputs comparten: `motor`, `version`, `domain`, `metric`, `grain`, `timeGrain`, `dateFrom`, `dateTo`, `filters`, `series[]`, `breakdown`, `seriesByBreakdown?`, `metadata`. Cada punto contiene `period`, `value`, `absoluteChange`, `pctChange`; shares agregan denominadores explícitos.
+
 ## NOT AVAILABLE
 
 No forman parte de la superficie actual del agente:

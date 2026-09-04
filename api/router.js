@@ -15,6 +15,9 @@ const TENANTS = {
       'import_crm_cidef',
       'patch_inventario_modelo',
       'rvm_market_history_v01',
+      'ventas_longitudinal_context_v01',
+      'rvm_longitudinal_context_v01',
+      'crm_longitudinal_context_v01',
     ],
   },
 };
@@ -36,6 +39,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, tenant: tenantName, motor: motorName, ...result });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ ok: false, error: error.message });
+    return res.status(error?.code ? 400 : 500).json({ ok: false, error: error.message, ...(error?.code ? { error_code: error.code } : {}) });
   }
 }

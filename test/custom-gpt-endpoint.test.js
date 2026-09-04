@@ -15,7 +15,7 @@ test('custom GPT endpoint exposes router contract version on every response', as
   for (const req of [{ method: 'GET' }, { method: 'POST', body: {} }]) {
     const res = response();
     await handler(req, res);
-    assert.equal(res.body.router_version, '1.43.0');
+    assert.equal(res.body.router_version, '1.46.0');
   }
 });
 
@@ -67,4 +67,24 @@ test('custom GPT endpoint dispatches product change contribution through the rea
   assert.equal(res.body.action, 'ventas_product_change_contribution_v01');
   assert.match(res.body.error, /period_a must be before period_b/);
   assert.doesNotMatch(res.body.error, /Unknown Custom GPT action/);
+});
+
+test('custom GPT endpoint advertises all longitudinal v0.1 motors', async () => {
+  const res = response();
+  await handler({ method: 'POST', body: {} }, res);
+  for (const action of [
+    'ventas_longitudinal_context_v01',
+    'rvm_longitudinal_context_v01',
+    'crm_longitudinal_context_v01',
+  ]) assert.ok(res.body.allowedActions.includes(action));
+});
+
+test('longitudinal validation errors are deterministic client errors', async () => {
+  const res = response();
+  await handler({ method: 'POST', body: {
+    action: 'crm_longitudinal_context_v01',
+    input: { metric: 'SOLD', mode: 'SNAPSHOT', date_from: '2026-01-01', date_to: '2026-01-31' },
+  } }, res);
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.error_code, 'UNSUPPORTED_TEMPORAL_RECONSTRUCTION');
 });

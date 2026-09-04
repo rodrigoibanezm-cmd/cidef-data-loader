@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Motor Lab",
-    "version": "1.45.0",
+    "version": "1.46.0",
     "x-seller-membership-contract": "VENDEDOR_CIDEF requires resolved persona plus date-effective VENDEDOR_TIENDA role and assignment to the observed CIDEF store; ventas_raw never creates membership; seller daily forecast backtest is exposed as VENDEDOR_CIDEF_POOLED validation evidence only",
     "description": "Read-only Action surface dedicated to the CIDEF agent at /api/custom-gpt. Exposes controlled RAW + MASTER exploration and deterministic business motors, including expectation, monthly and daily cutoff-safe sales context, daily organizational cutoff-safe sales context, historical intramonth cutoff-safe sales context with sparse-positive store semantics and retrospective close labels, product sales, recognized product detail, deterministic SKU-to-model resolution, parameterized product sales concentration/Pareto trend, canonical sales identity coverage, runtime organizational sales context, organizational share expectation backtesting with null-safe relative-gap detail, productive organizational relative performance over closed months using certified grain-specific baselines, shared competitive context with optional Chile market-origin peer filtering, bounded competitive share trajectory with compact trajectory and explicit monthly detail outputs over the same peer semantics, paginated competitive signal backtesting across target×peer×universe without competitor labels, productive competitive relation selection under a fixed V0.1 temporal rule, and auditable inverse share movements across consecutive joint-active transitions for those related peers. Also includes canonical product GENERATION membership context, bounded organization sales deterioration backtesting with sparse observation semantics, deterioration episode evidence with ex-ante signal rows, productive store deterioration status over a fixed certified rule, and an AUDIT_ONLY observation-semantics comparison with explicit ACTIVE_ZERO evidence and temporal/unit-universe validations for Family 3. Includes a productive current-month close forecast using prior closed-month completion evidence. No free SQL, no DDL/DML, and no use of the legacy multi-tenant /api/router surface. Includes canonical dealer inventory aging over current vehiculo_canonico state using the previously validated dealer-stock aging contract."
   },
@@ -88,6 +88,9 @@
               "competitive_relation_v01",
               "competitive_inverse_share_movement_v01",
               "rvm_market_history_v01",
+              "ventas_longitudinal_context_v01",
+              "rvm_longitudinal_context_v01",
+              "crm_longitudinal_context_v01",
               "product_generation_context_v01",
               "organizational_share_expectation_backtest_v01",
               "organizational_relative_performance_v01",
@@ -217,6 +220,36 @@
       },
       "ActionInput": {
         "type": "object",
+        "x-ventas-longitudinal-context-v01": {
+          "version": "0.1",
+          "availability": "AVAILABLE",
+          "business_question": "How did recognized CIDEF VIN sales move through time for an explicitly requested canonical grain and filters?",
+          "metrics": ["VIN_SALES", "SHARE_WITHIN_CIDEF"],
+          "grains": ["TOTAL", "CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "BRAND", "MODEL", "VERSION"],
+          "time": "inclusive date_from/date_to; MONTH or YEAR; dense zero periods; changes come only from the calculated series",
+          "identity": "canonical MASTER only; SELLER is date-effective VENDEDOR_CIDEF at the observed canonical CIDEF store; unresolved stays visible",
+          "execution": "ON_DEMAND; no persistence, interpretation, anomaly detection, thesis, materiality, forecasting or actions"
+        },
+        "x-rvm-longitudinal-context-v01": {
+          "version": "0.1",
+          "availability": "AVAILABLE",
+          "business_question": "How did an explicitly requested entity or universe move through time in RVM?",
+          "metrics": ["MARKET_SIZE", "ENTITY_VIN", "MARKET_SHARE", "RANK"],
+          "grains": ["TOTAL", "BRAND", "MODEL", "SEGMENT", "TYPE", "REGION", "COMUNA", "FUEL"],
+          "universe": "caller-explicit universe_filters; no automatic competitive universe",
+          "share": "every point exposes numerator, denominator and value",
+          "execution": "ON_DEMAND; no persistence, interpretation, anomaly detection, thesis, materiality, forecasting or actions"
+        },
+        "x-crm-longitudinal-context-v01": {
+          "version": "0.1",
+          "availability": "AVAILABLE",
+          "business_question": "How did a directly observable CRM variable move through time under an explicit event or cohort axis?",
+          "metrics": ["LEADS_CREATED", "SOLD", "NOT_SOLD", "UNMANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"],
+          "date_axes": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"],
+          "identity": "PRODUCT_INTEREST, STORE and SELLER remain explicitly RAW",
+          "restriction": "historical state snapshots return UNSUPPORTED_TEMPORAL_RECONSTRUCTION",
+          "execution": "ON_DEMAND; no persistence, interpretation, anomaly detection, thesis, materiality, forecasting or actions"
+        },
         "x-ventas-product-change-contribution-v01": {
           "version": "0.1",
           "availability": "AVAILABLE",
@@ -295,10 +328,47 @@
             }
           },
           "filters": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Filter"
-            }
+            "oneOf": [
+              { "type": "array", "items": { "$ref": "#/components/schemas/Filter" } },
+              {
+                "type": "object",
+                "description": "Longitudinal motor filters. Keys are domain-specific and unknown keys are rejected.",
+                "additionalProperties": {
+                  "oneOf": [
+                    { "type": "string" }, { "type": "integer" },
+                    { "type": "array", "minItems": 1, "items": { "oneOf": [{ "type": "string" }, { "type": "integer" }] } }
+                  ]
+                }
+              }
+            ]
+          },
+          "metric": {
+            "type": "string",
+            "enum": ["VIN_SALES", "SHARE_WITHIN_CIDEF", "MARKET_SIZE", "ENTITY_VIN", "MARKET_SHARE", "RANK", "LEADS_CREATED", "SOLD", "NOT_SOLD", "UNMANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"],
+            "description": "Metric for one of the three longitudinal v0.1 motors; domain validation is strict."
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["EVENT", "COHORT"],
+            "description": "CRM longitudinal temporal mode. SNAPSHOT is intentionally unsupported."
+          },
+          "date_axis": {
+            "type": "string",
+            "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"]
+          },
+          "cohort_axis": {
+            "type": "string",
+            "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"]
+          },
+          "entity": {
+            "type": "object",
+            "description": "Explicit RVM entity filters for ENTITY_VIN, MARKET_SHARE or RANK.",
+            "additionalProperties": { "oneOf": [{ "type": "string" }, { "type": "integer" }, { "type": "array", "minItems": 1, "items": { "oneOf": [{ "type": "string" }, { "type": "integer" }] } }] }
+          },
+          "universe_filters": {
+            "type": "object",
+            "description": "Explicit RVM denominator universe; the motor never selects it automatically.",
+            "additionalProperties": { "oneOf": [{ "type": "string" }, { "type": "integer" }, { "type": "array", "minItems": 1, "items": { "oneOf": [{ "type": "string" }, { "type": "integer" }] } }] }
           },
           "group_by": {
             "type": "array",
@@ -449,7 +519,9 @@
             "type": "string",
             "enum": [
               "tienda",
-              "vendedor"
+              "vendedor",
+              "TOTAL", "CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "BRAND", "MODEL", "VERSION",
+              "SEGMENT", "TYPE", "REGION", "COMUNA", "FUEL", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "INTEREST_LEVEL", "DESIST_REASON"
             ],
             "description": "Canonical organization grain for organizational motors"
           },
@@ -649,8 +721,9 @@
               "MODEL",
               "REGION",
               "COMUNA"
+              ,"CHANNEL", "STORE", "DEALER", "DEALER_GROUP", "SELLER", "VERSION", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "INTEREST_LEVEL", "DESIST_REASON"
             ],
-            "description": "Optional single exhaustive breakdown for rvm_market_history_v01."
+            "description": "Optional single exhaustive breakdown for rvm_market_history_v01 or a longitudinal v0.1 motor."
           }
         },
         "additionalProperties": false,
