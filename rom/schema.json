@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Domain API",
-    "version": "1.49.0",
+    "version": "1.50.0",
     "description": "Read-only Action surface for the CIDEF agent. The public contract exposes four bounded domain operations instead of physical motor names. Each endpoint accepts a capability plus an input object and delegates through the single central custom-gpt router. Physical actions, audit motors, backtests, support motors and out-of-scope motors are not part of this public OpenAPI surface."
   },
   "servers": [
@@ -15,7 +15,7 @@
       "post": {
         "operationId": "cidefSales",
         "summary": "Run one bounded CIDEF sales capability",
-        "description": "Use for internal CIDEF sales results, forecasts, product sales, contribution, organizational relative performance and deterioration status. Do not use for RVM market analysis, raw-table discovery or standalone longitudinal context.",
+        "description": "Use for certified commercial scope, internal CIDEF sales results, forecasts, product sales, contribution, organizational relative performance and deterioration status. COMMERCIAL_CONTEXT certifies COMPANY, OWN_STORES or DEALERS using vehiculo_canonico. Do not use for RVM market analysis, raw-table discovery or standalone longitudinal context.",
         "requestBody": {
           "required": true,
           "content": {
@@ -84,7 +84,7 @@
       "post": {
         "operationId": "cidefLongitudinal",
         "summary": "Run one explicit longitudinal context capability",
-        "description": "Use when the analytical answer requires understanding how a variable moved through multiple periods. The capability selects VENTAS, RVM or CRM longitudinal semantics explicitly. This endpoint does not infer a domain from keywords and does not run another analytical capability in parallel.",
+        "description": "Use when the analytical answer requires understanding how a variable moved through multiple periods. The capability selects VENTAS, RVM or CRM longitudinal semantics explicitly. VENTAS requires commercial_universe so domain is fixed before grain/filter/metric. This endpoint does not infer a domain from keywords and does not run another analytical capability in parallel.",
         "requestBody": {
           "required": true,
           "content": {
@@ -113,6 +113,7 @@
           "capability": {
             "type": "string",
             "enum": [
+              "COMMERCIAL_CONTEXT",
               "MONTHLY_ACTUAL",
               "DAILY_CLOSE_FORECAST",
               "CURRENT_MONTH_CLOSE_FORECAST",
@@ -189,8 +190,9 @@
       },
       "SalesInput": {
         "type": "object",
-        "description": "Bounded union of public SALES capability inputs. The selected capability remains authoritative about which fields are required or supported.",
+        "description": "Bounded union of public SALES capability inputs. The selected capability remains authoritative about which fields are required or supported. COMMERCIAL_CONTEXT requires commercial_universe explicitly; backend validation remains authoritative.",
         "properties": {
+          "commercial_universe": { "type": "string", "enum": ["COMPANY", "OWN_STORES", "DEALERS"] },
           "period": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
           "period_a": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
           "period_b": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
@@ -261,9 +263,10 @@
       },
       "LongitudinalInput": {
         "type": "object",
-        "description": "Shared V0.2 longitudinal envelope. Capability VENTAS, RVM or CRM determines valid metric, grain, filters and temporal semantics. SAME_DAY means comparable calendar-position truncation, not historical recognition-state reconstruction.",
+        "description": "Shared V0.2 longitudinal envelope. Capability VENTAS, RVM or CRM determines valid metric, grain, filters and temporal semantics. VENTAS requires commercial_universe explicitly and validates domain before grain/filter/metric. SAME_DAY means comparable calendar-position truncation, not historical recognition-state reconstruction.",
         "required": ["metric", "grain", "filters", "date_from", "date_to", "time_grain"],
         "properties": {
+          "commercial_universe": { "type": "string", "enum": ["COMPANY", "OWN_STORES", "DEALERS"], "description": "Required when capability=VENTAS. Fixes the certified commercial domain before grain, filters and metric are evaluated." },
           "metric": {
             "type": "string",
             "enum": [
