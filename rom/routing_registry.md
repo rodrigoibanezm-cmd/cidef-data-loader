@@ -1,6 +1,6 @@
 # Domain capability registry — CIDEF Agent
 
-Estado: `ENDPOINTS_IMPLEMENTED`
+Estado: `SCHEMA_MIGRATED`
 
 Autoridad de código:
 
@@ -10,13 +10,19 @@ lib/custom-gpt-router.js
 lib/custom-gpt/domainEndpoint.js
 ```
 
+Autoridad pública para el LLM:
+
+```text
+rom/schema.json
+```
+
 La capa implementada resuelve:
 
 ```text
 domain + capability -> action física existente
 ```
 
-y ahora expone cuatro fachadas públicas delgadas sobre el mismo router central.
+y expone cuatro fachadas públicas delgadas sobre el mismo router central.
 
 ## Arquitectura implementada
 
@@ -78,6 +84,34 @@ UNSUPPORTED_DOMAIN_REQUEST_FIELD
 
 La capability se normaliza a uppercase y el dominio viene fijado por el endpoint.
 
+## OpenAPI público
+
+`rom/schema.json` ya no expone:
+
+```text
+POST /api/custom-gpt
+action: <nombre físico>
+```
+
+El schema público expone únicamente cuatro `operationId`:
+
+```text
+cidefSales
+cidefMarket
+cidefDiscovery
+cidefLongitudinal
+```
+
+con sus enums de capabilities por dominio.
+
+La versión del schema fue elevada a:
+
+```text
+1.49.0
+```
+
+Las actions físicas siguen existiendo internamente para compatibilidad, tests y workflows técnicos, pero dejaron de formar parte del contrato visible del LLM.
+
 ## Reglas implementadas
 
 1. El registry es explícito y cerrado.
@@ -90,8 +124,10 @@ La capability se normaliza a uppercase y el dominio viene fijado por el endpoint
 8. Los endpoints sólo aceptan `capability` e `input` en el body.
 9. Las 46 actions físicas continúan registradas en `ACTIONS` para compatibilidad interna y transición.
 10. `INTERNAL_SUPPORT` y `OUT_OF_CURRENT_SCOPE` no forman parte de `DOMAIN_CAPABILITY_REGISTRY`.
-11. `/api/custom-gpt` histórico sigue existiendo y no fue modificado en esta fase.
-12. `rom/schema.json` todavía no fue migrado a las cuatro nuevas operaciones.
+11. `/api/custom-gpt` histórico sigue existiendo internamente.
+12. `rom/schema.json` expone sólo las cuatro fachadas de dominio.
+13. El schema no publica nombres físicos de motores.
+14. LONGITUDINAL V0.2 mantiene sus métricas, grains, filtros y semántica temporal; la reorganización sólo cambia la superficie de routing.
 
 ## Endpoints implementados
 
@@ -166,13 +202,13 @@ CRM
 
 ## Compatibilidad
 
-El execution path vigente continúa disponible:
+El execution path vigente continúa disponible internamente:
 
 ```text
 runCustomGptAction(action, input)
 ```
 
-La capa semántica funciona en paralelo:
+La capa semántica pública usa:
 
 ```text
 runCustomGptCapability({ domain, capability, input })
@@ -180,16 +216,16 @@ runCustomGptCapability({ domain, capability, input })
 
 Y las cuatro fachadas sólo llaman a esta segunda capa.
 
-Por lo tanto aún no se ha cortado el acceso histórico de `/api/custom-gpt`. El corte de libertad del LLM ocurre cuando `rom/schema.json` deje de exponer el endpoint/action físico y exponga únicamente estas cuatro operaciones.
+El endpoint legacy `/api/custom-gpt` no fue eliminado del backend; simplemente dejó de estar publicado en `rom/schema.json`.
 
-## Tests agregados
+## Tests existentes para la nueva capa
 
 ```text
 test/custom-gpt-capability-routing.test.js
 test/custom-gpt-domain-endpoints.test.js
 ```
 
-La cobertura nueva valida:
+Cubren:
 
 - cuatro dominios exactos;
 - 25 capabilities exactas;
@@ -207,24 +243,16 @@ La cobertura nueva valida:
 ## Estado de transición
 
 ```text
-REGISTRY                 IMPLEMENTED
+REGISTRY                  IMPLEMENTED
 CENTRAL CAPABILITY ROUTER IMPLEMENTED
 SALES ENDPOINT            IMPLEMENTED
 MARKET ENDPOINT           IMPLEMENTED
 DISCOVERY ENDPOINT        IMPLEMENTED
 LONGITUDINAL ENDPOINT     IMPLEMENTED
-LEGACY /api/custom-gpt    PRESERVED
-OPENAPI / schema          NOT MIGRATED YET
+LEGACY /api/custom-gpt    PRESERVED INTERNALLY
+OPENAPI / schema          MIGRATED — 1.49.0
 ```
 
 ## Siguiente fase
 
-Migrar `rom/schema.json` para que el Custom GPT vea únicamente las cuatro fachadas públicas y sus capabilities de dominio.
-
-En esa fase debe desaparecer del contrato visible del LLM la selección libre por:
-
-```text
-action: <nombre físico del motor>
-```
-
-sin eliminar todavía el endpoint legacy ni las actions físicas internas.
+Validar el schema contra el importador de Custom GPT y ejecutar pruebas funcionales de las cuatro operaciones públicas. Una vez validado el contrato real, se puede decidir si el endpoint legacy se mantiene indefinidamente como superficie técnica o se retira en una fase posterior.
