@@ -30,6 +30,13 @@ test('dealer remains separate from owned store', () => {
   assert.deepEqual(result.series.map((row) => row.value), [1, 0, 0]);
 });
 
+test('dealer breakdown separates non-dealer sales as NOT_APPLICABLE', () => {
+  const result = calculateVentasLongitudinal(events, parsed({ breakdown: 'DEALER' }));
+  const residual = result.seriesByBreakdown.find((row) => row.key === 'NOT_APPLICABLE');
+  assert.equal(residual.identityStatus, 'NOT_APPLICABLE');
+  assert.deepEqual(residual.series.map((row) => row.value), [2, 0, 1]);
+});
+
 test('seller includes only already-certified date-effective VENDEDOR_CIDEF events', () => {
   const result = calculateVentasLongitudinal(events, parsed({ grain: 'SELLER', filters: { seller_id: 10 } }));
   assert.deepEqual(result.series.map((row) => row.value), [1, 0, 1]);
@@ -49,3 +56,8 @@ test('share within CIDEF exposes numerator and denominator', () => {
 });
 
 test('unknown sales filter is rejected', () => assert.throws(() => parsed({ filters: { raw_store: 'Casa Matriz' } }), /UNSUPPORTED_FILTER/));
+
+test('dimension residual metadata is scoped to requested dates and filters', () => {
+  const result = calculateVentasLongitudinal(events, parsed({ date_from: '2026-03-01', filters: { brand: 'DONGFENG' } }));
+  assert.equal(result.metadata.dimensionResidualCounts.DEALER.notApplicable, 1);
+});

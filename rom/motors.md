@@ -3332,7 +3332,7 @@ time_grain: MONTH | YEAR
 breakdown?: cualquier grano salvo TOTAL
 ```
 
-Reutiliza `ventas_context_v01`: una venta por VIN mediante LAST `fecha_factura` dentro de `date_to`; VIN nulo conserva la regla vigente. La identidad viene de MASTER/helpers certificados. Un label RAW nunca crea una tienda. CHANNEL distingue CIDEF y DEALER. SELLER sólo contiene `VENDEDOR_CIDEF` con pertenencia temporal válida en la tienda CIDEF observada. Lo no resuelto queda como `UNRESOLVED`.
+Reutiliza `ventas_context_v01`: una venta por VIN mediante LAST `fecha_factura` dentro de `date_to`; VIN nulo conserva la regla vigente. La identidad viene de MASTER/helpers certificados. Un label RAW nunca crea una tienda. CHANNEL distingue CIDEF y DEALER. SELLER sólo contiene `VENDEDOR_CIDEF` con pertenencia temporal válida en la tienda CIDEF observada. Lo no resuelto queda como `UNRESOLVED`; una dimensión que no corresponde al canal observado queda como `NOT_APPLICABLE`.
 
 `SHARE_WITHIN_CIDEF` = VIN del grano / VIN CIDEF del mismo período tras los filtros que no identifican ese grano. Expone `numerator`, `denominator` y `value`; no es MARKET_SHARE. La serie es densa, el primer cambio es `null` y el porcentaje con base cero es `null`. Breakdown conserva residual y reconcilia por numerador.
 
