@@ -2,15 +2,13 @@
 
 ## Propósito
 
-Este documento gobierna cómo el agente transforma una pregunta en una secuencia de capabilities públicas.
+Gobierna cómo el agente transforma una pregunta en una secuencia de capabilities públicas. No define métricas, identidad ni cálculos y no reemplaza `schema.json`.
 
-No define métricas, identidad ni cálculos. No reemplaza `schema.json`. Coordina capacidades existentes.
+La orquestación es interna: no explicar al usuario la secuencia de capabilities, llamadas ni reglas del orquestador salvo que lo solicite.
 
 ## Principio rector
 
 **Partir del universo más amplio que sea pertinente y reducirlo sólo cuando la evidencia justifique bajar de nivel.**
-
-Secuencia conceptual:
 
 ```text
 PREGUNTA
@@ -35,19 +33,20 @@ Ejemplo: `¿Cuántos VIN vendió Bellavista en julio?`
 → usar directamente la capability mínima suficiente.
 
 ### Pregunta analítica
-Requiere comparación, trayectoria, evaluación, explicación, diagnóstico u oportunidad.
+Requiere comparación, trayectoria, evaluación, explicación, diagnóstico, riesgo u oportunidad.
 
 Ejemplos:
 - ¿Cómo está Bellavista?
 - ¿Dongfeng está perdiendo terreno?
 - ¿Qué vendedores vienen deteriorándose?
 - ¿Qué explica el movimiento?
+- ¿Dónde estamos dejando crecimiento sin capturar?
 
 → obtener primero el contexto que pueda cambiar la interpretación.
 
 ## 2. Big picture
 
-El big picture combina, cuando sea pertinente:
+Combinar, cuando sea pertinente:
 
 ```text
 VENTAS → VIN propios CIDEF
@@ -68,79 +67,90 @@ Después del contexto, bajar al siguiente nivel sólo si ayuda a responder la pr
 Ejemplo comercial:
 
 ```text
-CIDEF
-→ marca
-→ tienda
-→ vendedor
-→ producto/modelo
+CIDEF → marca → tienda → vendedor → producto/modelo
 ```
 
 Ejemplo competitivo:
 
 ```text
-mercado
-→ segmento/marca
-→ modelo
-→ competidor
-→ geografía, si corresponde
+mercado → segmento/marca → modelo → competidor → geografía, si corresponde
 ```
 
 No comenzar por vendedor/modelo si el fenómeno todavía no está localizado en el nivel superior, salvo que el usuario haya pedido explícitamente ese universo.
+
+### Oportunidad y crecimiento disponible
+
+Un agregado positivo no descarta oportunidad no capturada en niveles inferiores.
+
+Ejemplo: crecer más rápido que el mercado agregado permite afirmar **captura superior agregada**, pero no permite concluir por sí solo que no exista crecimiento disponible en tiendas, modelos, segmentos, geografías o demanda comercial.
+
+Si la pregunta es sobre oportunidad, riesgo o crecimiento disponible:
+
+- separar desempeño observado de oportunidad no capturada;
+- no cerrar `NOT_SUPPORTED` sólo con evidencia agregada;
+- descender a los niveles que puedan ocultar heterogeneidad material, siempre que existan capabilities y evidencia suficientes;
+- si no existe evidencia para evaluar esos niveles, concluir `INSUFFICIENT_EVIDENCE` o equivalente, no ausencia de oportunidad.
 
 ## 4. Múltiples capabilities
 
 Una pregunta puede requerir varias llamadas.
 
-Reglas de coordinación:
-
-- evidencia base antes que evidencia derivada;
-- una llamada debe reducir incertidumbre, reducir universo o validar una interpretación;
-- no ejecutar una llamada que no pueda cambiar la respuesta;
-- llamadas dependientes se resuelven en secuencia;
-- llamadas independientes pueden resolverse sin dependencia entre sí;
-- reutilizar evidencia ya obtenida cuando conserve el mismo universo y corte temporal;
+- evidencia base antes que derivada;
+- cada llamada debe reducir incertidumbre, reducir universo o validar una interpretación;
+- no ejecutar llamadas que no puedan cambiar la respuesta;
+- resolver en secuencia las llamadas dependientes;
+- reutilizar evidencia vigente del mismo universo y corte temporal;
 - detenerse cuando exista evidencia suficiente.
 
-## 5. Dominios públicos
+## 5. Ausencia de observaciones
 
-### SALES
-Resultado comercial CIDEF: VIN, cierre, producto, tienda, vendedor, concentración, contribución, desempeño y deterioro.
+**Cero observado no equivale automáticamente a cero fenómeno.**
 
-### MARKET
-Mercado/RVM: contexto competitivo, share, trayectoria, relaciones e historia de mercado.
+Ante `0 rows`, `0 observations`, serie vacía o ausencia inesperada de datos, distinguir antes de interpretar:
 
-### DISCOVERY
-Inspección controlada de datos. Usar cuando una capability no existe o debe validarse. No reconstruir manualmente una lógica que ya tenga capability AVAILABLE.
+```text
+ZERO_OBSERVED     → cobertura válida y fenómeno realmente observado en cero
+NO_COVERAGE       → la fuente no cubre adecuadamente ese universo/período
+FILTER_MISMATCH   → filtro/identidad/semántica puede no corresponder a la fuente
+NOT_EVALUABLE     → evidencia insuficiente para decidir
+```
 
-### LONGITUDINAL
-Contexto temporal normalizado de VENTAS, RVM y CRM.
+Si el cero es inesperado respecto del contexto conocido de la fuente, validar cobertura, identidad, filtros y período antes de convertirlo en conclusión de negocio.
 
-`schema.json` es la autoridad sobre qué capabilities existen y qué inputs aceptan.
+Una fuente sin evidencia evaluable no debe utilizarse como evidencia de ausencia.
 
-## 6. Compatibilidad temporal
+## 6. Dominios públicos
 
-Antes de integrar fuentes, verificar que sus períodos sean comparables.
+**SALES** — VIN, cierre, producto, tienda, vendedor, concentración, contribución, desempeño y deterioro.
 
-Respetar:
-- período completo/incompleto;
-- `lastObservedDate`;
-- `effectiveDateTo`;
-- semántica SAME_DAY.
+**MARKET** — mercado/RVM, contexto competitivo, share, trayectoria, relaciones e historia.
 
-SAME_DAY compara igual posición de calendario; no reconstruye el estado histórico as-of.
+**DISCOVERY** — inspección controlada cuando una capability no existe o debe validarse. No reconstruir manualmente lógica ya AVAILABLE.
+
+**LONGITUDINAL** — contexto temporal normalizado de VENTAS, RVM y CRM.
+
+`schema.json` es la autoridad sobre capabilities e inputs.
+
+## 7. Compatibilidad temporal
+
+Antes de integrar fuentes verificar comparabilidad temporal. Respetar período completo/incompleto, `lastObservedDate`, `effectiveDateTo` y SAME_DAY.
+
+SAME_DAY compara igual posición de calendario; no reconstruye estado histórico as-of.
 
 Si las fuentes tienen cortes distintos, usar el mínimo corte común cuando la comparación lo requiera o declarar la limitación.
 
-## 7. Criterio de salida
+## 8. Criterio de salida
 
-Antes de responder comprobar:
+Antes de responder comprobar internamente:
 
 ```text
 ¿Tengo contexto suficiente para interpretar?
 ¿Localicé el fenómeno al nivel necesario?
+¿Confundí ausencia de observaciones con ausencia del fenómeno?
+¿Un agregado está ocultando heterogeneidad relevante para la pregunta?
 ¿Otra capability podría cambiar materialmente la conclusión?
 ```
 
-Si la última respuesta es no, detener llamadas y renderizar.
+Si no queda una prueba disponible capaz de cambiar materialmente la conclusión, detener llamadas y renderizar.
 
-La salida final se rige por `render.md` o `render-production.md` según fase y audiencia.
+La salida final se rige por `render.md` o `render-production.md` según fase y audiencia. No narrar la mecánica de orquestación en la respuesta final.
