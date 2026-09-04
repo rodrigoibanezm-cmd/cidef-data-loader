@@ -1,0 +1,44 @@
+name: test-vin-growth-diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/motors/vin-growth-diagnostic-v01.js'
+      - 'lib/custom-gpt-router.js'
+      - 'lib/custom-gpt/capabilityRegistry.js'
+      - 'lib/motors/index.js'
+      - 'api/custom-gpt.js'
+      - 'rom/schema.json'
+      - 'rom/motors.md'
+      - 'test/vin-growth-diagnostic.test.js'
+      - 'test/custom-gpt-capability-routing.test.js'
+      - 'test/rom-consistency.test.js'
+      - '.github/workflows/test-vin-growth-diagnostic.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - name: Vin growth diagnostic and relevant regressions
+        run: >-
+          node --test
+          test/vin-growth-diagnostic.test.js
+          test/ventas-longitudinal-context.test.js
+          test/rvm-longitudinal-context.test.js
+          test/crm-longitudinal-context.test.js
+          test/crm-longitudinal-brand.test.js
+          test/crm-longitudinal-commercial-scope.test.js
+          test/cross-domain-commercial-compatibility.test.js
+          test/ventas-organizational-context.test.js
+          test/custom-gpt-capability-routing.test.js
+          test/custom-gpt-endpoint.test.js
+          test/custom-gpt-longitudinal-routing.test.js
+          test/rom-consistency.test.js

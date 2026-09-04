@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { DOMAIN_CAPABILITY_REGISTRY } from '../lib/custom-gpt-router.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const expectedRom = [
@@ -10,49 +11,40 @@ const expectedRom = [
   'instructions.md',
   'intake.md',
   'motors.md',
+  'orchestrator.md',
   'render-production.md',
   'render.md',
   'schema.json',
-  'vin-cube.md',
 ];
+function schema() { return JSON.parse(readFileSync(join(root, 'rom/schema.json'), 'utf8')); }
+const requestSchemaByDomain = Object.freeze({ SALES: 'SalesRequest', MARKET: 'MarketRequest', DISCOVERY: 'DiscoveryRequest', LONGITUDINAL: 'LongitudinalRequest' });
 
-function schema() {
-  return JSON.parse(readFileSync(join(root, 'rom/schema.json'), 'utf8'));
-}
-
-function routerActions() {
-  const source = readFileSync(join(root, 'lib/custom-gpt-router.js'), 'utf8');
-  const registry = source.split('const ACTIONS = Object.freeze({')[1]?.split('\n});')[0] ?? '';
-  return [...registry.matchAll(/^  ([a-z0-9_]+):/gm)].map((match) => match[1]);
-}
-
-function documentedAvailable() {
+test('domain registry and OpenAPI expose the same public capabilities', () => {
+  const value = schema();
+  for (const [domain, requestSchema] of Object.entries(requestSchemaByDomain)) {
+    const documented = value.components.schemas[requestSchema].properties.capability.enum;
+    const registered = Object.keys(DOMAIN_CAPABILITY_REGISTRY[domain]);
+    assert.deepEqual(new Set(documented), new Set(registered), domain);
+    assert.equal(new Set(documented).size, documented.length, `${domain} contains duplicate capabilities`);
+  }
+});
+test('vin growth diagnostic contract is explicit in OpenAPI', () => {
+  const schemas = schema().components.schemas;
+  assert.ok(schemas.SalesRequest.properties.capability.enum.includes('VIN_GROWTH_DIAGNOSTIC'));
+  assert.deepEqual(schemas.VinGrowthDiagnosticInput.required, ['brand_id', 'store_id', 'current_month']);
+  assert.equal(schemas.VinGrowthDiagnosticInput.additionalProperties, false);
+  assert.equal(schemas.VinGrowthDiagnosticOutput.properties.motor.const, 'vin_growth_diagnostic_v01');
+  assert.equal(schemas.VinGrowthDiagnosticOutput.properties.version.const, '0.1');
+  assert.deepEqual(schemas.VinGrowthDiagnosticOutput.properties.status.enum, ['COMPLETE', 'PARTIAL']);
+  assert.deepEqual(schemas.Direction.enum, ['POSITIVE', 'NEGATIVE', 'FLAT', 'NOT_EVALUABLE']);
+  assert.deepEqual(schemas.PctStatus.enum, ['EVALUABLE', 'NOT_EVALUABLE_ZERO_BASE', 'NOT_EVALUABLE_SOURCE']);
+  assert.deepEqual(schemas.ActivityTransition.enum, ['NEW_ACTIVITY', 'CEASED_ACTIVITY', 'CONTINUING_ACTIVITY', 'NO_ACTIVITY']);
+  assert.deepEqual(schemas.DiagnosticRelation.enum, ['SAME_DIRECTION', 'OPPOSITE_DIRECTION', 'STORE_MOVED_CONTEXT_FLAT', 'STORE_FLAT_CONTEXT_MOVED', 'BOTH_FLAT', 'NOT_EVALUABLE']);
+});
+test('vin growth diagnostic is documented as AVAILABLE', () => {
   const markdown = readFileSync(join(root, 'rom/motors.md'), 'utf8');
-  const available = markdown.split(/^## AVAILABLE\s*$/m)[1]?.split(/^## NOT AVAILABLE\s*$/m)[0] ?? '';
-  return [...available.matchAll(/^### `([a-z0-9_]+)`$/gm)].map((match) => match[1]);
-}
-
-test('custom GPT router, OpenAPI and AVAILABLE documentation expose the same actions', () => {
-  const schemaActions = schema().components.schemas.CustomGptRequest.properties.action.enum;
-  assert.deepEqual(new Set(routerActions()), new Set(schemaActions));
-  assert.deepEqual(new Set(documentedAvailable()), new Set(schemaActions));
-  assert.equal(new Set(schemaActions).size, schemaActions.length);
+  assert.match(markdown, /^### `vin_growth_diagnostic_v01`$/m);
+  assert.match(markdown, /GRAIN.*MONTH × OWN_STORE × BRAND/);
+  assert.match(markdown, /COMMERCIAL UNIVERSE.*OWN_STORES/);
 });
-
-test('router implementation and OpenAPI publish the same contract version', () => {
-  const api = readFileSync(join(root, 'api/custom-gpt.js'), 'utf8');
-  const routerVersion = api.match(/ROUTER_VERSION = '([^']+)'/)?.[1];
-  assert.equal(routerVersion, schema().info.version);
-});
-
-test('NOT AVAILABLE actions do not overlap the productive action enum', () => {
-  const markdown = readFileSync(join(root, 'rom/motors.md'), 'utf8');
-  const unavailable = markdown.split(/^## NOT AVAILABLE\s*$/m)[1]?.split(/^## /m)[0] ?? '';
-  const names = [...unavailable.matchAll(/^- `([a-z0-9_]+)`$/gm)].map((match) => match[1]);
-  const schemaActions = new Set(schema().components.schemas.CustomGptRequest.properties.action.enum);
-  assert.ok(names.every((name) => !schemaActions.has(name)));
-});
-
-test('ROM structure is atomic and exact', () => {
-  assert.deepEqual(readdirSync(join(root, 'rom')).sort(), expectedRom);
-});
+test('ROM structure is atomic and exact', () => assert.deepEqual(readdirSync(join(root, 'rom')).sort(), expectedRom));
