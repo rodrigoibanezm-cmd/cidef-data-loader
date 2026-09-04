@@ -110,6 +110,8 @@ commercial_universe = OWN_STORES + grain = DEALER  → inválido
 
 Para BRAND, MODEL o VERSION tampoco inferir el universo: respetar el `commercial_universe` pertinente a la pregunta.
 
+Para `LONGITUDINAL / CRM`, enviar siempre `commercial_universe` explícito. CRM certifica `COMPANY` y `OWN_STORES`; `OWN_STORES` exige resolución exacta de `Sucursal Asignada` a `sucursales_master.tipo_canal=CIDEF`. `STORE` y `SELLER` sólo son válidos en `OWN_STORES`. `DEALERS` no es evaluable mientras CRM no tenga identidad dealer canónica certificada y debe fallar explícitamente; nunca inferir dealer por exclusión.
+
 ## 4. Reducir el universo
 
 Después del contexto, bajar al siguiente nivel sólo si ayuda a responder la pregunta.

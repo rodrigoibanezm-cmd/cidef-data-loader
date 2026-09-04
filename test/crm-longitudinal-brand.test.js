@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { assembleCrmLongitudinal, buildCrmLongitudinalQuery, parseCrmLongitudinalInput } from '../lib/longitudinal/crm.js';
 
 const parsed = (extra = {}) => parseCrmLongitudinalInput({
-  metric: 'LEADS_CREATED', grain: 'TOTAL', mode: 'EVENT', date_axis: 'CREATED_AT',
+  commercial_universe: 'COMPANY', metric: 'LEADS_CREATED', grain: 'TOTAL', mode: 'EVENT', date_axis: 'CREATED_AT',
   date_from: '2026-01-01', date_to: '2026-01-31', time_grain: 'MONTH', ...extra,
 });
 
@@ -71,7 +71,7 @@ test('BRAND filters use canonical enriched brand, not CRM raw Marca', () => {
 });
 
 test('other CRM dimensions retain raw or existing MASTER semantics', () => {
-  const sql = buildCrmLongitudinalQuery(parsed({ filters: { origin: 'WEB', product_interest: 'MAGE' }, breakdown: 'SELLER' })).sql;
+  const sql = buildCrmLongitudinalQuery(parsed({ commercial_universe: 'OWN_STORES', filters: { origin: 'WEB', product_interest: 'MAGE' }, breakdown: 'SELLER' })).sql;
   assert.match(sql, /"Origen"/);
   assert.match(sql, /"Producto de interes"/);
   assert.match(sql, /persona_aliases a WHERE a\.validated/);

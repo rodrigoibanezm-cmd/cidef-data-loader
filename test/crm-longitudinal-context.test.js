@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { assembleCrmLongitudinal, buildCrmLongitudinalQuery, parseCrmLongitudinalInput } from '../lib/longitudinal/crm.js';
 
 function parsed(extra = {}) {
-  return parseCrmLongitudinalInput({ metric: 'LEADS_CREATED', grain: 'TOTAL', mode: 'EVENT', date_axis: 'CREATED_AT', date_from: '2026-01-01', date_to: '2026-02-28', time_grain: 'MONTH', ...extra });
+  return parseCrmLongitudinalInput({ commercial_universe: 'OWN_STORES', metric: 'LEADS_CREATED', grain: 'TOTAL', mode: 'EVENT', date_axis: 'CREATED_AT', date_from: '2026-01-01', date_to: '2026-02-28', time_grain: 'MONTH', ...extra });
 }
 const rows = [
   { period: '2026-01', row_type: 'TOTAL', bucket_key: null, numerator: '10', denominator: '10', value: '10', source_records: '25', valid_axis_records: '20', missing_or_invalid_axis_records: '5', invalid_managed_date_records: '1', last_observed_date: '2026-02-26', effective_date_to: '2026-02-26', store_resolved: '15', store_unresolved: '3', store_ambiguous: '1', store_not_applicable: '1', seller_resolved: '12', seller_unresolved: '3', seller_ambiguous: '1', seller_not_applicable: '4', identity_total: '20' },

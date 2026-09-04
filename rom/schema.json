@@ -84,7 +84,7 @@
       "post": {
         "operationId": "cidefLongitudinal",
         "summary": "Run one explicit longitudinal context capability",
-        "description": "Use when the analytical answer requires understanding how a variable moved through multiple periods. The capability selects VENTAS, RVM or CRM longitudinal semantics explicitly. VENTAS requires commercial_universe so domain is fixed before grain/filter/metric. This endpoint does not infer a domain from keywords and does not run another analytical capability in parallel.",
+        "description": "Use when the analytical answer requires understanding how a variable moved through multiple periods. The capability selects VENTAS, RVM or CRM longitudinal semantics explicitly. VENTAS and CRM require commercial_universe so domain is fixed before grain/filter/metric; CRM currently certifies COMPANY and OWN_STORES only. This endpoint does not infer a domain from keywords and does not run another analytical capability in parallel.",
         "requestBody": {
           "required": true,
           "content": {
@@ -263,10 +263,10 @@
       },
       "LongitudinalInput": {
         "type": "object",
-        "description": "Shared V0.2 longitudinal envelope. Capability VENTAS, RVM or CRM determines valid metric, grain, filters and temporal semantics. VENTAS requires commercial_universe explicitly and validates domain before grain/filter/metric. SAME_DAY means comparable calendar-position truncation, not historical recognition-state reconstruction.",
+        "description": "Shared V0.2 longitudinal envelope. Capability VENTAS, RVM or CRM determines valid metric, grain, filters and temporal semantics. VENTAS and CRM require commercial_universe explicitly and validate domain before grain/filter/metric; CRM DEALERS is not currently evaluable. SAME_DAY means comparable calendar-position truncation, not historical recognition-state reconstruction.",
         "required": ["metric", "grain", "filters", "date_from", "date_to", "time_grain"],
         "properties": {
-          "commercial_universe": { "type": "string", "enum": ["COMPANY", "OWN_STORES", "DEALERS"], "description": "Required when capability=VENTAS. Fixes the certified commercial domain before grain, filters and metric are evaluated." },
+          "commercial_universe": { "type": "string", "enum": ["COMPANY", "OWN_STORES", "DEALERS"], "description": "Required when capability=VENTAS or CRM. Fixes the certified commercial domain before grain, filters and metric are evaluated. CRM supports COMPANY and OWN_STORES; DEALERS fails explicitly until certified CRM dealer identity exists." },
           "metric": {
             "type": "string",
             "enum": [
