@@ -1,17 +1,13 @@
 # Domain capability registry — CIDEF Agent
 
-Estado: `IMPLEMENTED`
+Estado: `ENDPOINTS_IMPLEMENTED`
 
 Autoridad de código:
 
 ```text
 lib/custom-gpt/capabilityRegistry.js
-```
-
-Integración:
-
-```text
 lib/custom-gpt-router.js
+lib/custom-gpt/domainEndpoint.js
 ```
 
 La capa implementada resuelve:
@@ -20,7 +16,32 @@ La capa implementada resuelve:
 domain + capability -> action física existente
 ```
 
-sin modificar motores ni eliminar el execution path vigente por `action`.
+y ahora expone cuatro fachadas públicas delgadas sobre el mismo router central.
+
+## Arquitectura implementada
+
+```text
+Custom GPT
+│
+├─ POST /api/custom-gpt/sales
+├─ POST /api/custom-gpt/market
+├─ POST /api/custom-gpt/discovery
+└─ POST /api/custom-gpt/longitudinal
+          │
+          ▼
+ lib/custom-gpt/domainEndpoint.js
+          │
+          ▼
+  lib/custom-gpt-router.js
+          │
+          ▼
+ DOMAIN_CAPABILITY_REGISTRY
+          │
+          ▼
+ action física existente
+```
+
+Los endpoints NO son routers independientes. Cada archivo de API fija un dominio y delega al mismo handler y al mismo router central.
 
 ## Dominios públicos registrados
 
@@ -38,6 +59,25 @@ El inventario de las 46 actions físicas y su clasificación permanece documenta
 rom/routing_inventory.md
 ```
 
+## Contrato de las fachadas
+
+Cada endpoint acepta únicamente:
+
+```json
+{
+  "capability": "...",
+  "input": {}
+}
+```
+
+No acepta `action` física ni otros campos top-level. Un campo no soportado falla con:
+
+```text
+UNSUPPORTED_DOMAIN_REQUEST_FIELD
+```
+
+La capability se normaliza a uppercase y el dominio viene fijado por el endpoint.
+
 ## Reglas implementadas
 
 1. El registry es explícito y cerrado.
@@ -45,15 +85,23 @@ rom/routing_inventory.md
 3. Un dominio desconocido falla con `INVALID_CAPABILITY_DOMAIN`.
 4. Una capability inexistente o perteneciente a otro dominio falla con `UNSUPPORTED_CAPABILITY_FOR_DOMAIN`.
 5. `runCustomGptCapability()` resuelve la capability y delega al executor físico existente.
-6. El input debe seguir siendo un objeto; input inválido falla antes de ejecutar un motor.
-7. Las 46 actions físicas continúan registradas en `ACTIONS` para compatibilidad interna y transición.
-8. `INTERNAL_SUPPORT` y `OUT_OF_CURRENT_SCOPE` no forman parte de `DOMAIN_CAPABILITY_REGISTRY`.
-9. No se modificó `rom/schema.json` todavía.
-10. No se crearon endpoints públicos todavía.
+6. El input debe ser un objeto; input inválido falla con `INVALID_CAPABILITY_INPUT`.
+7. Los endpoints sólo aceptan `POST`.
+8. Los endpoints sólo aceptan `capability` e `input` en el body.
+9. Las 46 actions físicas continúan registradas en `ACTIONS` para compatibilidad interna y transición.
+10. `INTERNAL_SUPPORT` y `OUT_OF_CURRENT_SCOPE` no forman parte de `DOMAIN_CAPABILITY_REGISTRY`.
+11. `/api/custom-gpt` histórico sigue existiendo y no fue modificado en esta fase.
+12. `rom/schema.json` todavía no fue migrado a las cuatro nuevas operaciones.
 
-## Superficie registrada
+## Endpoints implementados
 
 ### SALES
+
+```text
+POST /api/custom-gpt/sales
+```
+
+Capabilities:
 
 ```text
 MONTHLY_ACTUAL
@@ -74,6 +122,12 @@ DETERIORATION_STATUS
 ### MARKET
 
 ```text
+POST /api/custom-gpt/market
+```
+
+Capabilities:
+
+```text
 COMPETITIVE_CONTEXT
 SHARE_TRAJECTORY
 COMPETITIVE_RELATION
@@ -82,6 +136,12 @@ MARKET_HISTORY
 ```
 
 ### DISCOVERY
+
+```text
+POST /api/custom-gpt/discovery
+```
+
+Capabilities:
 
 ```text
 LIST_TABLES
@@ -93,6 +153,12 @@ QUERY_TABLE
 ### LONGITUDINAL
 
 ```text
+POST /api/custom-gpt/longitudinal
+```
+
+Capabilities:
+
+```text
 VENTAS
 RVM
 CRM
@@ -100,54 +166,65 @@ CRM
 
 ## Compatibilidad
 
-El path vigente continúa funcionando:
+El execution path vigente continúa disponible:
 
 ```text
 runCustomGptAction(action, input)
 ```
 
-La nueva capa agrega en paralelo:
+La capa semántica funciona en paralelo:
 
 ```text
 runCustomGptCapability({ domain, capability, input })
 ```
 
-Por lo tanto esta fase no corta todavía el acceso público histórico. El corte se hará recién cuando existan y estén testeadas las cuatro fachadas de dominio y el OpenAPI se migre a ellas.
+Y las cuatro fachadas sólo llaman a esta segunda capa.
+
+Por lo tanto aún no se ha cortado el acceso histórico de `/api/custom-gpt`. El corte de libertad del LLM ocurre cuando `rom/schema.json` deje de exponer el endpoint/action físico y exponga únicamente estas cuatro operaciones.
 
 ## Tests agregados
 
 ```text
 test/custom-gpt-capability-routing.test.js
+test/custom-gpt-domain-endpoints.test.js
 ```
 
-Cubre:
+La cobertura nueva valida:
 
 - cuatro dominios exactos;
 - 25 capabilities exactas;
-- todas las capabilities apuntan a actions físicas existentes;
-- routing correcto `SALES/STORE_CHANGE_CONTRIBUTION`;
+- mapping a actions físicas existentes;
 - rechazo cross-domain;
 - rechazo de dominio desconocido;
-- ausencia de actions internas/out-of-scope en la superficie pública;
+- ausencia de actions internas/out-of-scope en el registry público;
 - delegación al executor físico;
-- rechazo de input inválido antes de ejecutar motor.
+- rechazo de input inválido;
+- POST obligatorio;
+- capability obligatoria;
+- rechazo explícito del campo físico `action`;
+- contrato común de las cuatro fachadas.
+
+## Estado de transición
+
+```text
+REGISTRY                 IMPLEMENTED
+CENTRAL CAPABILITY ROUTER IMPLEMENTED
+SALES ENDPOINT            IMPLEMENTED
+MARKET ENDPOINT           IMPLEMENTED
+DISCOVERY ENDPOINT        IMPLEMENTED
+LONGITUDINAL ENDPOINT     IMPLEMENTED
+LEGACY /api/custom-gpt    PRESERVED
+OPENAPI / schema          NOT MIGRATED YET
+```
 
 ## Siguiente fase
 
-Crear cuatro fachadas públicas delgadas, todas sobre el mismo router:
+Migrar `rom/schema.json` para que el Custom GPT vea únicamente las cuatro fachadas públicas y sus capabilities de dominio.
+
+En esa fase debe desaparecer del contrato visible del LLM la selección libre por:
 
 ```text
-POST /api/custom-gpt/sales
-POST /api/custom-gpt/market
-POST /api/custom-gpt/discovery
-POST /api/custom-gpt/longitudinal
+action: <nombre físico del motor>
 ```
 
-Cada fachada fijará su `domain` y aceptará sólo:
-
-```text
-capability
-input
-```
-
-Todavía no corresponde retirar `/api/custom-gpt` ni modificar la superficie OpenAPI hasta validar esas cuatro fachadas.
+sin eliminar todavía el endpoint legacy ni las actions físicas internas.
