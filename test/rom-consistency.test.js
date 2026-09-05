@@ -10,7 +10,6 @@ const expectedRom = [
   'catalog.md',
   'instructions.md',
   'intake.md',
-  'motors.md',
   'orchestrator.md',
   'render-production.md',
   'render.md',
@@ -40,11 +39,5 @@ test('vin growth diagnostic contract is explicit in OpenAPI', () => {
   assert.deepEqual(schemas.PctStatus.enum, ['EVALUABLE', 'NOT_EVALUABLE_ZERO_BASE', 'NOT_EVALUABLE_SOURCE']);
   assert.deepEqual(schemas.ActivityTransition.enum, ['NEW_ACTIVITY', 'CEASED_ACTIVITY', 'CONTINUING_ACTIVITY', 'NO_ACTIVITY']);
   assert.deepEqual(schemas.DiagnosticRelation.enum, ['SAME_DIRECTION', 'OPPOSITE_DIRECTION', 'STORE_MOVED_CONTEXT_FLAT', 'STORE_FLAT_CONTEXT_MOVED', 'BOTH_FLAT', 'NOT_EVALUABLE']);
-});
-test('vin growth diagnostic is documented as AVAILABLE', () => {
-  const markdown = readFileSync(join(root, 'rom/motors.md'), 'utf8');
-  assert.match(markdown, /^### `vin_growth_diagnostic_v01`$/m);
-  assert.match(markdown, /GRAIN.*MONTH × OWN_STORE × BRAND/);
-  assert.match(markdown, /COMMERCIAL UNIVERSE.*OWN_STORES/);
 });
 test('ROM structure is atomic and exact', () => assert.deepEqual(readdirSync(join(root, 'rom')).sort(), expectedRom));

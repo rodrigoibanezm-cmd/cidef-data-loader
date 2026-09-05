@@ -10,7 +10,6 @@ on:
       - 'lib/motors/index.js'
       - 'api/custom-gpt.js'
       - 'rom/schema.json'
-      - 'rom/motors.md'
       - 'test/vin-growth-diagnostic.test.js'
       - 'test/custom-gpt-capability-routing.test.js'
       - 'test/rom-consistency.test.js'
