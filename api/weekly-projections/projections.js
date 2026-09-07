@@ -22,19 +22,19 @@ async function getProjections(req, res) {
       wsp.week_start::text AS week_start,
       wsp.sucursal_id::text AS sucursal_id,
       wsp.persona_id::text AS persona_id,
-      COALESCE(p.nombre_canonico, p.usuario_canonico) AS vendedor,
+      COALESCE(p.nombre_canonico, p.usuario_canonico, wsp.source_vendedor_raw, 'Sin vendedor') AS vendedor,
       wsp.modelo_id::text AS modelo_id,
-      ma.nombre_canonico AS marca,
-      m.nombre_canonico AS modelo,
+      COALESCE(ma.nombre_canonico, wsp.source_brand_raw, 'Sin marca') AS marca,
+      COALESCE(m.nombre_canonico, wsp.source_model_raw, 'Sin modelo') AS modelo,
       wsp.projected_units,
       wsp.expected_close_date::text AS expected_close_date,
       wsp.crm_opportunity_id,
       wsp.crm_link_method,
       wsp.updated_at
     FROM public.weekly_sales_projection wsp
-    JOIN public.personas_master p ON p.persona_id = wsp.persona_id
-    JOIN public.modelos_master_v01 m ON m.modelo_id = wsp.modelo_id
-    JOIN public.marcas_master_v01 ma ON ma.marca_id = m.marca_id
+    LEFT JOIN public.personas_master p ON p.persona_id = wsp.persona_id
+    LEFT JOIN public.modelos_master_v01 m ON m.modelo_id = wsp.modelo_id
+    LEFT JOIN public.marcas_master_v01 ma ON ma.marca_id = m.marca_id
     WHERE wsp.sucursal_id = $1::bigint
       AND wsp.week_start = $2::date
     ORDER BY vendedor, expected_close_date, marca, modelo, wsp.projection_id
