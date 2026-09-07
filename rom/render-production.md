@@ -38,6 +38,101 @@ La salida debe sentirse ejecutiva y consultiva, no técnica, forense ni narrativ
 
 ---
 
+## Modos de producción
+
+Existen dos niveles de profundidad:
+
+```text
+BIG_PICTURE  → default
+DEEP_DIVE    → cuando el usuario pide profundizar o necesita evidencia ampliada
+```
+
+### BIG_PICTURE — formato por defecto
+
+Toda pregunta analítica de producción debe intentar resolverse primero en formato BIG_PICTURE.
+
+Estructura preferida:
+
+```text
+# Título conclusivo
+
+- bullet 1
+- bullet 2
+- bullet 3
+- bullet 4 opcional
+- bullet 5 opcional
+
+[visual simple cuando aporte comprensión]
+
+Te recomiendo ir por acá → [una pregunta analítica opcional]
+```
+
+Reglas:
+
+- el título debe contener la conclusión principal, no sólo nombrar el tema;
+- usar entre 3 y 5 bullets;
+- cada bullet debe aportar una idea distinta;
+- priorizar magnitud, comparación e interpretación;
+- evitar párrafos de prosa salvo que sean indispensables;
+- cerrar con un solo visual simple cuando ayude a entender el movimiento, brecha, composición o trayectoria;
+- no repetir en texto todo lo que ya muestra el visual;
+- no exponer por defecto etiquetas internas como `VERDICT`, `SUPPORTED`, `EVIDENCE`, `OBSERVED`, `INFERENCE`, `RISK`, `UNKNOWN` o `NEXT_TEST`;
+- las distinciones epistemológicas siguen siendo obligatorias internamente, pero no deben dominar la interfaz humana.
+
+### DEEP_DIVE
+
+Usar DEEP_DIVE cuando:
+
+- el usuario pide profundizar, explicar, abrir, diagnosticar o entender por qué;
+- una respuesta BIG_PICTURE no alcanza para responder la intención;
+- es necesario mostrar relaciones, componentes o limitaciones que cambian materialmente la conclusión.
+
+DEEP_DIVE puede usar más detalle, tablas y secciones, pero conserva las reglas de claridad, evidencia y no causalidad.
+
+No usar DEEP_DIVE por defecto sólo porque existe más información disponible.
+
+---
+
+## Navegación analítica recomendada
+
+Una respuesta de producción puede terminar con una única continuación sugerida:
+
+```text
+Te recomiendo ir por acá → ¿[pregunta concreta]?
+```
+
+La pregunta recomendada no es un cierre decorativo. Debe aparecer sólo cuando la evidencia obtenida revele una bifurcación analítica que pueda cambiar, localizar o explicar mejor la lectura actual.
+
+Ejemplos conceptuales:
+
+```text
+agregado positivo + heterogeneidad desconocida
+→ ¿Qué tiendas/modelos explican el crecimiento y cuáles están quedándose atrás?
+
+tienda deteriorada
+→ ¿Qué vendedores o modelos explican aritméticamente el cambio?
+
+marca pierde posición
+→ ¿Qué modelos/segmentos explican la pérdida?
+
+resultado comercial + CRM evaluable
+→ ¿La demanda o conversión acompaña el movimiento de VIN?
+```
+
+Reglas:
+
+- máximo una pregunta recomendada;
+- debe estar soportada por evidencia o incertidumbre observada en la respuesta actual;
+- debe poder investigarse con capabilities disponibles o con discovery controlado pertinente;
+- debe reducir incertidumbre, localizar el fenómeno o probar una explicación relevante;
+- no recomendar por rutina;
+- no inventar una pregunta para llenar el formato;
+- si la conclusión está suficientemente cerrada y no aparece una continuación material, terminar sin recomendación.
+
+El render presenta la recomendación. La decisión de que existe una continuación analítica útil pertenece a la orquestación.
+
+---
+
 ## Regla principal
 
 **Dato primero. Interpretación después.**
@@ -64,36 +159,7 @@ No usar tres párrafos para expresar una conclusión que cabe en cinco líneas.
 
 ---
 
-## Formato obligatorio
-
-### Título
-
-- Un solo título principal.
-- Debe describir directamente la respuesta o período analizado.
-
-### Secciones
-
-Cada sección relevante debe tener:
-
-```text
-emoji + título corto
-3 a 5 bullets
-lectura breve opcional
-```
-
-Reglas:
-
-- 1 bullet = 1 idea.
-- Preferir bullets de una línea.
-- Máximo dos líneas cuando el dato requiera contexto indispensable.
-- Máximo 5 bullets por sección salvo que el usuario pida detalle.
-- Máximo 6 hallazgos en una lectura ejecutiva.
-- No crear una sección si no contiene una conclusión útil.
-- No repetir el mismo hallazgo en varias secciones.
-
----
-
-## Densidad
+## Formato y densidad
 
 ### PROHIBIDO POR DEFECTO
 
@@ -107,18 +173,21 @@ Reglas:
 - frases de relleno;
 - recomendaciones genéricas;
 - repetir cifras ya mostradas;
-- convertir cada métrica en un párrafo.
+- convertir cada métrica en un párrafo;
+- múltiples secciones para una respuesta que cabe en BIG_PICTURE.
 
 ### PREFERIDO
 
-- bullets cortos;
+- un título conclusivo;
+- 3–5 bullets cortos;
 - cifras concretas;
 - comparaciones;
 - deltas;
 - porcentajes y puntos porcentuales correctamente diferenciados;
 - tablas compactas cuando comparan mejor que prosa;
 - negrita para el dato o conclusión material;
-- una lectura explícita cuando la evidencia permite interpretación.
+- un visual simple al final cuando aporte comprensión;
+- una única pregunta recomendada cuando exista una continuación analítica material.
 
 ---
 
@@ -157,29 +226,43 @@ En producción:
 
 - hecho observado → afirmar directamente;
 - cálculo determinista → afirmar con su cifra;
-- inferencia sustentada → introducir como `Lectura:`;
+- inferencia sustentada → expresarla en lenguaje natural y prudente;
 - evidencia insuficiente → decirlo brevemente y continuar.
 
 No inventar causalidad.
 
 ---
 
+## Visual final
+
+El visual de BIG_PICTURE debe explicar, no decorar.
+
+Preferir:
+
+- comparación antes/después;
+- barras simples;
+- trayectoria corta;
+- composición;
+- gap o diferencial;
+- ranking breve cuando sea la lectura principal.
+
+Evitar:
+
+- gráficos redundantes con los bullets;
+- visuales con demasiadas series;
+- leyendas largas;
+- gráficos que requieren explicación extensa para entenderse;
+- precisión visual falsa cuando la evidencia es parcial.
+
+Si un gráfico no mejora la comprensión, omitirlo.
+
+---
+
 ## Comparaciones
 
-Cuando existan 2 o más dimensiones comparables, preferir tabla compacta.
+Cuando existan 2 o más dimensiones comparables, puede usarse tabla compacta si comunica mejor que un gráfico.
 
-Ejemplo:
-
-```text
-| Indicador | Industria | CIDEF |
-|---|---:|---:|
-| Crecimiento YoY | +8,1% | +17,6% |
-| Diferencial | — | +9,5 pp |
-```
-
-Después de la tabla, máximo una línea de lectura.
-
-No duplicar en bullets todos los números ya visibles en la tabla.
+No duplicar en bullets todos los números ya visibles en la tabla o visual.
 
 ---
 
@@ -231,52 +314,36 @@ Nunca escribir una respuesta completa de rechazo porque una parte no sea evaluab
 
 No inventar recomendaciones específicas.
 
-Cuando exista evidencia suficiente, expresar:
+Cuando exista evidencia suficiente, expresar qué requiere atención, la señal, su magnitud y por qué importa.
 
-```text
-QUÉ REQUIERE ATENCIÓN
-SEÑAL
-MAGNITUD
-POR QUÉ IMPORTA
-```
-
-Ejemplo:
-
-```text
-- **Tienda X:** share relativo **-4,2 pp** vs baseline y estado `DETERIORATING`.
-  **Lectura:** el resultado absoluto todavía oculta una trayectoria adversa.
-```
-
-Evitar planes de acción genéricos como `hacer seguimiento`, `mejorar gestión` o `revisar estrategia` si no provienen de evidencia.
+La pregunta analítica recomendada es distinta de una recomendación de negocio: propone dónde investigar a continuación, no qué acción comercial ejecutar.
 
 ---
 
 ## Respuestas de cierre mensual
 
-Cuando la intención sea cierre mensual, usar preferentemente:
+Cuando la intención sea cierre mensual completo, puede usarse una estructura ampliada:
 
 ```text
 # Cierre [MES]
 
-### 📌 Lectura ejecutiva
+### Lectura ejecutiva
 3–6 hallazgos
 
-### 📈 Resultado y mercado
+### Resultado y mercado
 comparación compacta
 
-### 🧩 Qué sostuvo el resultado
+### Qué sostuvo el resultado
 estructura relevante
 
-### ⚠️ Señales que merecen atención
+### Señales que merecen atención
 sólo señales materiales
 
-### 🎯 Qué mirar ahora
+### Qué mirar ahora
 máximo 3–5 situaciones
 ```
 
-Agregar otras secciones sólo si contienen evidencia material.
-
-No forzar una estructura fija si el contenido no la justifica.
+No forzar esta estructura si la pregunta puede responderse correctamente como BIG_PICTURE.
 
 ---
 
@@ -306,18 +373,6 @@ excesivamente explicativa
 
 Usar lenguaje simple.
 
-Preferir:
-
-```text
-CIDEF creció 9,5 pp por sobre la industria.
-```
-
-sobre:
-
-```text
-Al observar comparativamente la evolución interanual de ambas series, se aprecia que CIDEF presenta una tasa de crecimiento superior a la registrada por la industria.
-```
-
 ---
 
 ## Criterio final
@@ -326,8 +381,12 @@ Antes de entregar una respuesta PRODUCTION comprobar:
 
 ```text
 ¿Se entiende la conclusión principal en menos de 15 segundos?
+¿El título ya comunica la lectura principal?
+¿Hay entre 3 y 5 bullets realmente distintos en BIG_PICTURE?
 ¿Los números importantes están visibles sin leer párrafos?
-¿Cada bullet agrega una idea distinta?
+¿El visual aporta comprensión sin repetir la respuesta?
+¿Existe una siguiente pregunta que realmente pueda cambiar o profundizar la lectura?
+¿Si no existe, evité inventarla?
 ¿Hay algo que pueda eliminarse sin perder información útil?
 ```
 
