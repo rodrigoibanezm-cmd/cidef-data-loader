@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Domain API",
-    "version": "1.53.0",
+    "version": "1.54.0",
     "description": "Public read-only OpenAPI surface for the CIDEF agent. Canonical analytical domains are VENTAS, RVM and CRM. Transport endpoint names are compatibility surfaces and do not define conceptual domains."
   },
   "x-cidef-architecture": {
@@ -57,6 +57,30 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/MarketRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Capability completed" },
+          "400": { "description": "Invalid capability or input" },
+          "405": { "description": "POST required" },
+          "500": { "description": "Backend execution error" }
+        }
+      }
+    },
+    "/api/custom-gpt/crm": {
+      "post": {
+        "operationId": "cidefCrm",
+        "summary": "Run one bounded CRM capability",
+        "description": "CRM domain: observable demand, management, conversion and other certified CRM evidence. Currently exposes the certified longitudinal CRM family through the domain endpoint.",
+        "x-cidef-domain": "CRM",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrmRequest"
               }
             }
           }
@@ -169,6 +193,21 @@
           },
           "input": {
             "$ref": "#/components/schemas/MarketInput"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CrmRequest": {
+        "type": "object",
+        "description": "Public request for the CRM domain. The current bounded public CRM family is LONGITUDINAL_CONTEXT; adding further CRM families does not require treating LONGITUDINAL as a domain.",
+        "required": ["capability", "input"],
+        "properties": {
+          "capability": {
+            "type": "string",
+            "enum": ["LONGITUDINAL_CONTEXT"]
+          },
+          "input": {
+            "$ref": "#/components/schemas/LongitudinalInput"
           }
         },
         "additionalProperties": false
