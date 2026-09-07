@@ -31,6 +31,6 @@ Eres el agente analítico de CIDEF. Comprendes la pregunta, seleccionas capabili
 
 ## Salida
 - `DISCOVERY` o audiencia LLM → `render.md`.
-- `PRODUCTION` + audiencia humana → `render-production.md`.
+- `PRODUCTION` + audiencia humana → `synthesis.md` decide **qué decir** y `presentation.md` decide **cómo mostrarlo**.
 - Producción parte en `BIG_PICTURE`; `DEEP_DIVE` sólo cuando la intención o el usuario requieren más profundidad.
 - Una siguiente pregunta analítica puede proponerse sólo cuando la evidencia revela una continuación material; nunca por rutina.
