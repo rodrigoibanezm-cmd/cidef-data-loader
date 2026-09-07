@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Domain API",
-    "version": "1.54.0",
+    "version": "1.55.0",
     "description": "Public read-only OpenAPI surface for the CIDEF agent. Canonical analytical domains are VENTAS, RVM and CRM. Transport endpoint names are compatibility surfaces and do not define conceptual domains."
   },
   "x-cidef-architecture": {
@@ -207,8 +207,151 @@
             "enum": ["LONGITUDINAL_CONTEXT"]
           },
           "input": {
-            "$ref": "#/components/schemas/LongitudinalInput"
+            "$ref": "#/components/schemas/CrmLongitudinalInput"
           }
+        },
+        "additionalProperties": false
+      },
+      "CrmLongitudinalInput": {
+        "type": "object",
+        "description": "CRM-only temporal input. Use OWN_STORES for normal commercial analysis; COMPANY is a wider explicit audit scope. DEALERS is not certified for CRM. ASSIGNED_AT is the commercial assignment clock; CREATED_AT is the demand-generation clock.",
+        "required": ["commercial_universe", "metric", "grain", "filters", "date_from", "date_to", "time_grain", "mode"],
+        "properties": {
+          "commercial_universe": {
+            "type": "string",
+            "enum": ["OWN_STORES", "COMPANY"],
+            "default": "OWN_STORES",
+            "description": "Use OWN_STORES by default for CIDEF commercial analysis. Use COMPANY only when the user explicitly asks for the wider CRM universe, including non-store or unresolved assignments."
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "LEADS_CREATED",
+              "SOLD",
+              "NOT_SOLD",
+              "MANAGED",
+              "UNMANAGED",
+              "MANAGEMENT_COVERAGE",
+              "CONVERSION_ON_MANAGED",
+              "IN_MANAGEMENT",
+              "OPPORTUNITY",
+              "CLOSED",
+              "DESISTED",
+              "CONVERSION_RATE"
+            ]
+          },
+          "grain": {
+            "type": "string",
+            "enum": [
+              "TOTAL",
+              "BRAND",
+              "PRODUCT_INTEREST",
+              "ORIGIN",
+              "SUBORIGIN",
+              "STATUS",
+              "STORE",
+              "SELLER",
+              "INTEREST_LEVEL",
+              "DESIST_REASON"
+            ]
+          },
+          "filters": { "$ref": "#/components/schemas/CrmLongitudinalFilterMap" },
+          "date_from": { "type": "string", "format": "date" },
+          "date_to": { "type": "string", "format": "date" },
+          "time_grain": { "type": "string", "enum": ["MONTH", "YEAR"] },
+          "cutoff_date": { "type": "string", "format": "date" },
+          "cutoff_mode": { "type": "string", "enum": ["FULL_PERIOD", "SAME_DAY"], "default": "FULL_PERIOD" },
+          "breakdown": {
+            "type": "string",
+            "enum": ["BRAND", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "STORE", "SELLER", "INTEREST_LEVEL", "DESIST_REASON"]
+          },
+          "date_axis": {
+            "type": "string",
+            "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"],
+            "description": "EVENT clock. LEADS_CREATED requires CREATED_AT; MANAGED requires MANAGED_AT; DESISTED requires DESISTED_AT."
+          },
+          "mode": { "type": "string", "enum": ["EVENT", "COHORT"] },
+          "cohort_axis": {
+            "type": "string",
+            "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"],
+            "description": "COHORT clock. Prefer ASSIGNED_AT for operational commercial cohorts; use CREATED_AT when the question is about demand generation, campaigns, origin or suborigin."
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "mode": { "const": "EVENT" } }, "required": ["mode"] },
+            "then": { "required": ["date_axis"] }
+          },
+          {
+            "if": { "properties": { "mode": { "const": "COHORT" } }, "required": ["mode"] },
+            "then": { "required": ["cohort_axis"] }
+          },
+          {
+            "if": { "properties": { "mode": { "const": "EVENT" }, "metric": { "const": "LEADS_CREATED" } }, "required": ["mode", "metric"] },
+            "then": { "properties": { "date_axis": { "const": "CREATED_AT" } } }
+          },
+          {
+            "if": { "properties": { "mode": { "const": "EVENT" }, "metric": { "const": "MANAGED" } }, "required": ["mode", "metric"] },
+            "then": { "properties": { "date_axis": { "const": "MANAGED_AT" } } }
+          },
+          {
+            "if": { "properties": { "mode": { "const": "EVENT" }, "metric": { "const": "DESISTED" } }, "required": ["mode", "metric"] },
+            "then": { "properties": { "date_axis": { "const": "DESISTED_AT" } } }
+          },
+          {
+            "if": {
+              "properties": {
+                "mode": { "const": "EVENT" },
+                "metric": { "enum": ["SOLD", "NOT_SOLD", "UNMANAGED", "MANAGEMENT_COVERAGE", "CONVERSION_ON_MANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "CONVERSION_RATE"] }
+              },
+              "required": ["mode", "metric"]
+            },
+            "then": false
+          },
+          {
+            "if": {
+              "anyOf": [
+                { "properties": { "grain": { "enum": ["STORE", "SELLER"] } }, "required": ["grain"] },
+                { "properties": { "breakdown": { "enum": ["STORE", "SELLER"] } }, "required": ["breakdown"] },
+                {
+                  "properties": {
+                    "filters": {
+                      "type": "object",
+                      "anyOf": [
+                        { "required": ["store_id"] },
+                        { "required": ["store"] },
+                        { "required": ["store_raw"] },
+                        { "required": ["seller_id"] },
+                        { "required": ["seller"] },
+                        { "required": ["seller_raw"] }
+                      ]
+                    }
+                  },
+                  "required": ["filters"]
+                }
+              ]
+            },
+            "then": { "properties": { "commercial_universe": { "const": "OWN_STORES" } } }
+          }
+        ],
+        "additionalProperties": false
+      },
+      "CrmLongitudinalFilterMap": {
+        "type": "object",
+        "properties": {
+          "brand": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "product_interest": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "origin": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "suborigin": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "status": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "store_id": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "store": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "store_raw": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "seller_id": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "seller": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "seller_raw": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "interest_level": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "desist_reason": { "$ref": "#/components/schemas/LongitudinalFilterValue" }
         },
         "additionalProperties": false
       },
