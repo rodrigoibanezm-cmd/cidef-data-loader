@@ -83,9 +83,12 @@ test('CHANNEL_MIX_WITHIN_CIDEF uses selected channel over COMPANY with identical
   });
 });
 
-test('CHANNEL_MIX_WITHIN_CIDEF fails closed for COMPANY or non-TOTAL grain', () => {
+test('CHANNEL_MIX_WITHIN_CIDEF fails closed for incompatible scope, grain, or channel-local filters', () => {
   assert.throws(() => parsed({ metric: 'CHANNEL_MIX_WITHIN_CIDEF', commercial_universe: 'COMPANY' }), /SEMANTICALLY_IMPOSSIBLE_COMBINATION/);
   assert.throws(() => parsed({ metric: 'CHANNEL_MIX_WITHIN_CIDEF', commercial_universe: 'OWN_STORES', grain: 'BRAND' }), /SEMANTICALLY_IMPOSSIBLE_COMBINATION/);
+  assert.throws(() => parsed({ metric: 'CHANNEL_MIX_WITHIN_CIDEF', commercial_universe: 'OWN_STORES', filters: { store_id: 1 } }), /DOMAIN_MISMATCH/);
+  assert.throws(() => parsed({ metric: 'CHANNEL_MIX_WITHIN_CIDEF', commercial_universe: 'DEALERS', filters: { dealer_id: 20 } }), /DOMAIN_MISMATCH/);
+  assert.throws(() => parsed({ metric: 'CHANNEL_MIX_WITHIN_CIDEF', commercial_universe: 'OWN_STORES', filters: { channel: 'CIDEF' } }), /DOMAIN_MISMATCH/);
 });
 
 test('channel mix preserves certified zero when COMPANY denominator has observations', () => {
