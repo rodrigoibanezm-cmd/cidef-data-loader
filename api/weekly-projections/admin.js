@@ -27,13 +27,20 @@ export default async function handler(req, res) {
         wsp.projected_units,
         wsp.expected_close_date::text AS expected_close_date,
         wsp.crm_opportunity_id,
-        wsp.crm_link_method,
+        crm.estado AS crm_estado,
         wsp.updated_at
       FROM public.weekly_sales_projection wsp
       JOIN public.sucursales_master s ON s.sucursal_id = wsp.sucursal_id
       JOIN public.personas_master p ON p.persona_id = wsp.persona_id
       JOIN public.modelos_master_v01 m ON m.modelo_id = wsp.modelo_id
       JOIN public.marcas_master_v01 ma ON ma.marca_id = m.marca_id
+      LEFT JOIN LATERAL (
+        SELECT c."Estado" AS estado
+        FROM public."CRM_Cidef_raw" c
+        WHERE c."ID" = wsp.crm_opportunity_id
+        ORDER BY c.loaded_at DESC NULLS LAST
+        LIMIT 1
+      ) crm ON wsp.crm_opportunity_id IS NOT NULL
       WHERE wsp.week_start = $1::date
         AND ($2::bigint IS NULL OR wsp.sucursal_id = $2::bigint)
       ORDER BY s.nombre_canonico, vendedor, wsp.expected_close_date, ma.nombre_canonico, m.nombre_canonico
