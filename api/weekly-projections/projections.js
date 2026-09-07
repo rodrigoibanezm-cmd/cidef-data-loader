@@ -3,7 +3,6 @@ import {
   handleApiError,
   parseDate,
   parsePositiveBigInt,
-  parsePositiveInt,
   parseWeekStart,
 } from '../../lib/weekly-projections/db.js';
 import {
@@ -38,7 +37,7 @@ async function getProjections(req, res) {
     JOIN public.marcas_master_v01 ma ON ma.marca_id = m.marca_id
     WHERE wsp.sucursal_id = $1::bigint
       AND wsp.week_start = $2::date
-    ORDER BY vendedor, expected_close_date, marca, modelo
+    ORDER BY vendedor, expected_close_date, marca, modelo, wsp.projection_id
   `, [sucursalId, weekStart]);
 
   return res.status(200).json({
@@ -87,7 +86,6 @@ async function saveProjection(req, res) {
   const sucursalId = parsePositiveBigInt(req.body?.sucursal_id, 'sucursal_id');
   const personaId = parsePositiveBigInt(req.body?.persona_id, 'persona_id');
   const modeloId = parsePositiveBigInt(req.body?.modelo_id, 'modelo_id');
-  const projectedUnits = parsePositiveInt(req.body?.projected_units, 'projected_units');
   const expectedCloseDate = parseDate(req.body?.expected_close_date, 'expected_close_date');
   const crmLinkMethod = parseCrmLinkMethod(req.body?.crm_link_method);
   const requestedCrmOpportunityId = parseCrmOpportunityId(req.body?.crm_opportunity_id, crmLinkMethod);
@@ -113,8 +111,8 @@ async function saveProjection(req, res) {
       (week_start, sucursal_id, persona_id, modelo_id, projected_units,
        expected_close_date, crm_opportunity_id, crm_link_method, updated_at)
     VALUES
-      ($1::date, $2::bigint, $3::bigint, $4::bigint, $5::integer,
-       $6::date, $7::text, $8::text, now())
+      ($1::date, $2::bigint, $3::bigint, $4::bigint, 1,
+       $5::date, $6::text, $7::text, now())
     RETURNING
       projection_id::text AS projection_id,
       week_start::text AS week_start,
@@ -131,7 +129,6 @@ async function saveProjection(req, res) {
     sucursalId,
     personaId,
     modeloId,
-    projectedUnits,
     expectedCloseDate,
     crmValidation.crmOpportunityId,
     crmLinkMethod,
@@ -147,7 +144,6 @@ async function saveProjection(req, res) {
 async function updateProjection(req, res) {
   const projectionId = parsePositiveBigInt(req.body?.projection_id, 'projection_id');
   const modeloId = parsePositiveBigInt(req.body?.modelo_id, 'modelo_id');
-  const projectedUnits = parsePositiveInt(req.body?.projected_units, 'projected_units');
   const expectedCloseDate = parseDate(req.body?.expected_close_date, 'expected_close_date');
   const crmLinkMethod = parseCrmLinkMethod(req.body?.crm_link_method);
   const requestedCrmOpportunityId = parseCrmOpportunityId(req.body?.crm_opportunity_id, crmLinkMethod);
@@ -186,10 +182,10 @@ async function updateProjection(req, res) {
   const rows = await sql.query(`
     UPDATE public.weekly_sales_projection
     SET modelo_id = $2::bigint,
-        projected_units = $3::integer,
-        expected_close_date = $4::date,
-        crm_opportunity_id = $5::text,
-        crm_link_method = $6::text,
+        projected_units = 1,
+        expected_close_date = $3::date,
+        crm_opportunity_id = $4::text,
+        crm_link_method = $5::text,
         updated_at = now()
     WHERE projection_id = $1::bigint
     RETURNING
@@ -203,7 +199,6 @@ async function updateProjection(req, res) {
   `, [
     projectionId,
     modeloId,
-    projectedUnits,
     expectedCloseDate,
     crmValidation.crmOpportunityId,
     crmLinkMethod,
