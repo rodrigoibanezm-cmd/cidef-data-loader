@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
+// One-shot patch kept deterministic so it can be removed after schema generation.
 const path = 'rom/schema.json';
 const schema = JSON.parse(readFileSync(path, 'utf8'));
 const schemas = schema.components.schemas;
