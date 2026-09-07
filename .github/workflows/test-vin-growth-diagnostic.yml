@@ -2,7 +2,7 @@ name: test-vin-growth-diagnostic
 
 on:
   push:
-    branches: [main, impl/rvm-organization-scope-v01]
+    branches: [main]
     paths:
       - 'lib/motors/vin-growth-diagnostic-v01.js'
       - 'lib/longitudinal/rvm.js'
