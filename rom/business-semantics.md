@@ -16,28 +16,61 @@ evidencia determinista
 
 No usar una etiqueta de negocio porque una métrica aislada "parezca" buena o mala. Cuando una conclusión requiera materialidad, persistencia o umbral y éstos no estén certificados por un motor o regla determinista, mantener una formulación descriptiva y no elevar la señal.
 
-## 2. Conceptos canónicos
+## 2. Contrato operacional de conceptos
+
+Cada concepto debe evaluarse con cuatro preguntas:
+1. ¿Qué evidencia mínima existe?
+2. ¿Contra qué referencia válida se compara?
+3. ¿Qué evidencia NO alcanza por sí sola?
+4. ¿Cuál es el nivel máximo de conclusión permitido?
 
 ### Brecha
-Diferencia cuantificable entre un resultado observado y una referencia válida: expectativa, historia comparable, pares equivalentes, mercado relevante u otra referencia certificada.
+**Evidencia mínima**
+- resultado observado;
+- referencia válida compatible;
+- diferencia cuantificable entre ambos.
 
-Una brecha describe diferencia; por sí sola no implica oportunidad, riesgo, causa ni responsabilidad.
+**Referencias válidas**
+- expectativa determinista;
+- historia comparable;
+- pares estructuralmente equivalentes;
+- mercado relevante certificado;
+- otra referencia explícitamente compatible.
+
+**No basta**
+- diferencia contra un universo no equivalente;
+- comparación con período incompleto;
+- referencia implícita inventada por el agente.
+
+**Conclusión permitida**
+- `brecha favorable`, `brecha adversa` o descripción cuantificada.
+
+Una brecha por sí sola no implica oportunidad, riesgo, causa ni responsabilidad.
 
 ### Deterioro
-Evidencia de empeoramiento respecto de una referencia válida y con soporte temporal o comparativo suficiente para no reducirlo a una variación puntual.
+**Evidencia mínima**
+- evolución adversa;
+- referencia válida;
+- soporte temporal o comparativo suficiente para no reducirlo a una variación puntual.
 
-No basta:
+**Referencias válidas**
+- trayectoria propia comparable;
+- expectativa determinista;
+- pares equivalentes;
+- mercado relevante compatible.
+
+**No basta**
 - una caída aislada;
 - un mes incompleto;
 - una comparación entre universos no equivalentes;
 - una única métrica sin contexto cuando la conclusión depende de varias dimensiones.
 
-Si sólo existe una variación adversa puntual, describir la variación y no llamarla deterioro.
+**Conclusión permitida**
+- `deterioro observado` sólo cuando existe soporte suficiente;
+- en caso contrario, describir la variación adversa como `señal`.
 
 ### Oportunidad
-Evidencia de resultado potencial adicional observable pero no capturado completamente.
-
-Normalmente requiere:
+**Evidencia mínima**
 ```text
 resultado observado
 + referencia válida
@@ -47,46 +80,132 @@ resultado observado
 
 La disponibilidad puede provenir, según la pregunta, de mercado, demanda CRM, trayectoria, posición relativa u otra evidencia certificada compatible.
 
+**Referencias válidas**
+- mercado relevante;
+- demanda CRM compatible;
+- expectativa determinista;
+- trayectoria propia;
+- pares equivalentes;
+- posición/share compatible.
+
+**No basta**
+- mercado creciendo sin evidencia de captura débil;
+- leads creciendo sin evidencia de resultado o conversión compatible;
+- VIN bajo sin evidencia de disponibilidad;
+- una venta que no ocurrió;
+- una brecha sin evidencia de capturabilidad.
+
+**Conclusión permitida**
+- `oportunidad observada` o `oportunidad no capturada` cuando la combinación está soportada;
+- `señal de oportunidad` cuando falta una dimensión necesaria.
+
 Oportunidad no significa venta garantizada ni causalidad demostrada.
 
 ### Ventaja
-Desempeño favorable y diferencial respecto de una referencia válida.
+**Evidencia mínima**
+- desempeño favorable;
+- referencia válida;
+- diferencial positivo respecto de esa referencia.
 
-No basta con crecer: debe existir evidencia de superioridad relativa frente a mercado, historia, expectativa o pares comparables.
+**Referencias válidas**
+- mercado;
+- historia comparable;
+- expectativa;
+- pares equivalentes.
+
+**No basta**
+- crecer en términos absolutos;
+- vender más que otro actor no comparable;
+- una mejora sin referencia.
+
+**Conclusión permitida**
+- `ventaja observada`.
 
 ### Fortaleza
-Ventaja respaldada por consistencia temporal, repetición o estabilidad suficiente en la evidencia disponible.
+**Evidencia mínima**
+- ventaja observada;
+- consistencia temporal, repetición o estabilidad suficiente.
 
-Una observación favorable puntual puede ser una ventaja observada, pero no necesariamente una fortaleza.
+**No basta**
+- una observación favorable puntual;
+- una única comparación aislada.
+
+**Conclusión permitida**
+- `fortaleza` sólo cuando la ventaja no es meramente episódica.
 
 ### Riesgo
-Evidencia actual compatible con deterioro futuro de VIN o pérdida de posición/captura.
+**Evidencia mínima**
+- señal adversa actual;
+- referencia válida;
+- evidencia compatible con posible deterioro futuro de VIN, posición o captura.
 
 Puede apoyarse en desaceleración persistente, pérdida relativa, deterioro frente a historia/pares, debilitamiento de demanda/gestión u otras señales certificadas.
 
-Riesgo no significa que el deterioro ocurrirá. No convertir asociación en predicción causal.
+**No basta**
+- una caída puntual;
+- una única métrica adversa;
+- una correlación aislada;
+- una interpretación causal no demostrada.
+
+**Conclusión permitida**
+- `riesgo` cuando existe soporte suficiente;
+- `señal de riesgo` cuando falta persistencia o evidencia complementaria.
+
+Riesgo no significa que el deterioro ocurrirá.
 
 ### Red flag
-Señal suficientemente excepcional o material como para justificar atención prioritaria inmediata.
+**Evidencia mínima**
+- señal excepcional o material;
+- criterio determinista explícito de materialidad, persistencia, excepcionalidad o condición habilitante.
 
-No declarar `red flag` salvo que la materialidad, persistencia, excepcionalidad o condición habilitante esté sustentada por evidencia o criterio determinista explícito.
+**No basta**
+- que una métrica "se vea mala";
+- una caída porcentual sin threshold certificado;
+- una anomalía subjetiva;
+- una brecha no materializada.
 
-Sin ese criterio, usar `señal`, `brecha`, `deterioro observado` o `riesgo` según corresponda.
+**Conclusión permitida**
+- `red flag` sólo con criterio explícito.
+- Sin ese criterio: usar `señal`, `brecha`, `deterioro observado` o `riesgo`.
 
 ### Prioridad
-Oportunidad, riesgo o problema que merece competir por atención operativa frente a otros hallazgos.
+**Evidencia mínima**
+- oportunidad, riesgo, brecha o problema sustentado;
+- relevancia para resultado;
+- accionabilidad identificable;
+- base válida para comparar frente a otros hallazgos.
 
-Debe combinar evidencia suficiente con relevancia para resultado y accionabilidad. No inventar scores, pesos, Pareto ni thresholds para ordenar prioridades si no están disponibles determinísticamente.
+**No basta**
+- una señal interesante;
+- una lista ordenada subjetivamente;
+- inventar scores, pesos, Pareto o thresholds.
+
+**Conclusión permitida**
+- `prioridad` sólo si existe criterio suficiente para hacer competir ese foco por atención operativa.
 
 ### Señal
-Evidencia observable que puede justificar investigación o seguimiento, pero que todavía no alcanza una categoría más fuerte.
+**Evidencia mínima**
+- evidencia observable real.
 
-Usar `señal` cuando existe evidencia real pero no soporte suficiente para declarar deterioro, riesgo, oportunidad o red flag.
+**Uso**
+- cuando existe algo digno de seguimiento, pero no soporte suficiente para una categoría más fuerte.
+
+**Conclusión permitida**
+- `señal`, sin elevarla artificialmente.
 
 ### Accionabilidad
-Grado en que la evidencia permite identificar una intervención concreta dentro del ámbito controlable de CIDEF.
+**Evidencia mínima**
+- ámbito de intervención identificable dentro de CIDEF;
+- relación clara entre el hallazgo y una acción posible;
+- la acción no requiere asumir causalidad no demostrada.
 
-Una observación puede ser material sin ser accionable. No convertir automáticamente un hallazgo en tarea.
+**No basta**
+- que el fenómeno sea material;
+- que exista una brecha;
+- que el agente pueda imaginar una tarea.
+
+**Conclusión permitida**
+- una acción concreta y proporcional al nivel de certeza disponible.
 
 ## 3. Reglas de combinación
 
@@ -111,6 +230,29 @@ mercado disponible o creciente
 ```
 
 Si mercado, demanda y resultado se deterioran conjuntamente, no declarar oportunidad perdida sólo desde la caída de VIN.
+
+Ejemplo conceptual de ventaja:
+```text
+resultado favorable
++ referencia válida
++ diferencial positivo
+→ ventaja observada
+```
+
+Ejemplo conceptual de fortaleza:
+```text
+ventaja observada
++ persistencia / repetición
+→ fortaleza
+```
+
+Ejemplo conceptual de riesgo:
+```text
+señal adversa
++ referencia válida
++ persistencia o evidencia complementaria
+→ riesgo
+```
 
 ## 4. Referencias válidas
 Una referencia debe ser compatible con la métrica, universo, período y nivel organizacional analizados.
@@ -150,3 +292,5 @@ El agente puede proponer una acción sólo cuando:
 - la acción es proporcional al nivel de certeza disponible.
 
 Una tarea debe atacar una oportunidad, riesgo, brecha o señal sustentada; nunca existir sólo porque el agente necesita completar una lista.
+
+Si el usuario pide N tareas y sólo existen M focos sustentados, con `M < N`, entregar sólo M y explicitar que no existe evidencia suficiente para completar N sin inventar prioridades.
