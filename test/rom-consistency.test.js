@@ -35,9 +35,20 @@ test('vin growth diagnostic contract is explicit in OpenAPI', () => {
   assert.equal(schemas.VinGrowthDiagnosticOutput.properties.motor.const, 'vin_growth_diagnostic_v01');
   assert.equal(schemas.VinGrowthDiagnosticOutput.properties.version.const, '0.1');
   assert.deepEqual(schemas.VinGrowthDiagnosticOutput.properties.status.enum, ['COMPLETE', 'PARTIAL']);
+  assert.deepEqual(schemas.VinGrowthDiagnosticOutput.properties.scope.required, ['commercial_universe', 'organization_scope', 'store_id', 'brand_id']);
+  assert.equal(schemas.VinGrowthDiagnosticOutput.properties.scope.properties.organization_scope.const, 'CIDEF');
+  assert.equal(schemas.VinGrowthDiagnosticOutput.properties.rvm_context.properties.organization_scope.const, 'CIDEF');
   assert.deepEqual(schemas.Direction.enum, ['POSITIVE', 'NEGATIVE', 'FLAT', 'NOT_EVALUABLE']);
   assert.deepEqual(schemas.PctStatus.enum, ['EVALUABLE', 'NOT_EVALUABLE_ZERO_BASE', 'NOT_EVALUABLE_SOURCE']);
   assert.deepEqual(schemas.ActivityTransition.enum, ['NEW_ACTIVITY', 'CEASED_ACTIVITY', 'CONTINUING_ACTIVITY', 'NO_ACTIVITY']);
   assert.deepEqual(schemas.DiagnosticRelation.enum, ['SAME_DIRECTION', 'OPPOSITE_DIRECTION', 'STORE_MOVED_CONTEXT_FLAT', 'STORE_FLAT_CONTEXT_MOVED', 'BOTH_FLAT', 'NOT_EVALUABLE']);
+});
+test('RVM organization scope is explicit and orthogonal in OpenAPI', () => {
+  const schemas = schema().components.schemas;
+  assert.deepEqual(schemas.OrganizationScope.enum, ['CIDEF', 'INDUMOTORA', 'MACO_TATTERSALL', 'ALL']);
+  assert.deepEqual(schemas.OrganizationCoverageState.enum, ['RESOLVED', 'PARTIAL', 'NO_COVERAGE', 'AMBIGUOUS', 'NOT_EVALUABLE', 'NOT_APPLICABLE']);
+  assert.equal(schemas.LongitudinalInput.properties.organization_scope.$ref, '#/components/schemas/OrganizationScope');
+  assert.match(schemas.LongitudinalInput.properties.organization_scope.description, /RVM only/);
+  assert.ok(schemas.LongitudinalInput.properties.commercial_universe);
 });
 test('ROM structure is atomic and exact', () => assert.deepEqual(readdirSync(join(root, 'rom')).sort(), expectedRom));

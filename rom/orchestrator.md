@@ -112,6 +112,59 @@ Para BRAND, MODEL o VERSION tampoco inferir el universo: respetar el `commercial
 
 Para `LONGITUDINAL / CRM`, enviar siempre `commercial_universe` explícito. CRM certifica `COMPANY` y `OWN_STORES`; `OWN_STORES` exige resolución exacta de `Sucursal Asignada` a `sucursales_master.tipo_canal=CIDEF`. `STORE` y `SELLER` sólo son válidos en `OWN_STORES`. `DEALERS` no es evaluable mientras CRM no tenga identidad dealer canónica certificada y debe fallar explícitamente; nunca inferir dealer por exclusión.
 
+## 3A. Fijar pertenencia organizacional en RVM
+
+`organization_scope` y `commercial_universe` son dimensiones distintas y no deben intercambiarse.
+
+```text
+organization_scope = CIDEF | INDUMOTORA | MACO_TATTERSALL | ALL
+```
+
+`organization_scope` responde **a qué organización comercial pertenece temporalmente una observación RVM**. No describe canal de venta. `OWN_STORES`, `DEALERS` y `COMPANY` nunca son valores de `organization_scope`.
+
+Para `LONGITUDINAL / RVM`, toda consulta cuyo universo o entidad dependa de BRAND o MODEL debe enviar `organization_scope` explícito. Ejemplos:
+
+```text
+brand = DONGFENG + organization_scope = CIDEF → Dongfeng atribuible temporalmente a CIDEF
+brand = DONGFENG + organization_scope = ALL   → Dongfeng sin restricción organizacional
+```
+
+No asumir `CIDEF` por defecto y no usar `ALL` como fallback ante una pregunta organizacionalmente ambigua. Si la pregunta no determina si se refiere a una organización o al total de la marca, debe resolverse semánticamente antes de ejecutar RVM.
+
+El agente sólo expresa la intención semántica. Nunca debe conocer ni reproducir reglas como marcas raw, importadores, listas de modelos o fechas de transición. La autoridad determinista reside en MASTER y resuelve por observación y fecha con esta precedencia:
+
+```text
+MODEL × ORGANIZATION × DATE membership certificado
+> historical RVM source rule certificado
+> UNRESOLVED
+```
+
+La regla histórica puede certificar BRAND + ORGANIZATION para agregados sin fabricar identidad MODEL. La pertenencia es temporal N:N: un mismo modelo puede pertenecer simultáneamente a más de una organización sin constituir conflicto por sí solo.
+
+Estados de cobertura organizacional relevantes:
+
+```text
+RESOLVED
+PARTIAL
+NO_COVERAGE
+AMBIGUOUS
+NOT_EVALUABLE
+```
+
+Para scope específico, la reconciliación debe permanecer auditable:
+
+```text
+TOTAL
+= INCLUDED
++ EXCLUDED_OTHER_ORGANIZATION
++ UNRESOLVED
++ AMBIGUOUS
+```
+
+`MARKET_SIZE` conserva el mercado total y no se convierte en “mercado de CIDEF”. En `MARKET_SHARE`, `organization_scope` restringe el numerador objetivo y no redefine el denominador competitivo vigente. En `RANK`, el scope se propaga sin cambiar la metodología de ranking.
+
+`VIN_GROWTH_DIAGNOSTIC` mantiene su input público exacto. Como su grain es `MONTH × OWN_STORE × BRAND` dentro de CIDEF, su contexto RVM fija internamente `organization_scope=CIDEF`. Si la cobertura organizacional RVM es PARTIAL, NO_COVERAGE, AMBIGUOUS o NOT_EVALUABLE, el bloque RVM no debe utilizar un total parcial como `brand_rvm_vin`; el diagnóstico queda PARTIAL.
+
 ## 4. Reducir el universo
 
 Después del contexto, bajar al siguiente nivel sólo si ayuda a responder la pregunta.
@@ -209,6 +262,7 @@ Antes de responder comprobar internamente:
 
 ```text
 ¿El dominio comercial corresponde exactamente a la intención de la pregunta?
+¿El organization_scope RVM corresponde exactamente a la organización o totalidad solicitada?
 ¿Tengo contexto suficiente para interpretar?
 ¿Localicé el fenómeno al nivel necesario?
 ¿Confundí ausencia de observaciones con ausencia del fenómeno?
