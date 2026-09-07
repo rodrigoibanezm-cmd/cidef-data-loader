@@ -56,18 +56,15 @@ A migrated consumer receives its rows from `ventas_universe_v01`. It does not re
 | `ventas_product_sales_v01` | Transitive through alias-compatible product adapter |
 | `ventas_product_detail_v01` | Transitive through alias-compatible product adapter |
 | `vin_growth_diagnostic_v01` | Transitive through longitudinal VENTAS |
+| `ventas_monthly_actual_v01` | Direct through shared certified monthly adapter |
+| `ventas_daily_context_v01` | Direct through shared certified monthly adapter with `cutoff_date` |
+| `expected_monthly_candidates_v01` | Direct through shared certified monthly adapter |
+| `expected_monthly_backtest_v01` | Direct through shared certified monthly adapter |
+| `expected_monthly_stability_v01` | Direct through shared certified monthly adapter and backtest calculation |
 
 ## Remaining consumers
 
-### READY_TO_MIGRATE
-
-| Consumer | Reason |
-|---|---|
-| `ventas_monthly_actual_v01` | Uses one current recognition cutoff and counts only; a lossless universe adapter is direct. |
-| `ventas_daily_context_v01` | Uses one current cutoff and no alternate recognition policy. |
-| `expected_monthly_candidates_v01` | Uses the standard recognized monthly COMPANY series. |
-| `expected_monthly_backtest_v01` | Uses the standard recognized monthly COMPANY series. |
-| `expected_monthly_stability_v01` | Uses the same standard monthly context. |
+`READY_TO_MIGRATE`: none. The five consumers previously classified here now use `buildVentasMonthlyAnalyticalContext`, which adapts one `COMPANY` universe into the unchanged `ventas_context_v01` monthly shape.
 
 ### NEEDS_ADAPTATION
 
@@ -98,3 +95,5 @@ A migrated consumer receives its rows from `ventas_universe_v01`. It does not re
 ## Regression evidence
 
 `test/ventas-universe.test.js` verifies scope counts/reconciliation, commercial coverage, field equivalence to the former longitudinal enrichment, product/model/version identity, date-effective `VENDEDOR_CIDEF`, VIN series, share metrics, channel mix, and STORE/DEALER/SELLER domain boundaries.
+
+`test/ventas-universe-ready-consumers.test.js` compares legacy and universe-adapted outputs for monthly actual, daily context, candidate values/order, historical backtest observations/metrics and stability windows. It also verifies structurally that the five consumers no longer import local recognition or identity loaders.

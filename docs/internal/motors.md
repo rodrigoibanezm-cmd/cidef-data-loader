@@ -858,20 +858,21 @@ Input:
 {}
 ```
 
-No requiere parámetros externos. Construye o reutiliza el contexto runtime común de ventas:
+No requiere parámetros externos. Construye o reutiliza la serie mensual certificada:
 
 ```text
-buildVentasContext()
+ventas_universe_v01 (COMPANY)
+  -> buildVentasMonthlyAnalyticalContext()
   -> monthlySales[]
 ```
 
 Dependencia compartida:
 
 ```text
-ventas_context_v01
+ventas_universe_v01
 ```
 
-Si un motor superior ya construyó el contexto, debe reutilizarlo mediante `sharedContext`; de lo contrario el motor llama `buildVentasContext()` una sola vez.
+Si un motor superior ya construyó el contexto compatible, puede reutilizarlo mediante `sharedContext`; de lo contrario el motor construye una sola vez el universo certificado y su serie mensual compartida.
 
 Candidatos V0.1:
 
@@ -970,7 +971,8 @@ adjusted_last_year
 Dependencia compartida:
 
 ```text
-ventas_context_v01
+ventas_universe_v01
+buildVentasMonthlyAnalyticalContext()
 expected_monthly_backtest_v01
 ```
 
@@ -1058,7 +1060,7 @@ Política de ceguera:
 
 - el corte temporal se aplica **antes** de resolver LAST por VIN;
 - una fila de `ventas_raw` posterior a `cutoff_month` no puede cambiar qué fila representa al VIN dentro del corte;
-- después del corte se construye `ventas_context_v01` y su `monthlySales[]`;
+- después del corte `ventas_universe_v01` entrega `analytical_events` y el adapter compartido construye su `monthlySales[]` compatible;
 - las fórmulas sólo reciben meses `<= cutoff_month`;
 - el payload no incluye venta real del `target_month`, error observado ni ranking ganador;
 - el motor no elige todavía cuál candidato usar en producción.
@@ -1066,8 +1068,7 @@ Política de ceguera:
 Dependencias reutilizables:
 
 ```text
-filterVentasRowsThroughMonth()
-buildVentasContext({ cutoffMonth })
+buildVentasMonthlyAnalyticalContext({ cutoffMonth })
 buildExpectationInput()
 calculateExpectations()
 expectedCandidates.js
@@ -1120,7 +1121,7 @@ target_month: YYYY-MM
 
 Política:
 
-- reutiliza `buildVentasContext({ cutoffMonth })`;
+- consume `ventas_universe_v01` `COMPANY` mediante `buildVentasMonthlyAnalyticalContext({ cutoffMonth })`;
 - el cutoff se aplica **antes** de resolver LAST por VIN;
 - ninguna fila posterior a `cutoff_month` puede alterar la venta reconocida de un VIN dentro del corte;
 - la regla de reconocimiento es la misma de `ventas_context_v01`: VIN no nulo usa LAST `fecha_factura` dentro de la evidencia disponible; VIN nulo cuenta por fila parseable;
@@ -1172,8 +1173,8 @@ cutoff_date: YYYY-MM-DD
 Dependencia compartida:
 
 ```text
-buildVentasContext({ cutoffDate })
-ventas_context_v01
+ventas_universe_v01 (COMPANY)
+buildVentasMonthlyAnalyticalContext({ cutoffDate })
 ```
 
 Política:
@@ -1184,7 +1185,7 @@ Política:
 - empate exacto de LAST conserva el desempate técnico vigente por menor `id` estable;
 - `cutoff_month` y `cutoff_date` son mutuamente excluyentes dentro del helper común;
 - `cutoff_date = último día del mes` debe ser equivalente a `cutoff_month` para el mismo snapshot;
-- no aplica clasificación organizacional: CIDEF/DEALER se resuelve después del reconocimiento;
+- no filtra por clasificación organizacional: consume íntegramente `COMPANY` y conserva el contrato diario vigente;
 - no calcula forecast, expectativa, concentración de cierre ni `PREDICTABILITY_DAY`.
 
 Devuelve:
