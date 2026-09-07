@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Domain API",
-    "version": "1.55.0",
+    "version": "1.55.1",
     "description": "Public read-only OpenAPI surface for the CIDEF agent. Canonical analytical domains are VENTAS, RVM and CRM. Transport endpoint names are compatibility surfaces and do not define conceptual domains."
   },
   "x-cidef-architecture": {
@@ -306,7 +306,7 @@
               },
               "required": ["mode", "metric"]
             },
-            "then": false
+            "then": { "not": {} }
           },
           {
             "if": {
