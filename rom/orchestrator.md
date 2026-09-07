@@ -112,6 +112,40 @@ Para BRAND, MODEL o VERSION tampoco inferir el universo: respetar el `commercial
 
 Para `LONGITUDINAL / CRM`, enviar siempre `commercial_universe` explícito. CRM certifica `COMPANY` y `OWN_STORES`; `OWN_STORES` exige resolución exacta de `Sucursal Asignada` a `sucursales_master.tipo_canal=CIDEF`. `STORE` y `SELLER` sólo son válidos en `OWN_STORES`. `DEALERS` no es evaluable mientras CRM no tenga identidad dealer canónica certificada y debe fallar explícitamente; nunca inferir dealer por exclusión.
 
+### Semántica de denominadores comerciales
+
+Toda razón, share o comparación derivada de VENTAS debe declarar implícita o explícitamente la relación entre el universo del numerador y el del denominador. No dividir universos comerciales distintos salvo que la definición canónica de la métrica autorice exactamente esa relación.
+
+Reglas:
+
+```text
+VIN_SALES / crecimiento temporal
+→ SAME_UNIVERSE
+→ OWN_STORES(t) contra OWN_STORES(t-1)
+→ DEALERS(t) contra DEALERS(t-1)
+→ COMPANY(t) contra COMPANY(t-1)
+
+SHARE_WITHIN_COMMERCIAL_UNIVERSE
+→ SAME_UNIVERSE
+→ numerador de grain / mismo commercial_universe
+
+CHANNEL_MIX_WITHIN_CIDEF
+→ PART_OF_PARENT
+→ OWN_STORES / COMPANY o DEALERS / COMPANY
+```
+
+`SHARE_WITHIN_CIDEF` queda como alias legacy de `SHARE_WITHIN_COMMERCIAL_UNIVERSE`; no significa automáticamente OWN_STORES/COMPANY.
+
+No construir `OWN_STORES market penetration` ni `DEALERS market penetration` dividiendo por RVM total. Mientras no exista un denominador externo certificado del mismo canal, esas métricas son `NOT_EVALUABLE`. El contexto RVM puede coexistir como plano paralelo, pero no convertirse silenciosamente en denominador de canal.
+
+Invariante:
+
+```text
+numerator_universe = denominator_universe
+OR canonical metric relation = PART_OF_PARENT / EXTERNAL_COMPATIBLE
+otherwise → DOMAIN_MISMATCH or NOT_EVALUABLE
+```
+
 ## 3A. Fijar pertenencia organizacional en RVM
 
 `organization_scope` y `commercial_universe` son dimensiones distintas y no deben intercambiarse.
