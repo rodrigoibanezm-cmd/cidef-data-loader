@@ -1,10 +1,16 @@
 import {
   getDb,
   handleApiError,
+  parseDate,
   parsePositiveBigInt,
   parsePositiveInt,
   parseWeekStart,
 } from '../../lib/weekly-projections/db.js';
+import {
+  parseCrmLinkMethod,
+  parseCrmOpportunityId,
+  validateCrmLink,
+} from '../../lib/weekly-projections/crm.js';
 
 async function getProjections(req, res) {
   const sucursalId = parsePositiveBigInt(req.query?.sucursal_id, 'sucursal_id');
@@ -22,6 +28,9 @@ async function getProjections(req, res) {
       ma.nombre_canonico AS marca,
       m.nombre_canonico AS modelo,
       wsp.projected_units,
+      wsp.expected_close_date::text AS expected_close_date,
+      wsp.crm_opportunity_id,
+      wsp.crm_link_method,
       wsp.updated_at
     FROM public.weekly_sales_projection wsp
     JOIN public.personas_master p ON p.persona_id = wsp.persona_id
@@ -29,7 +38,7 @@ async function getProjections(req, res) {
     JOIN public.marcas_master_v01 ma ON ma.marca_id = m.marca_id
     WHERE wsp.sucursal_id = $1::bigint
       AND wsp.week_start = $2::date
-    ORDER BY vendedor, marca, modelo
+    ORDER BY vendedor, expected_close_date, marca, modelo
   `, [sucursalId, weekStart]);
 
   return res.status(200).json({
@@ -46,17 +55,32 @@ async function saveProjection(req, res) {
   const personaId = parsePositiveBigInt(req.body?.persona_id, 'persona_id');
   const modeloId = parsePositiveBigInt(req.body?.modelo_id, 'modelo_id');
   const projectedUnits = parsePositiveInt(req.body?.projected_units, 'projected_units');
+  const expectedCloseDate = parseDate(req.body?.expected_close_date, 'expected_close_date');
+  const crmLinkMethod = parseCrmLinkMethod(req.body?.crm_link_method);
+  const requestedCrmOpportunityId = parseCrmOpportunityId(req.body?.crm_opportunity_id, crmLinkMethod);
   const sql = getDb();
+
+  const crmValidation = await validateCrmLink(sql, {
+    method: crmLinkMethod,
+    crmOpportunityId: requestedCrmOpportunityId,
+    sucursalId,
+    personaId,
+    modeloId,
+  });
 
   const rows = await sql.query(`
     INSERT INTO public.weekly_sales_projection
-      (week_start, sucursal_id, persona_id, modelo_id, projected_units, updated_at)
+      (week_start, sucursal_id, persona_id, modelo_id, projected_units,
+       expected_close_date, crm_opportunity_id, crm_link_method, updated_at)
     SELECT
       $1::date,
       $2::bigint,
       $3::bigint,
       $4::bigint,
       $5::integer,
+      $6::date,
+      $7::text,
+      $8::text,
       now()
     WHERE EXISTS (
       SELECT 1
@@ -82,10 +106,6 @@ async function saveProjection(req, res) {
         AND pp.vigente = true
         AND pp.organizacion = 'CIDEF'
     )
-    ON CONFLICT (week_start, sucursal_id, persona_id, modelo_id)
-    DO UPDATE SET
-      projected_units = EXCLUDED.projected_units,
-      updated_at = now()
     RETURNING
       projection_id::text AS projection_id,
       week_start::text AS week_start,
@@ -93,8 +113,20 @@ async function saveProjection(req, res) {
       persona_id::text AS persona_id,
       modelo_id::text AS modelo_id,
       projected_units,
+      expected_close_date::text AS expected_close_date,
+      crm_opportunity_id,
+      crm_link_method,
       updated_at
-  `, [weekStart, sucursalId, personaId, modeloId, projectedUnits]);
+  `, [
+    weekStart,
+    sucursalId,
+    personaId,
+    modeloId,
+    projectedUnits,
+    expectedCloseDate,
+    crmValidation.crmOpportunityId,
+    crmLinkMethod,
+  ]);
 
   if (!rows.length) {
     return res.status(400).json({
@@ -103,24 +135,22 @@ async function saveProjection(req, res) {
     });
   }
 
-  return res.status(200).json({ ok: true, projection: rows[0] });
+  return res.status(201).json({
+    ok: true,
+    projection: rows[0],
+    warnings: crmValidation.warnings,
+  });
 }
 
 async function deleteProjection(req, res) {
-  const weekStart = parseWeekStart(req.body?.week_start);
-  const sucursalId = parsePositiveBigInt(req.body?.sucursal_id, 'sucursal_id');
-  const personaId = parsePositiveBigInt(req.body?.persona_id, 'persona_id');
-  const modeloId = parsePositiveBigInt(req.body?.modelo_id, 'modelo_id');
+  const projectionId = parsePositiveBigInt(req.body?.projection_id, 'projection_id');
   const sql = getDb();
 
   const rows = await sql.query(`
     DELETE FROM public.weekly_sales_projection
-    WHERE week_start = $1::date
-      AND sucursal_id = $2::bigint
-      AND persona_id = $3::bigint
-      AND modelo_id = $4::bigint
+    WHERE projection_id = $1::bigint
     RETURNING projection_id::text AS projection_id
-  `, [weekStart, sucursalId, personaId, modeloId]);
+  `, [projectionId]);
 
   return res.status(200).json({ ok: true, deleted: rows.length === 1 });
 }
