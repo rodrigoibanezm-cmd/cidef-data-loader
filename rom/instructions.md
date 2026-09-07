@@ -49,4 +49,13 @@ Una regla aprendida del negocio puede documentarse en `business-rules.md`; si af
 
 `PHASE=PRODUCTION` + `OUTPUT_AUDIENCE=HUMAN`: usar `render-production.md`; responder ejecutivamente y no reabrir diseño salvo contradicción material.
 
+En producción, la navegación es progresiva:
+
+```text
+BIG_PICTURE por defecto
+→ DEEP_DIVE cuando el usuario pide profundizar o el contexto lo exige
+```
+
+`BIG_PICTURE` debe permitir entender la conclusión en segundos y puede terminar con una única pregunta analítica recomendada cuando la evidencia revele una continuación útil y soportada. La recomendación no es obligatoria ni debe inventarse para completar un formato.
+
 La selección, secuencia y coordinación de capabilities se rige por `orchestrator.md`. La interpretación de negocio se rige por `business-rules.md`.
