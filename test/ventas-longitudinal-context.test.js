@@ -50,9 +50,50 @@ test('model breakdown is exhaustive and reconciles each period', () => {
   }
 });
 
-test('share exposes numerator and certified-domain denominator', () => {
+test('legacy share keeps denominator inside the same certified commercial universe', () => {
   const result = calculateVentasLongitudinal(events, parsed({ metric: 'SHARE_WITHIN_CIDEF', grain: 'BRAND', filters: { brand: 'DONGFENG' } }));
   assert.deepEqual(result.series[0], { period: '2026-01', numerator: 2, denominator: 3, value: 2 / 3, absoluteChange: null, pctChange: null });
+  assert.equal(result.metadata.metricUniverseContract.universe_relation, 'SAME_UNIVERSE');
+  assert.equal(result.metadata.metricUniverseContract.numerator_universe, 'COMPANY');
+  assert.equal(result.metadata.metricUniverseContract.denominator_universe, 'COMPANY');
+  assert.ok(result.warnings.includes('LEGACY_METRIC_ALIAS_SHARE_WITHIN_CIDEF'));
+});
+
+test('SHARE_WITHIN_COMMERCIAL_UNIVERSE never widens OWN_STORES denominator to COMPANY', () => {
+  const ownEvents = events.filter((row) => row.tipo_canal === 'CIDEF');
+  const result = calculateVentasLongitudinal(ownEvents, parsed({ metric: 'SHARE_WITHIN_COMMERCIAL_UNIVERSE', commercial_universe: 'OWN_STORES', grain: 'BRAND', filters: { brand: 'DONGFENG' } }));
+  assert.equal(result.series[0].numerator, 2);
+  assert.equal(result.series[0].denominator, 2);
+  assert.equal(result.series[0].value, 1);
+  assert.equal(result.metadata.metricUniverseContract.universe_relation, 'SAME_UNIVERSE');
+});
+
+test('CHANNEL_MIX_WITHIN_CIDEF uses selected channel over COMPANY with identical filters', () => {
+  const ownEvents = events.filter((row) => row.tipo_canal === 'CIDEF');
+  const result = calculateVentasLongitudinal(
+    ownEvents,
+    parsed({ metric: 'CHANNEL_MIX_WITHIN_CIDEF', commercial_universe: 'OWN_STORES', grain: 'TOTAL', filters: { brand: 'DONGFENG' } }),
+    { denominatorEvents: events },
+  );
+  assert.equal(result.series[0].numerator, 2);
+  assert.equal(result.series[0].denominator, 2);
+  assert.equal(result.series[0].value, 1);
+  assert.deepEqual(result.metadata.metricUniverseContract, {
+    numerator_universe: 'OWN_STORES', denominator_universe: 'COMPANY', denominator_source: 'CIDEF_COMPANY', universe_relation: 'PART_OF_PARENT', evaluability: 'EVALUABLE',
+  });
+});
+
+test('CHANNEL_MIX_WITHIN_CIDEF fails closed for COMPANY or non-TOTAL grain', () => {
+  assert.throws(() => parsed({ metric: 'CHANNEL_MIX_WITHIN_CIDEF', commercial_universe: 'COMPANY' }), /SEMANTICALLY_IMPOSSIBLE_COMBINATION/);
+  assert.throws(() => parsed({ metric: 'CHANNEL_MIX_WITHIN_CIDEF', commercial_universe: 'OWN_STORES', grain: 'BRAND' }), /SEMANTICALLY_IMPOSSIBLE_COMBINATION/);
+});
+
+test('channel mix preserves certified zero when COMPANY denominator has observations', () => {
+  const dealerOnly = events.filter((row) => row.tipo_canal === 'DEALER');
+  const result = calculateVentasLongitudinal([], parsed({ metric: 'CHANNEL_MIX_WITHIN_CIDEF', commercial_universe: 'OWN_STORES' }), { denominatorEvents: dealerOnly });
+  assert.equal(result.series[0].numerator, 0);
+  assert.equal(result.series[0].denominator, 1);
+  assert.equal(result.series[0].value, 0);
 });
 
 test('unknown sales filter is rejected', () => assert.throws(() => parsed({ filters: { raw_store: 'Casa Matriz' } }), /UNSUPPORTED_FILTER/));
