@@ -6,7 +6,7 @@ import {
   buildRvmUniverseQuery,
   parseRvmUniverseInput,
 } from '../lib/rvm-universe/buildRvmUniverse.js';
-import { assembleRvmLongitudinal, buildRvmLongitudinalQuery, parseRvmLongitudinalInput } from '../lib/longitudinal/rvm.js';
+import { assembleRvmLongitudinal, parseRvmLongitudinalInput } from '../lib/longitudinal/rvm.js';
 import { rvmOrganizationResolutionCtes } from '../lib/rvm/rvmOrganizationScopeSql.js';
 
 const events = [
@@ -115,18 +115,13 @@ test('migrated calculation preserves MARKET_SIZE, ENTITY_VIN, MARKET_SHARE and R
     if (metric === 'MARKET_SHARE') {
       assert.deepEqual(result.series.map((point) => [point.numerator, point.denominator]), [[10, 15], [0, 30]]);
     }
-    const query = buildRvmLongitudinalQuery(parsed);
-    assert.match(query.sql, /FROM rvm_universe_v01 i/);
-    assert.match(query.sql, /effective_date_to/);
-    assert.match(query.sql, /identity_coverage/);
-    assert.match(query.sql, /organization_coverage/);
-    if (metric === 'RANK') assert.match(query.sql, /dense_rank\(\)/);
   }
 });
 
-test('longitudinal source contains calculation only and no local RAW or MASTER reconstruction', async () => {
+test('longitudinal consumes the built universe and contains no DB, SQL, RAW or MASTER reconstruction', async () => {
   const source = await readFile(new URL('../lib/longitudinal/rvm.js', import.meta.url), 'utf8');
-  assert.match(source, /buildRvmUniverseCtes/);
+  assert.match(source, /buildRvmUniverse/);
+  assert.doesNotMatch(source, /customGptDb|buildRvmUniverseCtes/);
   assert.doesNotMatch(source, /rvmIdentityResolutionCte|rvmModelAliasCtes|rvmOrganizationResolutionCtes/);
   assert.doesNotMatch(source, /rvm_raw|producto_aliases_v01|product_organization_membership|rvm_organization_historical_rule|marcas_master_v01|modelos_master_v01/);
 });

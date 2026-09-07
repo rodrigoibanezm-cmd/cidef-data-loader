@@ -11,10 +11,13 @@ rvm_raw
 → certified RVM identity resolution
 → certified temporal organization resolution
 → rvm_universe_v01
+→ analytical_events
 → RVM family motors
 ```
 
 The universe composes the existing `rvmIdentityResolutionCte`, `rvmModelAliasCtes`, and `rvmOrganizationResolutionCtes` authorities. It does not redefine identity, market measures, candidate universes, or organization membership.
+
+`buildRvmUniverse()` owns the runtime DB/SQL preparation boundary. Downstream family motors receive its completed dataset and do not compose its CTEs or execute its query.
 
 ## Authority and output
 
@@ -68,7 +71,7 @@ The runtime dataset exposes quantity-based coverage for product identity, organi
 
 | Consumer | Status | Reason |
 |---|---|---|
-| `rvm_longitudinal_context_v01` | MIGRATED | Its SQL calculation now consumes `rvm_universe_v01`; local RAW reads, alias resolution, MASTER joins, and organization reconstruction were removed. |
+| `rvm_longitudinal_context_v01` | MIGRATED | It consumes the runtime output of `buildRvmUniverse()` and calculates only over `analytical_events`; DB access, SQL/CTE composition, local RAW reads, alias resolution, MASTER joins, and organization reconstruction were removed from the motor. |
 
 The public longitudinal contract remains unchanged for `MARKET_SIZE`, `ENTITY_VIN`, `MARKET_SHARE`, and `RANK`, including dense series, numerator/denominator, `dense_rank`, cutoff, `SAME_DAY / FULL_PERIOD`, breakdown, coverage, warnings, and metadata. `origin` is an additional backward-compatible universe filter.
 
