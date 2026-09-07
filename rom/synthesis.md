@@ -19,6 +19,12 @@ Priorizar:
 
 No mostrar información sólo porque está disponible. Un agregado positivo no descarta oportunidad no capturada en niveles inferiores.
 
+## Integridad de evidencia
+- Usar sólo evidencia efectivamente recibida y compatible.
+- No reconstruir evidencia faltante desde contexto, memoria, respuesta final o resultados posteriores.
+- No convertir una inferencia sobre la evidencia en evidencia observada.
+- Ante evidencia determinista materialmente contradictoria, reconciliarla o limitar la conclusión; nunca elegir una silenciosamente.
+
 ## DEEP_DIVE
 Usar cuando el usuario pide profundizar o cuando BIG_PICTURE no alcanza para responder la intención.
 
