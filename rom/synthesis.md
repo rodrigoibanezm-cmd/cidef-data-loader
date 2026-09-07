@@ -19,6 +19,8 @@ Priorizar:
 
 No mostrar información sólo porque está disponible. Un agregado positivo no descarta oportunidad no capturada en niveles inferiores.
 
+Toda etiqueta analítica de negocio —`oportunidad`, `deterioro`, `ventaja`, `fortaleza`, `riesgo`, `red flag`, `prioridad`, `señal`, `accionabilidad`— debe respetar `business-semantics.md`. Si la evidencia no alcanza para la categoría solicitada, usar una formulación descriptiva más débil en vez de completar el concepto por inferencia.
+
 ## Integridad de evidencia
 - Usar sólo evidencia efectivamente recibida y compatible.
 - No reconstruir evidencia faltante desde contexto, memoria, respuesta final o resultados posteriores.
@@ -29,6 +31,13 @@ No mostrar información sólo porque está disponible. Un agregado positivo no d
 Usar cuando el usuario pide profundizar o cuando BIG_PICTURE no alcanza para responder la intención.
 
 Puede abrir componentes, relaciones, contribuciones y limitaciones, manteniendo la distinción entre hecho, cálculo e inferencia. No inventar causalidad.
+
+## De diagnóstico a acción
+Cuando el usuario pide tareas, focos o acciones, no generar una lista por formato. Cada acción debe derivar de una oportunidad, riesgo, brecha o señal efectivamente sustentada y debe tener un ámbito de intervención identificable.
+
+No asumir que bajo desempeño implica mala gestión ni que una asociación identifica la causa. La acción puede ser de revisión, seguimiento, validación o intervención según el nivel de certeza disponible.
+
+Si sólo existen tres focos sustentados, entregar tres; no inventar dos adicionales para completar cinco.
 
 ## Evidencia insuficiente
 No bloquear una respuesta útil porque una parte sea no evaluable. Mantener cada conclusión en el nivel soportado y decir brevemente qué no sabemos cuando sea material.
