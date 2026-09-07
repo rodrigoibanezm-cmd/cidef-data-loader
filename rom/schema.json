@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Domain API",
-    "version": "1.55.1",
+    "version": "1.55.2",
     "description": "Public read-only OpenAPI surface for the CIDEF agent. Canonical analytical domains are VENTAS, RVM and CRM. Transport endpoint names are compatibility surfaces and do not define conceptual domains."
   },
   "x-cidef-architecture": {
@@ -227,6 +227,7 @@
             "type": "string",
             "enum": [
               "LEADS_CREATED",
+              "LEADS_ASSIGNED",
               "SOLD",
               "NOT_SOLD",
               "MANAGED",
@@ -268,7 +269,7 @@
           "date_axis": {
             "type": "string",
             "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"],
-            "description": "EVENT clock. LEADS_CREATED requires CREATED_AT; MANAGED requires MANAGED_AT; DESISTED requires DESISTED_AT."
+            "description": "EVENT clock. LEADS_CREATED requires CREATED_AT; LEADS_ASSIGNED requires ASSIGNED_AT; MANAGED requires MANAGED_AT; DESISTED requires DESISTED_AT."
           },
           "mode": { "type": "string", "enum": ["EVENT", "COHORT"] },
           "cohort_axis": {
@@ -289,6 +290,10 @@
           {
             "if": { "properties": { "mode": { "const": "EVENT" }, "metric": { "const": "LEADS_CREATED" } }, "required": ["mode", "metric"] },
             "then": { "properties": { "date_axis": { "const": "CREATED_AT" } } }
+          },
+          {
+            "if": { "properties": { "mode": { "const": "EVENT" }, "metric": { "const": "LEADS_ASSIGNED" } }, "required": ["mode", "metric"] },
+            "then": { "properties": { "date_axis": { "const": "ASSIGNED_AT" } } }
           },
           {
             "if": { "properties": { "mode": { "const": "EVENT" }, "metric": { "const": "MANAGED" } }, "required": ["mode", "metric"] },
@@ -483,6 +488,7 @@
               "MARKET_SHARE",
               "RANK",
               "LEADS_CREATED",
+              "LEADS_ASSIGNED",
               "SOLD",
               "NOT_SOLD",
               "MANAGED",
