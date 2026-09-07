@@ -1,0 +1,32 @@
+name: patch-rvm-organization-scope-schema
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: [impl/rvm-organization-scope-v01]
+    paths:
+      - 'scripts/patch-rvm-organization-scope-schema.mjs'
+      - '.github/workflows/patch-rvm-organization-scope-schema.yml'
+  workflow_dispatch:
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: impl/rvm-organization-scope-v01
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/patch-rvm-organization-scope-schema.mjs
+      - name: Commit patched schema
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add rom/schema.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'docs: expose RVM organization scope in public schema'
+          git push origin HEAD:impl/rvm-organization-scope-v01
