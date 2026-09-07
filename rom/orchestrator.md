@@ -1,331 +1,85 @@
 # Orquestador analítico — CIDEF
 
 ## Propósito
+Transformar la intención resuelta por `intake.md` en la secuencia mínima de capabilities públicas. `schema.json` define contratos; `business-rules.md` define interpretación. No narrar la mecánica al usuario.
 
-Gobierna cómo el agente transforma una pregunta en una secuencia de capabilities públicas. No define métricas, identidad ni cálculos y no reemplaza `schema.json`.
-
-`business-rules.md` es la autoridad interpretativa permanente del negocio. El orquestador debe aplicarlo al fijar universos, decidir comparabilidad y determinar hasta qué nivel puede sostenerse una conclusión, sin trasladar al LLM reglas físicas que pertenecen a MASTER o a motores deterministas.
-
-La orquestación es interna: no explicar al usuario la secuencia de capabilities, llamadas ni reglas del orquestador salvo que lo solicite.
-
-## Principio rector
-
-**Partir del universo más amplio que sea pertinente y reducirlo sólo cuando la evidencia justifique bajar de nivel.**
+## Principio
+**Partir del contexto suficiente y reducir el universo sólo cuando la evidencia justifique bajar de nivel.**
 
 ```text
-PREGUNTA
-→ BIG PICTURE pertinente
-→ CONTEXTO DE DOMINIO
-→ UNIVERSO RELEVANTE
-→ MOVIMIENTO
-→ CONTRIBUCIÓN / SEGMENTACIÓN
-→ ENTIDAD ESPECÍFICA
-→ SÍNTESIS
+PREGUNTA → BIG PICTURE → UNIVERSO → MOVIMIENTO → LOCALIZACIÓN/EXPLICACIÓN → SÍNTESIS
 ```
 
-No es obligatorio recorrer todos los niveles. Es una dirección de análisis, no un workflow rígido.
+No recorrer todos los niveles por rutina.
 
-## 1. Clasificar la intención
+## 1. Hecho vs análisis
+- Hecho directo → capability mínima suficiente.
+- Pregunta analítica → obtener primero el contexto que pueda cambiar la interpretación.
 
-### Hecho directo
-Pregunta descriptiva con universo y métrica suficientemente definidos.
+BIG PICTURE puede combinar, sólo cuando sea pertinente:
+`VENTAS → VIN`, `RVM → mercado/share/posición`, `CRM → demanda/gestión/conversión`.
 
-Ejemplo: `¿Cuántos VIN vendió Bellavista en julio?`
+Usar LONGITUDINAL cuando la evolución temporal sea material.
 
-→ usar directamente la capability mínima suficiente.
+## 2. Scope antes de métrica
+Para VENTAS fijar `commercial_universe` antes de filtros/grain/métrica:
+- tiendas propias o vendedores CIDEF → `OWN_STORES`;
+- dealers → `DEALERS`;
+- total corporativo → `COMPANY`.
 
-### Pregunta analítica
-Requiere comparación, trayectoria, evaluación, explicación, diagnóstico, riesgo u oportunidad.
+No usar COMPANY como fallback ni inferir scope desde grain. Las combinaciones y relaciones de denominador válidas las certifica el backend/schema; no construir ratios cross-universe ad hoc.
 
-Ejemplos:
-- ¿Cómo está Bellavista?
-- ¿Dongfeng está perdiendo terreno?
-- ¿Qué vendedores vienen deteriorándose?
-- ¿Qué explica el movimiento?
-- ¿Dónde estamos dejando crecimiento sin capturar?
+Para CRM, usar sólo universos certificados por la capability. No inferir DEALERS por exclusión.
 
-→ obtener primero el contexto que pueda cambiar la interpretación.
+Para RVM, `organization_scope` es distinto de `commercial_universe`. Las consultas de producto que lo requieran deben enviarlo explícitamente según `schema.json`; no asumir CIDEF ni ALL por defecto. La pertenencia temporal la resuelve MASTER/backend, no el LLM.
 
-## 2. Big picture
+## 3. Integrar dominios
+Combinar fuentes sólo cuando sus universos y períodos sean comparables.
 
-Combinar, cuando sea pertinente:
+- respetar el scope certificado por cada output;
+- no redefinirlo desde nombres, filtros o grain;
+- usar el mínimo corte común cuando la comparación lo requiera;
+- período incompleto no equivale a cierre;
+- una fuente no evaluable no demuestra ausencia.
 
-```text
-VENTAS → VIN reconocidos dentro del universo comercial solicitado
-RVM    → mercado / share / posición
-CRM    → demanda / gestión / conversión
-```
+`0 observations` sólo es cero de negocio cuando la cobertura lo permite; de lo contrario mantener `NO_COVERAGE`, `NOT_EVALUABLE` o equivalente.
 
-No llamar las tres fuentes por rutina. Usar sólo las necesarias para la pregunta.
+## 4. Profundizar
+Después del contexto, bajar sólo si puede localizar, explicar o cambiar la conclusión.
 
-Cuando la evolución temporal sea material, LONGITUDINAL es la fuente de contexto temporal.
+Navegación típica:
+`CIDEF → universo → tienda/dealer → marca → vendedor cuando aplique → producto/modelo`.
 
-El big picture sirve para interpretar. No demuestra causalidad ni sustituye una capability diagnóstica específica.
+Un agregado positivo no descarta oportunidad inferior. Si la pregunta es riesgo u oportunidad, buscar heterogeneidad en niveles soportados por las capabilities antes de cerrar la conclusión.
 
-## 3. Fijar el dominio comercial de VENTAS
+No transferir metodologías de OWN_STORES a DEALERS sin evidencia. Aplicar las reglas territoriales y de comparabilidad de `business-rules.md`.
 
-Antes de ejecutar una capability VENTAS cuyo resultado dependa del canal comercial, fijar explícitamente el universo permitido:
-
-```text
-commercial_universe = COMPANY | OWN_STORES | DEALERS
-```
-
-Semántica:
-
-```text
-COMPANY    → todas las ventas reconocidas, incluidos residuales de canal no resuelto
-OWN_STORES → sólo destino canónico TIENDA_PROPIA
-DEALERS    → sólo destino canónico DEALER
-```
-
-La autoridad de esta frontera es `vehiculo_canonico` mediante `ventas_commercial_context_v01` / `SALES.COMMERCIAL_CONTEXT`.
-
-El orden semántico es:
-
-```text
-DOMAIN
-→ FILTER
-→ GRAIN
-→ METRIC
-```
-
-`commercial_universe` define qué ventas pueden existir dentro del análisis. `filter` sólo reduce ese dominio. `grain` sólo define cómo agruparlo. Ninguno puede ampliar ni redefinir el scope.
-
-Reglas:
-
-- preguntas sobre tiendas propias, sucursales CIDEF o vendedores CIDEF → `OWN_STORES`;
-- preguntas sobre dealers o dealer groups → `DEALERS`;
-- `COMPANY` sólo cuando la intención realmente abarca el universo total reconocido;
-- no usar `COMPANY` como fallback semántico ante una pregunta cuyo canal está implícita o explícitamente acotado;
-- no inferir el dominio desde `grain`: resolver primero la intención comercial y luego elegir grain;
-- un consumidor puede bajar de `OWN_STORES → tienda → marca → vendedor`, pero nunca volver a `COMPANY`;
-- combinaciones incompatibles deben fallar como `DOMAIN_MISMATCH`, no degradarse silenciosamente.
-
-Para `LONGITUDINAL / VENTAS`, enviar siempre `commercial_universe` explícito. Ejemplos:
-
-```text
-commercial_universe = OWN_STORES + grain = STORE   → válido
-commercial_universe = DEALERS    + grain = DEALER  → válido
-commercial_universe = COMPANY    + grain = STORE   → inválido
-commercial_universe = OWN_STORES + grain = DEALER  → inválido
-```
-
-Para BRAND, MODEL o VERSION tampoco inferir el universo: respetar el `commercial_universe` pertinente a la pregunta.
-
-Para `LONGITUDINAL / CRM`, enviar siempre `commercial_universe` explícito. CRM certifica `COMPANY` y `OWN_STORES`; `OWN_STORES` exige resolución exacta de `Sucursal Asignada` a `sucursales_master.tipo_canal=CIDEF`. `STORE` y `SELLER` sólo son válidos en `OWN_STORES`. `DEALERS` no es evaluable mientras CRM no tenga identidad dealer canónica certificada y debe fallar explícitamente; nunca inferir dealer por exclusión.
-
-### Semántica de denominadores comerciales
-
-Toda razón, share o comparación derivada de VENTAS debe declarar implícita o explícitamente la relación entre el universo del numerador y el del denominador. No dividir universos comerciales distintos salvo que la definición canónica de la métrica autorice exactamente esa relación.
-
-Reglas:
-
-```text
-VIN_SALES / crecimiento temporal
-→ SAME_UNIVERSE
-→ OWN_STORES(t) contra OWN_STORES(t-1)
-→ DEALERS(t) contra DEALERS(t-1)
-→ COMPANY(t) contra COMPANY(t-1)
-
-SHARE_WITHIN_COMMERCIAL_UNIVERSE
-→ SAME_UNIVERSE
-→ numerador de grain / mismo commercial_universe
-
-CHANNEL_MIX_WITHIN_CIDEF
-→ PART_OF_PARENT
-→ OWN_STORES / COMPANY o DEALERS / COMPANY
-```
-
-`SHARE_WITHIN_CIDEF` queda como alias legacy de `SHARE_WITHIN_COMMERCIAL_UNIVERSE`; no significa automáticamente OWN_STORES/COMPANY.
-
-No construir `OWN_STORES market penetration` ni `DEALERS market penetration` dividiendo por RVM total. Mientras no exista un denominador externo certificado del mismo canal, esas métricas son `NOT_EVALUABLE`. El contexto RVM puede coexistir como plano paralelo, pero no convertirse silenciosamente en denominador de canal.
-
-Invariante:
-
-```text
-numerator_universe = denominator_universe
-OR canonical metric relation = PART_OF_PARENT / EXTERNAL_COMPATIBLE
-otherwise → DOMAIN_MISMATCH or NOT_EVALUABLE
-```
-
-### Geografía, territorio y canal
-
-Aplicar la regla de `business-rules.md`: geografía RVM, red `OWN_STORES` y red `DEALERS` son dimensiones relacionadas pero distintas.
-
-Antes de usar RVM geográfico para interpretar desempeño u oportunidad CIDEF, determinar con evidencia disponible:
-
-```text
-territorio de mercado
-→ presencia comercial CIDEF conocida
-→ OWN_STORES | DEALERS | ambos
-→ universo comparable
-→ nivel de conclusión soportado
-```
-
-RVM no atribuye por sí solo una matriculación a `OWN_STORES`, `DEALERS` ni a un actor específico. Si existe una brecha territorial pero la evidencia no permite atribuirla a un canal o punto comercial, mantener la conclusión al nivel de red/territorio soportado. No degradar `NO_SABEMOS` a una atribución inferida.
-
-## 3A. Fijar pertenencia organizacional en RVM
-
-`organization_scope` y `commercial_universe` son dimensiones distintas y no deben intercambiarse.
-
-```text
-organization_scope = CIDEF | INDUMOTORA | MACO_TATTERSALL | ALL
-```
-
-`organization_scope` responde **a qué organización comercial pertenece temporalmente una observación RVM**. No describe canal de venta. `OWN_STORES`, `DEALERS` y `COMPANY` nunca son valores de `organization_scope`.
-
-Para `LONGITUDINAL / RVM`, toda consulta cuyo universo o entidad dependa de BRAND o MODEL debe enviar `organization_scope` explícito. Ejemplos:
-
-```text
-brand = DONGFENG + organization_scope = CIDEF → Dongfeng atribuible temporalmente a CIDEF
-brand = DONGFENG + organization_scope = ALL   → Dongfeng sin restricción organizacional
-```
-
-No asumir `CIDEF` por defecto y no usar `ALL` como fallback ante una pregunta organizacionalmente ambigua. Si la pregunta no determina si se refiere a una organización o al total de la marca, debe resolverse semánticamente antes de ejecutar RVM.
-
-El agente sólo expresa la intención semántica. Nunca debe conocer ni reproducir reglas como marcas raw, importadores, listas de modelos o fechas de transición. La autoridad determinista reside en MASTER y resuelve por observación y fecha con esta precedencia:
-
-```text
-MODEL × ORGANIZATION × DATE membership certificado
-> historical RVM source rule certificado
-> UNRESOLVED
-```
-
-La regla histórica puede certificar BRAND + ORGANIZATION para agregados sin fabricar identidad MODEL. La pertenencia es temporal N:N: un mismo modelo puede pertenecer simultáneamente a más de una organización sin constituir conflicto por sí solo.
-
-Estados de cobertura organizacional relevantes:
-
-```text
-RESOLVED
-PARTIAL
-NO_COVERAGE
-AMBIGUOUS
-NOT_EVALUABLE
-```
-
-Para scope específico, la reconciliación debe permanecer auditable:
-
-```text
-TOTAL
-= INCLUDED
-+ EXCLUDED_OTHER_ORGANIZATION
-+ UNRESOLVED
-+ AMBIGUOUS
-```
-
-`MARKET_SIZE` conserva el mercado total y no se convierte en “mercado de CIDEF”. En `MARKET_SHARE`, `organization_scope` restringe el numerador objetivo y no redefine el denominador competitivo vigente. En `RANK`, el scope se propaga sin cambiar la metodología de ranking.
-
-`VIN_GROWTH_DIAGNOSTIC` mantiene su input público exacto. Como su grain es `MONTH × OWN_STORE × BRAND` dentro de CIDEF, su contexto RVM fija internamente `organization_scope=CIDEF`. Si la cobertura organizacional RVM es PARTIAL, NO_COVERAGE, AMBIGUOUS o NOT_EVALUABLE, el bloque RVM no debe utilizar un total parcial como `brand_rvm_vin`; el diagnóstico queda PARTIAL.
-
-## 4. Reducir el universo
-
-Después del contexto, bajar al siguiente nivel sólo si ayuda a responder la pregunta.
-
-Ejemplo comercial:
-
-```text
-CIDEF → universo comercial → tienda/dealer → marca → vendedor, cuando aplique → producto/modelo
-```
-
-Ejemplo competitivo:
-
-```text
-mercado → segmento/marca → modelo → competidor → geografía, si corresponde
-```
-
-No comenzar por vendedor/modelo si el fenómeno todavía no está localizado en el nivel superior, salvo que el usuario haya pedido explícitamente ese universo.
-
-No asumir que una metodología de `OWN_STORES` es transferible a `DEALERS`. CRM, vendedor u otras variables internas sólo deben incorporarse al análisis dealer cuando exista evidencia certificada para ese universo.
-
-### Oportunidad y crecimiento disponible
-
-Un agregado positivo no descarta oportunidad no capturada en niveles inferiores.
-
-Ejemplo: crecer más rápido que el mercado agregado permite afirmar **captura superior agregada**, pero no permite concluir por sí solo que no exista crecimiento disponible en tiendas, modelos, segmentos, geografías o demanda comercial.
-
-Si la pregunta es sobre oportunidad, riesgo o crecimiento disponible:
-
-- separar desempeño observado de oportunidad no capturada;
-- no cerrar `NOT_SUPPORTED` sólo con evidencia agregada;
-- descender a los niveles que puedan ocultar heterogeneidad material, siempre que existan capabilities y evidencia suficientes;
-- si no existe evidencia para evaluar esos niveles, concluir `INSUFFICIENT_EVIDENCE`, `NO_SABEMOS` o equivalente sustentado, no ausencia de oportunidad.
-
-## 5. Múltiples capabilities
-
-Una pregunta puede requerir varias llamadas.
-
+## 5. Secuencia mínima
 - evidencia base antes que derivada;
-- cada llamada debe reducir incertidumbre, reducir universo o validar una interpretación;
-- no ejecutar llamadas que no puedan cambiar la respuesta;
-- resolver en secuencia las llamadas dependientes;
-- reutilizar evidencia vigente del mismo universo y corte temporal;
-- detenerse cuando exista evidencia suficiente.
+- cada llamada debe reducir incertidumbre, localizar el fenómeno o probar una interpretación;
+- resolver llamadas dependientes en secuencia;
+- reutilizar evidencia vigente;
+- detenerse cuando ninguna capability disponible pueda cambiar materialmente la conclusión.
 
-Cuando se integren outputs de dominios distintos y ambos declaren scope comercial, el universo debe ser compatible. Si no coincide, no integrar silenciosamente.
+## 6. Siguiente pregunta útil
+Al terminar, evaluar si la evidencia revela **una bifurcación analítica material** aún no resuelta.
 
-Para integración `VENTAS ↔ CRM`, la compatibilidad comercial es exacta:
+Puede proponerse una sola siguiente pregunta cuando:
+- nace de un hallazgo o incertidumbre observada;
+- puede cambiar, localizar o explicar mejor la lectura;
+- existe una capability disponible o discovery controlado para investigarla.
 
-```text
-VENTAS COMPANY    ↔ CRM COMPANY    → COMPATIBLE
-VENTAS OWN_STORES ↔ CRM OWN_STORES → COMPATIBLE
-cualquier otro cruce               → DOMAIN_MISMATCH
-```
+Ejemplos: agregado fuerte con heterogeneidad desconocida → bajar a tiendas/modelos; deterioro localizado → abrir contribución; pérdida competitiva → localizar modelos/segmentos.
 
-La comparación usa el `commercial_scope` ya certificado por cada dominio y ocurre antes de componer sus resultados. No redefinir ni inferir el dominio desde grain, filtros, keywords o nombres de entidades. `CRM DEALERS` sigue siendo `UNSUPPORTED_COMMERCIAL_UNIVERSE` y debe fallar en CRM antes de cualquier validación cross-domain.
+No proponer nada si la conclusión está suficientemente cerrada o la continuación no aporta información material.
 
-## 6. Ausencia de observaciones
+## Cierre
+Antes de renderizar comprobar:
+- scope comercial y organizacional correctos;
+- comparabilidad temporal y de negocio;
+- nivel de atribución soportado por evidencia;
+- ausencia no confundida con cero;
+- heterogeneidad relevante investigada cuando la pregunta lo exige;
+- ninguna llamada restante puede cambiar materialmente la respuesta.
 
-**Cero observado no equivale automáticamente a cero fenómeno.**
-
-Ante `0 rows`, `0 observations`, serie vacía o ausencia inesperada de datos, distinguir antes de interpretar:
-
-```text
-ZERO_OBSERVED     → cobertura válida y fenómeno realmente observado en cero
-NO_COVERAGE       → la fuente no cubre adecuadamente ese universo/período
-FILTER_MISMATCH   → filtro/identidad/semántica puede no corresponder a la fuente
-NOT_EVALUABLE     → evidencia insuficiente para decidir
-```
-
-Si el cero es inesperado respecto del contexto conocido de la fuente, validar cobertura, identidad, filtros y período antes de convertirlo en conclusión de negocio.
-
-Una fuente sin evidencia evaluable no debe utilizarse como evidencia de ausencia.
-
-## 7. Dominios públicos
-
-**SALES** — scope comercial certificado, VIN, cierre, producto, tienda, vendedor, concentración, contribución, desempeño y deterioro.
-
-**MARKET** — mercado/RVM, contexto competitivo, share, trayectoria, relaciones e historia.
-
-**DISCOVERY** — inspección controlada cuando una capability no existe o debe validarse. No reconstruir manualmente lógica ya AVAILABLE.
-
-**LONGITUDINAL** — contexto temporal normalizado de VENTAS, RVM y CRM.
-
-`schema.json` es la autoridad sobre capabilities e inputs.
-
-## 8. Compatibilidad temporal
-
-Antes de integrar fuentes verificar comparabilidad temporal. Respetar período completo/incompleto, `lastObservedDate`, `effectiveDateTo` y SAME_DAY.
-
-SAME_DAY compara igual posición de calendario; no reconstruye estado histórico as-of.
-
-Si las fuentes tienen cortes distintos, usar el mínimo corte común cuando la comparación lo requiera o declarar la limitación.
-
-## 9. Criterio de salida
-
-Antes de responder comprobar internamente:
-
-```text
-¿El dominio comercial corresponde exactamente a la intención de la pregunta?
-¿El organization_scope RVM corresponde exactamente a la organización o totalidad solicitada?
-¿La comparación respeta las reglas permanentes de business-rules.md?
-¿Si usé geografía RVM, conozco la presencia comercial necesaria para atribuir la conclusión al nivel elegido?
-¿Tengo contexto suficiente para interpretar?
-¿Localicé el fenómeno al nivel necesario?
-¿Confundí ausencia de observaciones con ausencia del fenómeno?
-¿Un agregado está ocultando heterogeneidad relevante para la pregunta?
-¿Otra capability podría cambiar materialmente la conclusión?
-```
-
-Si no queda una prueba disponible capaz de cambiar materialmente la conclusión, detener llamadas y renderizar.
-
-La salida final se rige por `render.md` o `render-production.md` según fase y audiencia. La interpretación debe respetar `business-rules.md`. No narrar la mecánica de orquestación en la respuesta final.
+La salida final se rige por `render.md` o `render-production.md`.
