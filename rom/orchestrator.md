@@ -4,6 +4,8 @@
 
 Gobierna cómo el agente transforma una pregunta en una secuencia de capabilities públicas. No define métricas, identidad ni cálculos y no reemplaza `schema.json`.
 
+`business-rules.md` es la autoridad interpretativa permanente del negocio. El orquestador debe aplicarlo al fijar universos, decidir comparabilidad y determinar hasta qué nivel puede sostenerse una conclusión, sin trasladar al LLM reglas físicas que pertenecen a MASTER o a motores deterministas.
+
 La orquestación es interna: no explicar al usuario la secuencia de capabilities, llamadas ni reglas del orquestador salvo que lo solicite.
 
 ## Principio rector
@@ -146,6 +148,22 @@ OR canonical metric relation = PART_OF_PARENT / EXTERNAL_COMPATIBLE
 otherwise → DOMAIN_MISMATCH or NOT_EVALUABLE
 ```
 
+### Geografía, territorio y canal
+
+Aplicar la regla de `business-rules.md`: geografía RVM, red `OWN_STORES` y red `DEALERS` son dimensiones relacionadas pero distintas.
+
+Antes de usar RVM geográfico para interpretar desempeño u oportunidad CIDEF, determinar con evidencia disponible:
+
+```text
+territorio de mercado
+→ presencia comercial CIDEF conocida
+→ OWN_STORES | DEALERS | ambos
+→ universo comparable
+→ nivel de conclusión soportado
+```
+
+RVM no atribuye por sí solo una matriculación a `OWN_STORES`, `DEALERS` ni a un actor específico. Si existe una brecha territorial pero la evidencia no permite atribuirla a un canal o punto comercial, mantener la conclusión al nivel de red/territorio soportado. No degradar `NO_SABEMOS` a una atribución inferida.
+
 ## 3A. Fijar pertenencia organizacional en RVM
 
 `organization_scope` y `commercial_universe` son dimensiones distintas y no deben intercambiarse.
@@ -206,7 +224,7 @@ Después del contexto, bajar al siguiente nivel sólo si ayuda a responder la pr
 Ejemplo comercial:
 
 ```text
-CIDEF → marca → tienda → vendedor → producto/modelo
+CIDEF → universo comercial → tienda/dealer → marca → vendedor, cuando aplique → producto/modelo
 ```
 
 Ejemplo competitivo:
@@ -216,6 +234,8 @@ mercado → segmento/marca → modelo → competidor → geografía, si correspo
 ```
 
 No comenzar por vendedor/modelo si el fenómeno todavía no está localizado en el nivel superior, salvo que el usuario haya pedido explícitamente ese universo.
+
+No asumir que una metodología de `OWN_STORES` es transferible a `DEALERS`. CRM, vendedor u otras variables internas sólo deben incorporarse al análisis dealer cuando exista evidencia certificada para ese universo.
 
 ### Oportunidad y crecimiento disponible
 
@@ -228,7 +248,7 @@ Si la pregunta es sobre oportunidad, riesgo o crecimiento disponible:
 - separar desempeño observado de oportunidad no capturada;
 - no cerrar `NOT_SUPPORTED` sólo con evidencia agregada;
 - descender a los niveles que puedan ocultar heterogeneidad material, siempre que existan capabilities y evidencia suficientes;
-- si no existe evidencia para evaluar esos niveles, concluir `INSUFFICIENT_EVIDENCE` o equivalente, no ausencia de oportunidad.
+- si no existe evidencia para evaluar esos niveles, concluir `INSUFFICIENT_EVIDENCE`, `NO_SABEMOS` o equivalente sustentado, no ausencia de oportunidad.
 
 ## 5. Múltiples capabilities
 
@@ -297,6 +317,8 @@ Antes de responder comprobar internamente:
 ```text
 ¿El dominio comercial corresponde exactamente a la intención de la pregunta?
 ¿El organization_scope RVM corresponde exactamente a la organización o totalidad solicitada?
+¿La comparación respeta las reglas permanentes de business-rules.md?
+¿Si usé geografía RVM, conozco la presencia comercial necesaria para atribuir la conclusión al nivel elegido?
 ¿Tengo contexto suficiente para interpretar?
 ¿Localicé el fenómeno al nivel necesario?
 ¿Confundí ausencia de observaciones con ausencia del fenómeno?
@@ -306,4 +328,4 @@ Antes de responder comprobar internamente:
 
 Si no queda una prueba disponible capaz de cambiar materialmente la conclusión, detener llamadas y renderizar.
 
-La salida final se rige por `render.md` o `render-production.md` según fase y audiencia. No narrar la mecánica de orquestación en la respuesta final.
+La salida final se rige por `render.md` o `render-production.md` según fase y audiencia. La interpretación debe respetar `business-rules.md`. No narrar la mecánica de orquestación en la respuesta final.
