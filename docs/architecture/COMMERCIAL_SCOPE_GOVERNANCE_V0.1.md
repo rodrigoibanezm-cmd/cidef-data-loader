@@ -109,11 +109,17 @@ Only sales whose canonical `canal_salida = TIENDA_PROPIA` are admitted. Their co
 
 Only sales whose canonical `canal_salida = DEALER` are admitted. Their commercial destination is `dealer_id` / `dealer_group_id` from `vehiculo_canonico`.
 
+## Certified VENTAS analytical universe
+
+`ventas_universe_v01` composes this commercial selector with the existing product, organization and date-effective `VENDEDOR_CIDEF` resolvers. It is the internal runtime input for migrated VENTAS family motors; it is not agent CONTEXT, a public capability, or a materialized Neon table.
+
+Migrated consumers cannot reconstruct `OWN_STORES / DEALERS` membership. Full contract and migration classification: `docs/architecture/VENTAS_ANALYTICAL_UNIVERSE_V0.1.md`.
+
 ## Current consumers
 
-`ventas_organizational_context_v01` obtains a certified `OWN_STORES` domain before store/seller enrichment. Therefore store contribution, seller contribution, relative performance and deterioration consumers that depend on organizational context inherit the own-store boundary.
+`ventas_organizational_context_v01` consumes `ventas_universe_v01` with a certified `OWN_STORES` domain. Therefore store contribution, seller contribution, relative performance and share-expectation consumers that depend on organizational context inherit the own-store boundary.
 
-`ventas_longitudinal_context_v01` requires an explicit `commercial_universe`. STORE/SELLER analyses require `OWN_STORES`; DEALER/DEALER_GROUP analyses require `DEALERS`. Product grains can operate inside any explicitly selected commercial universe.
+`ventas_longitudinal_context_v01` consumes `ventas_universe_v01` and requires an explicit `commercial_universe`. STORE/SELLER analyses require `OWN_STORES`; DEALER/DEALER_GROUP analyses require `DEALERS`. Product grains can operate inside any explicitly selected commercial universe.
 
 The public longitudinal schema permits `commercial_universe = COMPANY | OWN_STORES | DEALERS`; it is required by the VENTAS capability and validated by the backend. `grain` never infers or changes this domain.
 

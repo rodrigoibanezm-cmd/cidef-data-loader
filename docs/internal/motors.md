@@ -3316,6 +3316,23 @@ version = 0.1
 endpoint = /api/custom-gpt
 ```
 
+### `ventas_universe_v01` (internal dataset)
+
+Preparación runtime certificada y reusable para los motores analíticos de VENTAS. No es una action pública ni CONTEXTO para el agente.
+
+Compone, sin reemplazar reglas vigentes:
+
+```text
+ventas_context_v01
+→ ventas_commercial_context_v01 (vehiculo_canonico)
+→ identidad organizacional/producto/VENDEDOR_CIDEF existente
+→ analytical_events + coverage + validation
+```
+
+Admite `COMPANY | OWN_STORES | DEALERS`, conserva el cutoff efectivo y entrega destino comercial, tienda, dealer/grupo, marca, modelo, versión, persona/vendedor, estados de resolución y cobertura. Los consumidores migrados calculan sobre sus filas y no vuelven a consultar RAW o MASTER para reconstruir pertenencia o identidad.
+
+La clasificación completa de consumidores está en `docs/architecture/VENTAS_ANALYTICAL_UNIVERSE_V0.1.md`. No se materializa en Neon y no amplía el schema público.
+
 ### `ventas_longitudinal_context_v01`
 
 Motor determinista productivo con action compatible `v01` y contrato longitudinal **V0.2**, completamente **ON DEMAND**.
@@ -3334,7 +3351,7 @@ cutoff_mode?: FULL_PERIOD | SAME_DAY (default FULL_PERIOD)
 cutoff_date?: YYYY-MM-DD
 ```
 
-Reutiliza `ventas_context_v01`: una venta por VIN mediante LAST `fecha_factura` dentro de `date_to`; VIN nulo conserva la regla vigente. La identidad viene de MASTER/helpers certificados. Un label RAW nunca crea una tienda. CHANNEL distingue CIDEF y DEALER. SELLER sólo contiene `VENDEDOR_CIDEF` con pertenencia temporal válida en la tienda CIDEF observada. Lo no resuelto queda como `UNRESOLVED`; una dimensión que no corresponde al canal observado queda como `NOT_APPLICABLE`.
+Consume `ventas_universe_v01`, que reutiliza `ventas_context_v01`: una venta por VIN mediante LAST `fecha_factura` dentro de `date_to`; VIN nulo conserva la regla vigente. La identidad viene ya resuelta por el universo mediante MASTER/helpers certificados. Un label RAW nunca crea una tienda. CHANNEL distingue CIDEF y DEALER. SELLER sólo contiene `VENDEDOR_CIDEF` con pertenencia temporal válida en la tienda CIDEF observada. Lo no resuelto queda como `UNRESOLVED`; una dimensión que no corresponde al canal observado queda como `NOT_APPLICABLE`.
 
 `SHARE_WITHIN_CIDEF` = VIN del grano / VIN CIDEF del mismo período tras los filtros que no identifican ese grano. Expone `numerator`, `denominator` y `value`; no es MARKET_SHARE. La serie es densa, el primer cambio es `null` y el porcentaje con base cero es `null`. Breakdown conserva residual y reconcilia por numerador.
 
