@@ -44,6 +44,13 @@ Identity comes from `Producto de interes`, preserving the existing candidate log
 
 The universe parses `Creado el`, `Asignado el`, `Gestionado el`, and `Desistido el` with the pre-existing CRM date parser semantics. Consumers retain `CREATED_AT`, `ASSIGNED_AT`, `MANAGED_AT`, `DESISTED_AT`, `EVENT`, `COHORT`, `MONTH`, `YEAR`, `SAME_DAY`, and `FULL_PERIOD` semantics.
 
+The public CRM longitudinal family distinguishes the two lead clocks explicitly:
+
+- `LEADS_CREATED + EVENT + CREATED_AT`: counts demand-generation events by `created_date`.
+- `LEADS_ASSIGNED + EVENT + ASSIGNED_AT`: counts operational assignment events by `assigned_date`.
+
+Neither metric is silently substituted for the other. `LEADS_ASSIGNED` is calculated only over `crm_universe_v01.analytical_events`; it does not query or reconstruct RAW/MASTER state inside the family.
+
 `CRM_Cidef_raw` does not preserve full historical state transitions. Snapshot/as-of reconstruction remains unsupported and must raise `UNSUPPORTED_TEMPORAL_RECONSTRUCTION` through the consumer contract.
 
 ## Coverage, validation and lineage
@@ -54,7 +61,7 @@ Lineage remains explicit from CRM raw and existing MASTER authorities. No MASTER
 
 ## Consumers
 
-- `crm_longitudinal_context_v01`: **MIGRATED**. Consumes `crm_universe_v01.analytical_events`; no local RAW/MASTER reconstruction remains.
+- `crm_longitudinal_context_v01`: **MIGRATED**. Consumes `crm_universe_v01.analytical_events`; no local RAW/MASTER reconstruction remains. Public event metrics include `LEADS_CREATED` on `CREATED_AT` and `LEADS_ASSIGNED` on `ASSIGNED_AT`.
 - `lib/weekly-projections/crm.js`: **NEEDS_ADAPTATION**. It performs a distinct open-opportunity workflow with fuzzy seller token matching, active-portfolio model matching, and explicit projection linking; migrating it directly would change semantics.
 - `lib/motors/import-crm-cidef.js`: **NOT_APPLICABLE**. It is an upstream loader for the source dataset.
 
