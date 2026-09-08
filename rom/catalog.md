@@ -93,6 +93,10 @@ pregunta
 
 Una familia no debe volver a consultar RAW o MASTER para reconstruir reconocimiento, identidad, pertenencia, canal, organización o universo ya resuelto por su universo certificado.
 
+## Contexto CRM certificado
+
+`CRM / CONTEXT` expone `crm_context_v01` para obtener el BIG_PICTURE descriptivo del CRM. Consume únicamente `crm_universe_v01` y entrega volumen, mix de demanda, estado comercial observable, distribución OWN_STORES y cobertura. `ASSIGNED_AT` es el reloj comercial por defecto; `CREATED_AT` se reserva para generación de demanda. No diagnostica ni recomienda.
+
 ## Reglas de uso
 
 - RAW = evidencia, no identidad canónica.

@@ -22,7 +22,7 @@ La capa implementada resuelve:
 domain + capability -> action física existente
 ```
 
-y expone cuatro fachadas públicas delgadas sobre el mismo router central.
+y expone cinco fachadas públicas delgadas sobre el mismo router central.
 
 ## Arquitectura implementada
 
@@ -31,6 +31,7 @@ Custom GPT
 │
 ├─ POST /api/custom-gpt/sales
 ├─ POST /api/custom-gpt/market
+├─ POST /api/custom-gpt/crm
 ├─ POST /api/custom-gpt/discovery
 └─ POST /api/custom-gpt/longitudinal
           │
@@ -52,14 +53,15 @@ Los endpoints NO son routers independientes. Cada archivo de API fija un dominio
 ## Dominios públicos registrados
 
 ```text
-SALES        13 capabilities
+SALES        15 capabilities
 MARKET        5 capabilities
+CRM           2 capabilities
 DISCOVERY     4 capabilities
 LONGITUDINAL  3 capabilities
-TOTAL        25 capabilities
+TOTAL        29 capabilities
 ```
 
-El inventario de las 46 actions físicas y su clasificación permanece documentado en:
+El inventario histórico de actions físicas y su clasificación permanece documentado en:
 
 ```text
 rom/routing_inventory.md
@@ -93,21 +95,22 @@ POST /api/custom-gpt
 action: <nombre físico>
 ```
 
-El schema público expone únicamente cuatro `operationId`:
+El schema público expone únicamente cinco `operationId`:
 
 ```text
 cidefSales
 cidefMarket
+cidefCrm
 cidefDiscovery
 cidefLongitudinal
 ```
 
 con sus enums de capabilities por dominio.
 
-La versión del schema fue elevada a:
+La versión vigente del schema es:
 
 ```text
-1.49.0
+1.56.0
 ```
 
 Las actions físicas siguen existiendo internamente para compatibilidad, tests y workflows técnicos, pero dejaron de formar parte del contrato visible del LLM.
@@ -122,10 +125,10 @@ Las actions físicas siguen existiendo internamente para compatibilidad, tests y
 6. El input debe ser un objeto; input inválido falla con `INVALID_CAPABILITY_INPUT`.
 7. Los endpoints sólo aceptan `POST`.
 8. Los endpoints sólo aceptan `capability` e `input` en el body.
-9. Las 46 actions físicas continúan registradas en `ACTIONS` para compatibilidad interna y transición.
+9. Las actions físicas continúan registradas en `ACTIONS` para compatibilidad interna y transición.
 10. `INTERNAL_SUPPORT` y `OUT_OF_CURRENT_SCOPE` no forman parte de `DOMAIN_CAPABILITY_REGISTRY`.
 11. `/api/custom-gpt` histórico sigue existiendo internamente.
-12. `rom/schema.json` expone sólo las cuatro fachadas de dominio.
+12. `rom/schema.json` expone sólo las cinco fachadas públicas.
 13. El schema no publica nombres físicos de motores.
 14. LONGITUDINAL V0.2 mantiene sus métricas, grains, filtros y semántica temporal; la reorganización sólo cambia la superficie de routing.
 
@@ -171,6 +174,21 @@ INVERSE_SHARE_MOVEMENT
 MARKET_HISTORY
 ```
 
+### CRM
+
+```text
+POST /api/custom-gpt/crm
+```
+
+Capabilities:
+
+```text
+CONTEXT
+LONGITUDINAL_CONTEXT
+```
+
+`CONTEXT` resuelve el BIG_PICTURE descriptivo mediante `crm_context_v01`; `LONGITUDINAL_CONTEXT` conserva el análisis temporal CRM. Ambos pertenecen al dominio CRM.
+
 ### DISCOVERY
 
 ```text
@@ -214,7 +232,7 @@ La capa semántica pública usa:
 runCustomGptCapability({ domain, capability, input })
 ```
 
-Y las cuatro fachadas sólo llaman a esta segunda capa.
+Y las cinco fachadas sólo llaman a esta segunda capa.
 
 El endpoint legacy `/api/custom-gpt` no fue eliminado del backend; simplemente dejó de estar publicado en `rom/schema.json`.
 
@@ -227,8 +245,8 @@ test/custom-gpt-domain-endpoints.test.js
 
 Cubren:
 
-- cuatro dominios exactos;
-- 25 capabilities exactas;
+- cinco superficies públicas exactas;
+- 29 capabilities exactas;
 - mapping a actions físicas existentes;
 - rechazo cross-domain;
 - rechazo de dominio desconocido;
@@ -238,7 +256,7 @@ Cubren:
 - POST obligatorio;
 - capability obligatoria;
 - rechazo explícito del campo físico `action`;
-- contrato común de las cuatro fachadas.
+- contrato común de las cinco fachadas.
 
 ## Estado de transición
 
@@ -247,12 +265,13 @@ REGISTRY                  IMPLEMENTED
 CENTRAL CAPABILITY ROUTER IMPLEMENTED
 SALES ENDPOINT            IMPLEMENTED
 MARKET ENDPOINT           IMPLEMENTED
+CRM ENDPOINT              IMPLEMENTED
 DISCOVERY ENDPOINT        IMPLEMENTED
 LONGITUDINAL ENDPOINT     IMPLEMENTED
 LEGACY /api/custom-gpt    PRESERVED INTERNALLY
-OPENAPI / schema          MIGRATED — 1.49.0
+OPENAPI / schema          MIGRATED — 1.56.0
 ```
 
 ## Siguiente fase
 
-Validar el schema contra el importador de Custom GPT y ejecutar pruebas funcionales de las cuatro operaciones públicas. Una vez validado el contrato real, se puede decidir si el endpoint legacy se mantiene indefinidamente como superficie técnica o se retira en una fase posterior.
+Validar el schema contra el importador de Custom GPT y ejecutar pruebas funcionales de las cinco operaciones públicas. Una vez validado el contrato real, se puede decidir si el endpoint legacy se mantiene indefinidamente como superficie técnica o se retira en una fase posterior.

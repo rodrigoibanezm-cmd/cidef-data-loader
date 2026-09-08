@@ -27,6 +27,8 @@ Los dominios analíticos son `VENTAS`, `RVM` y `CRM`.
 El contexto puede combinar, sólo cuando sea pertinente:
 `VENTAS → VIN`, `RVM → mercado/share/posición`, `CRM → demanda/gestión/conversión`.
 
+Para el BIG_PICTURE descriptivo de CRM usar `CRM / CONTEXT`; elegir `ASSIGNED_AT` para contexto comercial y `CREATED_AT` únicamente para generación de demanda.
+
 La evolución temporal se activa cuando sea material; no constituye un dominio independiente.
 
 ## 2. Scope antes de métrica

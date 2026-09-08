@@ -3392,9 +3392,36 @@ Coverage expone una sola fila `PRODUCT_IDENTITY` con unidades `resolved`, `unres
 
 No persiste, interpreta, selecciona competidores, detecta anomalías, genera tesis, aplica materialidad, proyecta ni recomienda acciones.
 
+### `crm_context_v01`
+
+Capability determinista de CONTEXT / BIG_PICTURE para CRM, versión **0.1**.
+
+Flujo runtime cerrado:
+
+```text
+crm_universe_v01
+→ analytical_events + metadata
+→ crm_context_v01
+→ agente
+```
+
+Input: `commercial_universe=OWN_STORES|COMPANY` (default `OWN_STORES`), `date_from`, `date_to`, `date_axis=ASSIGNED_AT|CREATED_AT` (default `ASSIGNED_AT`) y filtros opcionales `brand`, `product_interest`, `origin`, `suborigin`, `store`. DEALERS y SELLER no están soportados.
+
+`ASSIGNED_AT` entrega población asignada, gestión, estado comercial CURRENT_STATE, SOLD/NOT_SOLD, conversión, mix de demanda y red OWN_STORES. `CREATED_AT` entrega población creada y mix de demanda; las métricas comerciales y `commercial_state` quedan explícitamente `available=false` para no mezclar relojes. `COMPANY.network` también queda `available=false`.
+
+El output conserva siempre `scope`, `context_population`, `headline`, `demand_mix`, `commercial_state`, `network`, `quality` y `metadata`. Ratios exponen numerador, denominador, `unknown_count` y valor. Un período sin eventos retorna una respuesta válida con `context_evaluable=false`; no genera diagnóstico ni recomendación.
+
+El motor no consulta DB, RAW o MASTER, no ejecuta SQL y no depende del longitudinal. Consume exclusivamente el universo CRM preparado.
+
+```json
+{"capability":"CONTEXT","input":{"commercial_universe":"OWN_STORES","date_from":"2026-08-01","date_to":"2026-08-31","date_axis":"ASSIGNED_AT","filters":{"brand":"FOTON"}}}
+```
+
+Endpoint público: `POST /api/custom-gpt/crm`.
+
 ### `crm_longitudinal_context_v01`
 
-Motor determinista productivo con action compatible `v01` y contrato longitudinal **V0.2**, completamente **ON DEMAND** sobre `CRM_Cidef_raw`.
+Motor determinista productivo con action compatible `v01` y contrato longitudinal **V0.2**, completamente **ON DEMAND** sobre `crm_universe_v01`.
 
 Pregunta: ¿cómo evolucionó una variable CRM demostrable bajo un eje temporal explícito?
 
