@@ -63,12 +63,21 @@ test('RVM organization scope is explicit and orthogonal in OpenAPI', () => {
 test('CRM context contract is explicit in OpenAPI', () => {
   const document = schema();
   const schemas = document.components.schemas;
-  assert.equal(document.info.version, '1.57.0');
-  assert.deepEqual(schemas.CrmRequest.oneOf, [
-    { $ref: '#/components/schemas/CrmContextRequest' },
-    { $ref: '#/components/schemas/CrmLongitudinalContextRequest' },
-  ]);
-  assert.equal(schemas.CrmRequest.discriminator.propertyName, 'capability');
+  assert.equal(document.info.version, '1.58.0');
+  assert.equal(schemas.CrmRequest.type, 'object');
+  assert.equal('oneOf' in schemas.CrmRequest, false);
+  assert.deepEqual(schemas.CrmRequest.required, ['capability', 'input']);
+  assert.deepEqual(schemas.CrmRequest.properties.capability.enum, ['CONTEXT', 'LONGITUDINAL_CONTEXT']);
+  assert.equal(schemas.CrmRequest.properties.input.type, 'object');
+  assert.deepEqual(schemas.CrmRequest.properties.input.required, ['date_from', 'date_to']);
+  assert.ok(Object.keys(schemas.CrmRequest.properties.input.properties).length > 0);
+  assert.deepEqual(schemas.CrmRequest.example, {
+    capability: 'CONTEXT',
+    input: {
+      commercial_universe: 'OWN_STORES', date_from: '2026-08-01', date_to: '2026-08-31',
+      date_axis: 'ASSIGNED_AT', filters: {},
+    },
+  });
   assert.deepEqual(schemas.CrmContextRequest.properties.capability.enum, ['CONTEXT']);
   assert.equal(schemas.CrmContextRequest.properties.input.$ref, '#/components/schemas/CrmContextInput');
   assert.deepEqual(schemas.CrmContextRequest.example, {
@@ -91,6 +100,26 @@ test('CRM context contract is explicit in OpenAPI', () => {
   assert.equal(schemas.CrmContextInput.properties.commercial_universe.enum.includes('DEALERS'), false);
   assert.equal(schemas.CrmContextInput.additionalProperties, false);
   assert.equal(schemas.CrmContextFilterMap.additionalProperties, false);
+});
+test('cidefCrm request body is an OpenAI Actions-compatible object with usable inputs', () => {
+  const document = schema();
+  const operation = document.paths['/api/custom-gpt/crm'].post;
+  assert.equal(operation.operationId, 'cidefCrm');
+  const bodyRef = operation.requestBody.content['application/json'].schema.$ref;
+  const request = document.components.schemas[bodyRef.split('/').at(-1)];
+  assert.equal(request.type, 'object');
+  assert.equal('oneOf' in request, false);
+  assert.ok(request.properties.capability);
+  const input = request.properties.input;
+  assert.equal(input.type, 'object');
+  assert.ok(input.properties);
+  for (const field of ['commercial_universe', 'date_from', 'date_to', 'date_axis', 'filters']) assert.ok(input.properties[field], field);
+  assert.deepEqual(input.properties.commercial_universe.enum, ['OWN_STORES', 'COMPANY']);
+  assert.equal(input.properties.commercial_universe.enum.includes('DEALERS'), false);
+  assert.ok(input.properties.date_axis.enum.includes('ASSIGNED_AT'));
+  assert.ok(input.properties.date_axis.enum.includes('CREATED_AT'));
+  for (const field of ['metric', 'grain', 'time_grain', 'cutoff_date', 'cutoff_mode', 'breakdown', 'mode', 'cohort_axis']) assert.ok(input.properties[field], field);
+  for (const field of ['brand', 'product_interest', 'origin', 'suborigin', 'store']) assert.ok(input.properties.filters.properties[field], field);
 });
 test('every local OpenAPI reference resolves', () => {
   const document = schema();

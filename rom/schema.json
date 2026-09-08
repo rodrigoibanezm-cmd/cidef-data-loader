@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Domain API",
-    "version": "1.57.0",
+    "version": "1.58.0",
     "description": "Public read-only OpenAPI surface for the CIDEF agent. Canonical analytical domains are VENTAS, RVM and CRM. Transport endpoint names are compatibility surfaces and do not define conceptual domains."
   },
   "x-cidef-architecture": {
@@ -198,18 +198,92 @@
         "additionalProperties": false
       },
       "CrmRequest": {
-        "description": "Public request for the CRM domain. CONTEXT is the descriptive BIG_PICTURE capability; LONGITUDINAL_CONTEXT is the temporal analytical capability.",
-        "oneOf": [
-          { "$ref": "#/components/schemas/CrmContextRequest" },
-          { "$ref": "#/components/schemas/CrmLongitudinalContextRequest" }
-        ],
-        "discriminator": {
-          "propertyName": "capability",
-          "mapping": {
-            "CONTEXT": "#/components/schemas/CrmContextRequest",
-            "LONGITUDINAL_CONTEXT": "#/components/schemas/CrmLongitudinalContextRequest"
+        "type": "object",
+        "description": "Public request for the CRM domain. CONTEXT is the descriptive BIG_PICTURE capability; LONGITUDINAL_CONTEXT is the temporal analytical capability. The shared input surface is a controlled union for OpenAI Actions compatibility; capability determines which fields are valid and the runtime preserves capability-specific validation.",
+        "required": ["capability", "input"],
+        "properties": {
+          "capability": {
+            "type": "string",
+            "enum": ["CONTEXT", "LONGITUDINAL_CONTEXT"]
+          },
+          "input": {
+            "type": "object",
+            "description": "For CONTEXT, send commercial_universe, date_from, date_to, date_axis and optional filters. metric, grain, time_grain, cutoff, breakdown, mode, cohort_axis and the extended filter dimensions are LONGITUDINAL_CONTEXT-only.",
+            "required": ["date_from", "date_to"],
+            "properties": {
+              "commercial_universe": {
+                "type": "string",
+                "enum": ["OWN_STORES", "COMPANY"],
+                "default": "OWN_STORES",
+                "description": "Supported by both capabilities. DEALERS is not certified or exposed."
+              },
+              "date_from": { "type": "string", "format": "date" },
+              "date_to": { "type": "string", "format": "date" },
+              "date_axis": {
+                "type": "string",
+                "enum": ["ASSIGNED_AT", "CREATED_AT", "MANAGED_AT", "DESISTED_AT"],
+                "default": "ASSIGNED_AT",
+                "description": "CONTEXT accepts only ASSIGNED_AT or CREATED_AT. MANAGED_AT and DESISTED_AT are LONGITUDINAL_CONTEXT EVENT clocks."
+              },
+              "filters": {
+                "type": "object",
+                "description": "CONTEXT accepts only brand, product_interest, origin, suborigin and store. The remaining fields are LONGITUDINAL_CONTEXT-only.",
+                "properties": {
+                  "brand": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+                  "product_interest": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+                  "origin": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+                  "suborigin": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+                  "status": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+                  "store_id": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+                  "store": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+                  "store_raw": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+                  "seller_id": { "$ref": "#/components/schemas/LongitudinalFilterValue", "description": "LONGITUDINAL_CONTEXT only; unsupported by CONTEXT." },
+                  "seller": { "$ref": "#/components/schemas/LongitudinalFilterValue", "description": "LONGITUDINAL_CONTEXT only; unsupported by CONTEXT." },
+                  "seller_raw": { "$ref": "#/components/schemas/LongitudinalFilterValue", "description": "LONGITUDINAL_CONTEXT only; unsupported by CONTEXT." },
+                  "interest_level": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+                  "desist_reason": { "$ref": "#/components/schemas/LongitudinalFilterValue" }
+                },
+                "additionalProperties": false
+              },
+              "metric": {
+                "type": "string",
+                "description": "LONGITUDINAL_CONTEXT only.",
+                "enum": ["LEADS_CREATED", "LEADS_ASSIGNED", "SOLD", "NOT_SOLD", "MANAGED", "UNMANAGED", "MANAGEMENT_COVERAGE", "CONVERSION_ON_MANAGED", "IN_MANAGEMENT", "OPPORTUNITY", "CLOSED", "DESISTED", "CONVERSION_RATE"]
+              },
+              "grain": {
+                "type": "string",
+                "description": "LONGITUDINAL_CONTEXT only. SELLER is not supported by CONTEXT.",
+                "enum": ["TOTAL", "BRAND", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "STORE", "SELLER", "INTEREST_LEVEL", "DESIST_REASON"]
+              },
+              "time_grain": { "type": "string", "enum": ["MONTH", "YEAR"], "description": "LONGITUDINAL_CONTEXT only." },
+              "cutoff_date": { "type": "string", "format": "date", "description": "LONGITUDINAL_CONTEXT only." },
+              "cutoff_mode": { "type": "string", "enum": ["FULL_PERIOD", "SAME_DAY"], "default": "FULL_PERIOD", "description": "LONGITUDINAL_CONTEXT only." },
+              "breakdown": {
+                "type": "string",
+                "description": "LONGITUDINAL_CONTEXT only. SELLER is not supported by CONTEXT.",
+                "enum": ["BRAND", "PRODUCT_INTEREST", "ORIGIN", "SUBORIGIN", "STATUS", "STORE", "SELLER", "INTEREST_LEVEL", "DESIST_REASON"]
+              },
+              "mode": { "type": "string", "enum": ["EVENT", "COHORT"], "description": "LONGITUDINAL_CONTEXT only." },
+              "cohort_axis": {
+                "type": "string",
+                "enum": ["CREATED_AT", "ASSIGNED_AT", "MANAGED_AT", "DESISTED_AT"],
+                "description": "LONGITUDINAL_CONTEXT COHORT clock only."
+              }
+            },
+            "additionalProperties": false
           }
-        }
+        },
+        "example": {
+          "capability": "CONTEXT",
+          "input": {
+            "commercial_universe": "OWN_STORES",
+            "date_from": "2026-08-01",
+            "date_to": "2026-08-31",
+            "date_axis": "ASSIGNED_AT",
+            "filters": {}
+          }
+        },
+        "additionalProperties": false
       },
       "CrmContextRequest": {
         "type": "object",
