@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handleDomainCapabilityRequest } from '../lib/custom-gpt/domainEndpoint.js';
+import { runCustomGptCapability } from '../lib/custom-gpt-router.js';
 import salesHandler from '../api/custom-gpt/sales.js';
 import marketHandler from '../api/custom-gpt/market.js';
 import discoveryHandler from '../api/custom-gpt/discovery.js';
@@ -62,6 +63,30 @@ for (const [domain, handler, capability] of endpointBindings) {
     assert.equal(typeof handler, 'function');
   });
 }
+
+test('CRM CONTEXT endpoint and router preserve its complete public input', async () => {
+  const input = {
+    commercial_universe: 'OWN_STORES',
+    date_from: '2026-08-01',
+    date_to: '2026-08-31',
+    date_axis: 'ASSIGNED_AT',
+    filters: {},
+  };
+  const res = responseRecorder();
+  let dispatched = null;
+  await handleDomainCapabilityRequest(
+    'CRM',
+    request('POST', { capability: 'CONTEXT', input }),
+    res,
+    (payload) => runCustomGptCapability(payload, async (action, motorInput) => {
+      dispatched = { action, input: motorInput };
+      return { routed: true };
+    }),
+  );
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(dispatched, { action: 'crm_context_v01', input });
+  assert.deepEqual(res.payload.result, { routed: true });
+});
 
 test('domain endpoint rejects non-POST methods', async () => {
   const res = responseRecorder();

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Domain API",
-    "version": "1.56.0",
+    "version": "1.57.0",
     "description": "Public read-only OpenAPI surface for the CIDEF agent. Canonical analytical domains are VENTAS, RVM and CRM. Transport endpoint names are compatibility surfaces and do not define conceptual domains."
   },
   "x-cidef-architecture": {
@@ -198,28 +198,57 @@
         "additionalProperties": false
       },
       "CrmRequest": {
-        "type": "object",
         "description": "Public request for the CRM domain. CONTEXT is the descriptive BIG_PICTURE capability; LONGITUDINAL_CONTEXT is the temporal analytical capability.",
+        "oneOf": [
+          { "$ref": "#/components/schemas/CrmContextRequest" },
+          { "$ref": "#/components/schemas/CrmLongitudinalContextRequest" }
+        ],
+        "discriminator": {
+          "propertyName": "capability",
+          "mapping": {
+            "CONTEXT": "#/components/schemas/CrmContextRequest",
+            "LONGITUDINAL_CONTEXT": "#/components/schemas/CrmLongitudinalContextRequest"
+          }
+        }
+      },
+      "CrmContextRequest": {
+        "type": "object",
+        "description": "Public CRM CONTEXT request. Its input is the closed crm_context_v01 V0.1 contract.",
         "required": ["capability", "input"],
         "properties": {
           "capability": {
             "type": "string",
-            "enum": ["CONTEXT", "LONGITUDINAL_CONTEXT"]
+            "enum": ["CONTEXT"]
           },
           "input": {
-            "type": "object"
+            "$ref": "#/components/schemas/CrmContextInput"
           }
         },
-        "allOf": [
-          {
-            "if": { "properties": { "capability": { "const": "CONTEXT" } }, "required": ["capability"] },
-            "then": { "properties": { "input": { "$ref": "#/components/schemas/CrmContextInput" } } }
-          },
-          {
-            "if": { "properties": { "capability": { "const": "LONGITUDINAL_CONTEXT" } }, "required": ["capability"] },
-            "then": { "properties": { "input": { "$ref": "#/components/schemas/CrmLongitudinalInput" } } }
+        "example": {
+          "capability": "CONTEXT",
+          "input": {
+            "commercial_universe": "OWN_STORES",
+            "date_from": "2026-08-01",
+            "date_to": "2026-08-31",
+            "date_axis": "ASSIGNED_AT",
+            "filters": {}
           }
-        ],
+        },
+        "additionalProperties": false
+      },
+      "CrmLongitudinalContextRequest": {
+        "type": "object",
+        "description": "Public CRM LONGITUDINAL_CONTEXT request. Its input remains the separate temporal contract.",
+        "required": ["capability", "input"],
+        "properties": {
+          "capability": {
+            "type": "string",
+            "enum": ["LONGITUDINAL_CONTEXT"]
+          },
+          "input": {
+            "$ref": "#/components/schemas/CrmLongitudinalInput"
+          }
+        },
         "additionalProperties": false
       },
       "CrmContextInput": {

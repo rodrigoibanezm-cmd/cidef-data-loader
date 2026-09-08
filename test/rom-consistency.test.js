@@ -18,11 +18,19 @@ const expectedRom = [
 ];
 function schema() { return JSON.parse(readFileSync(join(root, 'rom/schema.json'), 'utf8')); }
 const requestSchemaByDomain = Object.freeze({ SALES: 'SalesRequest', MARKET: 'MarketRequest', CRM: 'CrmRequest', DISCOVERY: 'DiscoveryRequest', LONGITUDINAL: 'LongitudinalRequest' });
+function requestCapabilities(schemas, requestSchema) {
+  const request = schemas[requestSchema];
+  if (request.properties?.capability?.enum) return request.properties.capability.enum;
+  return request.oneOf.flatMap(({ $ref }) => {
+    const branch = schemas[$ref.split('/').at(-1)];
+    return branch.properties.capability.enum;
+  });
+}
 
 test('domain registry and OpenAPI expose the same public capabilities', () => {
   const value = schema();
   for (const [domain, requestSchema] of Object.entries(requestSchemaByDomain)) {
-    const documented = value.components.schemas[requestSchema].properties.capability.enum;
+    const documented = requestCapabilities(value.components.schemas, requestSchema);
     const registered = Object.keys(DOMAIN_CAPABILITY_REGISTRY[domain]);
     assert.deepEqual(new Set(documented), new Set(registered), domain);
     assert.equal(new Set(documented).size, documented.length, `${domain} contains duplicate capabilities`);
@@ -53,15 +61,47 @@ test('RVM organization scope is explicit and orthogonal in OpenAPI', () => {
   assert.ok(schemas.LongitudinalInput.properties.commercial_universe);
 });
 test('CRM context contract is explicit in OpenAPI', () => {
-  const schemas = schema().components.schemas;
-  assert.ok(schemas.CrmRequest.properties.capability.enum.includes('CONTEXT'));
+  const document = schema();
+  const schemas = document.components.schemas;
+  assert.equal(document.info.version, '1.57.0');
+  assert.deepEqual(schemas.CrmRequest.oneOf, [
+    { $ref: '#/components/schemas/CrmContextRequest' },
+    { $ref: '#/components/schemas/CrmLongitudinalContextRequest' },
+  ]);
+  assert.equal(schemas.CrmRequest.discriminator.propertyName, 'capability');
+  assert.deepEqual(schemas.CrmContextRequest.properties.capability.enum, ['CONTEXT']);
+  assert.equal(schemas.CrmContextRequest.properties.input.$ref, '#/components/schemas/CrmContextInput');
+  assert.deepEqual(schemas.CrmContextRequest.example, {
+    capability: 'CONTEXT',
+    input: {
+      commercial_universe: 'OWN_STORES', date_from: '2026-08-01', date_to: '2026-08-31',
+      date_axis: 'ASSIGNED_AT', filters: {},
+    },
+  });
+  assert.deepEqual(schemas.CrmLongitudinalContextRequest.properties.capability.enum, ['LONGITUDINAL_CONTEXT']);
+  assert.equal(schemas.CrmLongitudinalContextRequest.properties.input.$ref, '#/components/schemas/CrmLongitudinalInput');
+  assert.notEqual(schemas.CrmContextRequest.properties.input.$ref, schemas.CrmLongitudinalContextRequest.properties.input.$ref);
   assert.deepEqual(schemas.CrmContextInput.required, ['date_from', 'date_to']);
   assert.deepEqual(schemas.CrmContextInput.properties.commercial_universe.enum, ['OWN_STORES', 'COMPANY']);
   assert.equal(schemas.CrmContextInput.properties.commercial_universe.default, 'OWN_STORES');
   assert.deepEqual(schemas.CrmContextInput.properties.date_axis.enum, ['ASSIGNED_AT', 'CREATED_AT']);
   assert.equal(schemas.CrmContextInput.properties.date_axis.default, 'ASSIGNED_AT');
   assert.deepEqual(Object.keys(schemas.CrmContextFilterMap.properties), ['brand', 'product_interest', 'origin', 'suborigin', 'store']);
+  assert.equal('seller' in schemas.CrmContextFilterMap.properties, false);
+  assert.equal(schemas.CrmContextInput.properties.commercial_universe.enum.includes('DEALERS'), false);
   assert.equal(schemas.CrmContextInput.additionalProperties, false);
   assert.equal(schemas.CrmContextFilterMap.additionalProperties, false);
+});
+test('every local OpenAPI reference resolves', () => {
+  const document = schema();
+  const visit = (value) => {
+    if (Array.isArray(value)) return value.forEach(visit);
+    if (!value || typeof value !== 'object') return;
+    if (value.$ref?.startsWith('#/components/schemas/')) {
+      assert.ok(document.components.schemas[value.$ref.split('/').at(-1)], value.$ref);
+    }
+    Object.values(value).forEach(visit);
+  };
+  visit(document);
 });
 test('ROM structure is atomic and exact', () => assert.deepEqual(readdirSync(join(root, 'rom')).sort(), expectedRom));
