@@ -194,7 +194,8 @@ test('STORE x BRAND backtest remains walk-forward and uses existing WAPE/bias/MA
   assert.ok(result.coverage.months_evaluated > 0);
   assert.equal(result.policy.method, 'walk-forward monthly backtest');
   assert.equal(result.policy.ranking, 'WAPE asc, absolute bias asc, MAE asc, candidate name asc');
-  assert.ok(result.ranking.every((row) => 'wape' in row && 'bias' in row && 'mae' in row));
+  assert.ok(result.ranking.every((row) =>
+    'wape' in row && 'bias_pct' in row && 'mean_bias_units' in row && 'mae' in row));
   assert.ok(result.winner);
   assert.equal(result.scope.store_id, 11);
   assert.equal(result.scope.brand_id, 101);
