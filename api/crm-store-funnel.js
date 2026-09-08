@@ -1,5 +1,5 @@
 import { getDb, handleApiError } from '../lib/weekly-projections/db.js';
-import { buildVentasUniverse } from '../lib/ventas-universe/buildVentasUniverse.js';
+import { buildVentasCommercialContext } from '../lib/ventas-commercial/buildVentasCommercialContext.js';
 
 function parseMonths(value) {
   const n = Number(value ?? 8);
@@ -11,11 +11,11 @@ function parseMonths(value) {
   return n;
 }
 
-function buildVinMonthly(universe) {
+function buildVinMonthly(commercialContext) {
   const counts = new Map();
-  for (const event of universe?.analytical_events || []) {
-    const storeId = event.certified_store_id == null ? null : String(event.certified_store_id);
-    const month = event.mes_venta == null ? null : String(event.mes_venta);
+  for (const sale of commercialContext?.sales || []) {
+    const storeId = sale.sucursal_venta_id == null ? null : String(sale.sucursal_venta_id);
+    const month = sale.mes_venta == null ? null : String(sale.mes_venta);
     if (!storeId || !month) continue;
     const key = `${storeId}|${month}`;
     counts.set(key, (counts.get(key) || 0) + 1);
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     const sql = getDb();
     const requestedCutoffDate = new Date().toISOString().slice(0, 10);
 
-    const [stores, ventasUniverse] = await Promise.all([
+    const [stores, ventasCommercialContext] = await Promise.all([
       sql.query(`
         SELECT DISTINCT
           sm.sucursal_id::text AS sucursal_id,
@@ -52,10 +52,10 @@ export default async function handler(req, res) {
           AND sm.vigente = true
         ORDER BY sm.nombre_canonico
       `),
-      buildVentasUniverse({
+      buildVentasCommercialContext({
         commercial_universe: 'OWN_STORES',
         cutoff_date: requestedCutoffDate,
-      }),
+      }, { includeSourceContextDetails: true }),
     ]);
 
     const rows = await sql.query(`
@@ -206,7 +206,9 @@ export default async function handler(req, res) {
     const coverage = coverageRows[0] || { crm_ids: 0, cidef_store_resolved: 0 };
     const currentMonth = new Date().toISOString().slice(0, 7);
     const latestAvailableMonth = rows.reduce((max, r) => !max || r.month > max ? r.month : max, null);
-    const vinMonthly = buildVinMonthly(ventasUniverse);
+    const vinMonthly = buildVinMonthly(ventasCommercialContext);
+    const vinDataThrough = ventasCommercialContext?.source_context?.effective_cutoff_date
+      ?? ventasCommercialContext?.source_context?.cutoff_date ?? null;
 
     return res.status(200).json({
       ok: true,
@@ -219,11 +221,11 @@ export default async function handler(req, res) {
       monthly: rows,
       seller_monthly: sellers,
       vin_monthly: vinMonthly,
-      vin_data_through: ventasUniverse?.period?.cutoff_date ?? null,
+      vin_data_through: vinDataThrough,
       coverage: {
         crm_ids: Number(coverage.crm_ids || 0),
         cidef_store_resolved: Number(coverage.cidef_store_resolved || 0),
-        ventas_universe_valid: ventasUniverse?.validation?.valid === true,
+        ventas_commercial_context_valid: ventasCommercialContext?.validation?.valid === true,
       },
       semantics: {
         grain: 'distinct CRM opportunity ID, latest loaded snapshot',
@@ -232,7 +234,7 @@ export default async function handler(req, res) {
         quality: 'current Grado de Interes buckets; categories are mutually exclusive current labels, not sequential funnel stages',
         seller_health_inputs: 'seller metrics are computed only within store and month; health classification is relative to peers in the same store and month',
         ganados: 'Vendido = Si',
-        vin_facturados: 'certified VIN_SALES from ventas_universe_v01, commercial_universe OWN_STORES, grouped by certified_store_id and mes_venta',
+        vin_facturados: 'recognized invoiced VIN sales scoped deterministically to OWN_STORES by ventas_commercial_context_v01 and vehiculo_canonico, grouped by sucursal_venta_id and mes_venta',
         caveat: 'CRM uses latest observed snapshot only. Historical transitions between Estado or Grado de Interes are not reconstructed.',
       },
     });
