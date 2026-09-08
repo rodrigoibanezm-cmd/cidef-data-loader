@@ -1,0 +1,39 @@
+name: test-expected-monthly-own-stores
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/ventas-universe/buildVentasMonthlyAnalyticalContext.js'
+      - 'lib/motors/expected-monthly-candidates-v01.js'
+      - 'lib/motors/expected-monthly-backtest-v01.js'
+      - 'lib/motors/expected-monthly-stability-v01.js'
+      - 'lib/expectation/**'
+      - 'test/expected-monthly-own-stores-brand.test.js'
+      - 'test/expected-monthly-candidates.test.js'
+      - 'test/expected-monthly-backtest.test.js'
+      - 'test/expected-monthly-stability.test.js'
+      - 'test/ventas-universe.test.js'
+      - '.github/workflows/test-expected-monthly-own-stores.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - name: Expected monthly adaptation tests
+        run: >-
+          node --test
+          test/expected-monthly-own-stores-brand.test.js
+          test/expected-monthly-candidates.test.js
+          test/expected-monthly-backtest.test.js
+          test/expected-monthly-stability.test.js
+          test/ventas-universe.test.js
+      - name: Full suite
+        run: npm test
