@@ -12,6 +12,7 @@ const TENANTS = {
       'import_notas_venta',
       'import_lista_precios',
       'import_rvm',
+      'import_rvm_preliminary',
       'import_crm_cidef',
       'refresh_vehiculo_canonico_v01',
       'patch_inventario_modelo',
