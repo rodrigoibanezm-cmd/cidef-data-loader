@@ -4,5 +4,26 @@
     { "source": "/proyeccion-semanal", "destination": "/proyeccion-semanal.html" },
     { "source": "/proyeccion-admin", "destination": "/proyeccion-admin.html" },
     { "source": "/crm-tienda", "destination": "/crm-tienda.html" }
+  ],
+  "headers": [
+    {
+      "source": "/api/crm-store-funnel",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" },
+        { "key": "Pragma", "value": "no-cache" }
+      ]
+    },
+    {
+      "source": "/crm-tienda.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }
+      ]
+    },
+    {
+      "source": "/crm-tienda",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }
+      ]
+    }
   ]
 }
