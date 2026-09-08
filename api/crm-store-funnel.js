@@ -1,4 +1,5 @@
 import { getDb, handleApiError } from '../lib/weekly-projections/db.js';
+import { buildVentasUniverse } from '../lib/ventas-universe/buildVentasUniverse.js';
 
 function parseMonths(value) {
   const n = Number(value ?? 8);
@@ -10,6 +11,23 @@ function parseMonths(value) {
   return n;
 }
 
+function buildVinMonthly(universe) {
+  const counts = new Map();
+  for (const event of universe?.analytical_events || []) {
+    const storeId = event.certified_store_id == null ? null : String(event.certified_store_id);
+    const month = event.mes_venta == null ? null : String(event.mes_venta);
+    if (!storeId || !month) continue;
+    const key = `${storeId}|${month}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([key, vin_facturados]) => {
+      const [sucursal_id, month] = key.split('|');
+      return { sucursal_id, month, vin_facturados };
+    })
+    .sort((a, b) => a.sucursal_id.localeCompare(b.sucursal_id) || a.month.localeCompare(b.month));
+}
+
 export default async function handler(req, res) {
   try {
     if (req.method !== 'GET') {
@@ -19,19 +37,26 @@ export default async function handler(req, res) {
 
     const months = parseMonths(req.query?.months);
     const sql = getDb();
+    const requestedCutoffDate = new Date().toISOString().slice(0, 10);
 
-    const stores = await sql.query(`
-      SELECT DISTINCT
-        sm.sucursal_id::text AS sucursal_id,
-        sm.nombre_canonico AS sucursal
-      FROM public.sucursal_aliases sa
-      JOIN public.sucursales_master sm ON sm.sucursal_id = sa.sucursal_id
-      WHERE sa.fuente = 'CRM_Cidef_raw'
-        AND sa.validated = true
-        AND sm.tipo_canal = 'CIDEF'
-        AND sm.vigente = true
-      ORDER BY sm.nombre_canonico
-    `);
+    const [stores, ventasUniverse] = await Promise.all([
+      sql.query(`
+        SELECT DISTINCT
+          sm.sucursal_id::text AS sucursal_id,
+          sm.nombre_canonico AS sucursal
+        FROM public.sucursal_aliases sa
+        JOIN public.sucursales_master sm ON sm.sucursal_id = sa.sucursal_id
+        WHERE sa.fuente = 'CRM_Cidef_raw'
+          AND sa.validated = true
+          AND sm.tipo_canal = 'CIDEF'
+          AND sm.vigente = true
+        ORDER BY sm.nombre_canonico
+      `),
+      buildVentasUniverse({
+        commercial_universe: 'OWN_STORES',
+        cutoff_date: requestedCutoffDate,
+      }),
+    ]);
 
     const rows = await sql.query(`
       WITH latest AS (
@@ -181,10 +206,11 @@ export default async function handler(req, res) {
     const coverage = coverageRows[0] || { crm_ids: 0, cidef_store_resolved: 0 };
     const currentMonth = new Date().toISOString().slice(0, 7);
     const latestAvailableMonth = rows.reduce((max, r) => !max || r.month > max ? r.month : max, null);
+    const vinMonthly = buildVinMonthly(ventasUniverse);
 
     return res.status(200).json({
       ok: true,
-      version: '1.2',
+      version: '1.3',
       months,
       generated_at: new Date().toISOString(),
       current_month: currentMonth,
@@ -192,9 +218,12 @@ export default async function handler(req, res) {
       stores,
       monthly: rows,
       seller_monthly: sellers,
+      vin_monthly: vinMonthly,
+      vin_data_through: ventasUniverse?.period?.cutoff_date ?? null,
       coverage: {
         crm_ids: Number(coverage.crm_ids || 0),
         cidef_store_resolved: Number(coverage.cidef_store_resolved || 0),
+        ventas_universe_valid: ventasUniverse?.validation?.valid === true,
       },
       semantics: {
         grain: 'distinct CRM opportunity ID, latest loaded snapshot',
@@ -203,7 +232,8 @@ export default async function handler(req, res) {
         quality: 'current Grado de Interes buckets; categories are mutually exclusive current labels, not sequential funnel stages',
         seller_health_inputs: 'seller metrics are computed only within store and month; health classification is relative to peers in the same store and month',
         ganados: 'Vendido = Si',
-        caveat: 'Latest observed snapshot only. Historical transitions between Estado or Grado de Interes are not reconstructed.',
+        vin_facturados: 'certified VIN_SALES from ventas_universe_v01, commercial_universe OWN_STORES, grouped by certified_store_id and mes_venta',
+        caveat: 'CRM uses latest observed snapshot only. Historical transitions between Estado or Grado de Interes are not reconstructed.',
       },
     });
   } catch (error) {
