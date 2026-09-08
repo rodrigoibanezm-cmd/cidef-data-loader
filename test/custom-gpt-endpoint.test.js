@@ -15,7 +15,7 @@ test('custom GPT endpoint exposes router contract version on every response', as
   for (const req of [{ method: 'GET' }, { method: 'POST', body: {} }]) {
     const res = response();
     await handler(req, res);
-    assert.equal(res.body.router_version, '1.48.1');
+    assert.equal(res.body.router_version, '1.49.0');
   }
 });
 
@@ -73,6 +73,11 @@ test('custom GPT endpoint dispatches product change contribution through the rea
 test('custom GPT endpoint advertises all longitudinal v0.1 motors', async () => {
   const res = response(); await handler({ method: 'POST', body: {} }, res);
   for (const action of ['ventas_longitudinal_context_v01','rvm_longitudinal_context_v01','crm_longitudinal_context_v01']) assert.ok(res.body.allowedActions.includes(action));
+});
+
+test('custom GPT endpoint advertises crm_context_v01', async () => {
+  const res = response(); await handler({ method: 'POST', body: {} }, res);
+  assert.ok(res.body.allowedActions.includes('crm_context_v01'));
 });
 
 test('longitudinal validation errors are deterministic client errors', async () => {

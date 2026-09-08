@@ -12,19 +12,20 @@ import {
 const EXPECTED_COUNTS = Object.freeze({
   SALES: 15,
   MARKET: 5,
+  CRM: 2,
   DISCOVERY: 4,
   LONGITUDINAL: 3,
 });
 
-test('registry exposes exactly the four designed public domains', () => {
-  assert.deepEqual(listCapabilityDomains(), ['SALES', 'MARKET', 'DISCOVERY', 'LONGITUDINAL']);
+test('registry exposes exactly the designed public domains', () => {
+  assert.deepEqual(listCapabilityDomains(), ['SALES', 'MARKET', 'CRM', 'DISCOVERY', 'LONGITUDINAL']);
 });
 for (const [domain, count] of Object.entries(EXPECTED_COUNTS)) {
   test(`${domain} exposes the expected capability count`, () => assert.equal(listDomainCapabilities(domain).length, count));
 }
-test('registry exposes exactly 27 public capabilities', () => {
+test('registry exposes exactly 29 public capabilities', () => {
   const total = Object.values(DOMAIN_CAPABILITY_REGISTRY).reduce((sum, registry) => sum + Object.keys(registry).length, 0);
-  assert.equal(total, 27);
+  assert.equal(total, 29);
 });
 test('every public capability maps to an action that exists in the legacy executor', () => {
   const actions = new Set(listCustomGptActions());
@@ -35,6 +36,9 @@ test('SALES resolves VIN_GROWTH_DIAGNOSTIC to vin_growth_diagnostic_v01', () => 
 });
 test('SALES resolves STORE_CHANGE_CONTRIBUTION to the existing physical action', () => {
   assert.deepEqual(resolveDomainCapability('sales', 'store_change_contribution'), { domain: 'SALES', capability: 'STORE_CHANGE_CONTRIBUTION', action: 'ventas_store_change_contribution_v01' });
+});
+test('CRM resolves CONTEXT to crm_context_v01', () => {
+  assert.deepEqual(resolveDomainCapability('crm', 'context'), { domain: 'CRM', capability: 'CONTEXT', action: 'crm_context_v01' });
 });
 test('MARKET cannot route a SALES capability', () => assert.throws(() => resolveDomainCapability('MARKET', 'STORE_CHANGE_CONTRIBUTION'), (error) => error.code === 'UNSUPPORTED_CAPABILITY_FOR_DOMAIN'));
 test('unknown domain fails closed', () => assert.throws(() => resolveDomainCapability('FINANCE', 'MONTHLY_ACTUAL'), (error) => error.code === 'INVALID_CAPABILITY_DOMAIN'));

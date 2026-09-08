@@ -5,6 +5,7 @@ import salesHandler from '../api/custom-gpt/sales.js';
 import marketHandler from '../api/custom-gpt/market.js';
 import discoveryHandler from '../api/custom-gpt/discovery.js';
 import longitudinalHandler from '../api/custom-gpt/longitudinal.js';
+import crmHandler from '../api/custom-gpt/crm.js';
 
 function responseRecorder() {
   return {
@@ -28,6 +29,7 @@ function request(method = 'POST', body = {}) {
 const endpointBindings = [
   ['SALES', salesHandler, 'MONTHLY_ACTUAL'],
   ['MARKET', marketHandler, 'MARKET_HISTORY'],
+  ['CRM', crmHandler, 'CONTEXT'],
   ['DISCOVERY', discoveryHandler, 'LIST_TABLES'],
   ['LONGITUDINAL', longitudinalHandler, 'VENTAS'],
 ];

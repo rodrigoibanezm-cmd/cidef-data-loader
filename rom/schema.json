@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Domain API",
-    "version": "1.55.2",
+    "version": "1.56.0",
     "description": "Public read-only OpenAPI surface for the CIDEF agent. Canonical analytical domains are VENTAS, RVM and CRM. Transport endpoint names are compatibility surfaces and do not define conceptual domains."
   },
   "x-cidef-architecture": {
@@ -73,7 +73,7 @@
       "post": {
         "operationId": "cidefCrm",
         "summary": "Run one bounded CRM capability",
-        "description": "CRM domain: observable demand, management, conversion and other certified CRM evidence. Currently exposes the certified longitudinal CRM family through the domain endpoint.",
+        "description": "CRM domain: BIG_PICTURE context plus certified temporal CRM evidence over crm_universe_v01.",
         "x-cidef-domain": "CRM",
         "requestBody": {
           "required": true,
@@ -199,16 +199,61 @@
       },
       "CrmRequest": {
         "type": "object",
-        "description": "Public request for the CRM domain. The current bounded public CRM family is LONGITUDINAL_CONTEXT; adding further CRM families does not require treating LONGITUDINAL as a domain.",
+        "description": "Public request for the CRM domain. CONTEXT is the descriptive BIG_PICTURE capability; LONGITUDINAL_CONTEXT is the temporal analytical capability.",
         "required": ["capability", "input"],
         "properties": {
           "capability": {
             "type": "string",
-            "enum": ["LONGITUDINAL_CONTEXT"]
+            "enum": ["CONTEXT", "LONGITUDINAL_CONTEXT"]
           },
           "input": {
-            "$ref": "#/components/schemas/CrmLongitudinalInput"
+            "type": "object"
           }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "capability": { "const": "CONTEXT" } }, "required": ["capability"] },
+            "then": { "properties": { "input": { "$ref": "#/components/schemas/CrmContextInput" } } }
+          },
+          {
+            "if": { "properties": { "capability": { "const": "LONGITUDINAL_CONTEXT" } }, "required": ["capability"] },
+            "then": { "properties": { "input": { "$ref": "#/components/schemas/CrmLongitudinalInput" } } }
+          }
+        ],
+        "additionalProperties": false
+      },
+      "CrmContextInput": {
+        "type": "object",
+        "description": "crm_context_v01 version 0.1. Descriptive CRM BIG_PICTURE context over crm_universe_v01 only. ASSIGNED_AT is the default commercial clock; CREATED_AT is the demand-generation clock. Empty periods return a valid non-evaluable context.",
+        "required": ["date_from", "date_to"],
+        "properties": {
+          "commercial_universe": {
+            "type": "string",
+            "enum": ["OWN_STORES", "COMPANY"],
+            "default": "OWN_STORES",
+            "description": "OWN_STORES is the default. COMPANY must be requested explicitly. DEALERS is unsupported and there is no fallback."
+          },
+          "date_from": { "type": "string", "format": "date" },
+          "date_to": { "type": "string", "format": "date" },
+          "date_axis": {
+            "type": "string",
+            "enum": ["ASSIGNED_AT", "CREATED_AT"],
+            "default": "ASSIGNED_AT",
+            "description": "ASSIGNED_AT returns commercial/current-state context. CREATED_AT returns leads_created and demand_mix without commercial/current-state metrics."
+          },
+          "filters": { "$ref": "#/components/schemas/CrmContextFilterMap" }
+        },
+        "additionalProperties": false
+      },
+      "CrmContextFilterMap": {
+        "type": "object",
+        "description": "Closed crm_context_v01 filter set. STORE means certified canonical store name. SELLER is unsupported in V0.1.",
+        "properties": {
+          "brand": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "product_interest": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "origin": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "suborigin": { "$ref": "#/components/schemas/LongitudinalFilterValue" },
+          "store": { "$ref": "#/components/schemas/LongitudinalFilterValue" }
         },
         "additionalProperties": false
       },

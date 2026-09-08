@@ -17,7 +17,7 @@ const expectedRom = [
   'schema.json',
 ];
 function schema() { return JSON.parse(readFileSync(join(root, 'rom/schema.json'), 'utf8')); }
-const requestSchemaByDomain = Object.freeze({ SALES: 'SalesRequest', MARKET: 'MarketRequest', DISCOVERY: 'DiscoveryRequest', LONGITUDINAL: 'LongitudinalRequest' });
+const requestSchemaByDomain = Object.freeze({ SALES: 'SalesRequest', MARKET: 'MarketRequest', CRM: 'CrmRequest', DISCOVERY: 'DiscoveryRequest', LONGITUDINAL: 'LongitudinalRequest' });
 
 test('domain registry and OpenAPI expose the same public capabilities', () => {
   const value = schema();
@@ -51,5 +51,17 @@ test('RVM organization scope is explicit and orthogonal in OpenAPI', () => {
   assert.equal(schemas.LongitudinalInput.properties.organization_scope.$ref, '#/components/schemas/OrganizationScope');
   assert.match(schemas.LongitudinalInput.properties.organization_scope.description, /RVM only/);
   assert.ok(schemas.LongitudinalInput.properties.commercial_universe);
+});
+test('CRM context contract is explicit in OpenAPI', () => {
+  const schemas = schema().components.schemas;
+  assert.ok(schemas.CrmRequest.properties.capability.enum.includes('CONTEXT'));
+  assert.deepEqual(schemas.CrmContextInput.required, ['date_from', 'date_to']);
+  assert.deepEqual(schemas.CrmContextInput.properties.commercial_universe.enum, ['OWN_STORES', 'COMPANY']);
+  assert.equal(schemas.CrmContextInput.properties.commercial_universe.default, 'OWN_STORES');
+  assert.deepEqual(schemas.CrmContextInput.properties.date_axis.enum, ['ASSIGNED_AT', 'CREATED_AT']);
+  assert.equal(schemas.CrmContextInput.properties.date_axis.default, 'ASSIGNED_AT');
+  assert.deepEqual(Object.keys(schemas.CrmContextFilterMap.properties), ['brand', 'product_interest', 'origin', 'suborigin', 'store']);
+  assert.equal(schemas.CrmContextInput.additionalProperties, false);
+  assert.equal(schemas.CrmContextFilterMap.additionalProperties, false);
 });
 test('ROM structure is atomic and exact', () => assert.deepEqual(readdirSync(join(root, 'rom')).sort(), expectedRom));
