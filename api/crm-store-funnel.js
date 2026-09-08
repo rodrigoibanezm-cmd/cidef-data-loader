@@ -140,12 +140,18 @@ export default async function handler(req, res) {
         COALESCE(NULLIF("Asignado a", ''), 'Sin vendedor identificado') AS vendedor,
         COUNT(*)::int AS leads,
         COUNT(*) FILTER (WHERE "Estado" = 'Sin Gestion')::int AS sin_gestion,
+        COUNT(*) FILTER (WHERE "Estado" IN ('En Gestion','Oportunidad','Cerrado'))::int AS gestionados,
         COUNT(*) FILTER (WHERE "Grado de Interes" = '1 - Sin Contactar')::int AS sin_contactar,
         COUNT(*) FILTER (WHERE "Grado de Interes" = '2 - Indeciso')::int AS indeciso,
         COUNT(*) FILTER (WHERE "Grado de Interes" = '3 - Interesado')::int AS interesado,
         COUNT(*) FILTER (WHERE "Grado de Interes" = '4 - Listo para comprar')::int AS listo,
+        COUNT(*) FILTER (WHERE NULLIF("Grado de Interes", '') IS NOT NULL)::int AS con_grado,
         COUNT(*) FILTER (WHERE "Estado" = 'Oportunidad')::int AS oportunidades,
-        COUNT(*) FILTER (WHERE "Vendido" = 'Si')::int AS ganados
+        COUNT(*) FILTER (WHERE "Vendido" = 'Si')::int AS ganados,
+        ROUND(100.0 * COUNT(*) FILTER (WHERE "Estado" IN ('En Gestion','Oportunidad','Cerrado')) / NULLIF(COUNT(*), 0), 1)::float AS gestion_pct,
+        ROUND(100.0 * COUNT(*) FILTER (WHERE "Grado de Interes" = '1 - Sin Contactar') / NULLIF(COUNT(*), 0), 1)::float AS sin_contactar_pct,
+        ROUND(100.0 * COUNT(*) FILTER (WHERE "Grado de Interes" IN ('3 - Interesado','4 - Listo para comprar')) /
+          NULLIF(COUNT(*) FILTER (WHERE NULLIF("Grado de Interes", '') IS NOT NULL), 0), 1)::float AS calidad_pct
       FROM resolved
       GROUP BY sucursal_id, date_trunc('month', created_at), COALESCE(NULLIF("Asignado a", ''), 'Sin vendedor identificado')
       ORDER BY sucursal_id, date_trunc('month', created_at), leads DESC
@@ -178,7 +184,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ok: true,
-      version: '1.1',
+      version: '1.2',
       months,
       generated_at: new Date().toISOString(),
       current_month: currentMonth,
@@ -195,6 +201,7 @@ export default async function handler(req, res) {
         cohort: 'month of Creado el',
         gestionados: 'current Estado in En Gestion, Oportunidad, Cerrado',
         quality: 'current Grado de Interes buckets; categories are mutually exclusive current labels, not sequential funnel stages',
+        seller_health_inputs: 'seller metrics are computed only within store and month; health classification is relative to peers in the same store and month',
         ganados: 'Vendido = Si',
         caveat: 'Latest observed snapshot only. Historical transitions between Estado or Grado de Interes are not reconstructed.',
       },
