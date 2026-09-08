@@ -11,11 +11,22 @@ function parseMonths(value) {
   return n;
 }
 
+function billingCycleMonth(fechaVentaIso) {
+  if (!fechaVentaIso) return null;
+  const date = new Date(fechaVentaIso);
+  if (Number.isNaN(date.getTime())) return null;
+
+  // CIDEF commercial billing cycle: day 2 through the day before the next day 2.
+  // Therefore invoices from calendar day 1 belong to the previous commercial month.
+  if (date.getUTCDate() === 1) date.setUTCMonth(date.getUTCMonth() - 1);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
 function buildVinMonthly(commercialContext) {
   const counts = new Map();
   for (const sale of commercialContext?.sales || []) {
     const storeId = sale.sucursal_venta_id == null ? null : String(sale.sucursal_venta_id);
-    const month = sale.mes_venta == null ? null : String(sale.mes_venta);
+    const month = billingCycleMonth(sale.fecha_venta_iso);
     if (!storeId || !month) continue;
     const key = `${storeId}|${month}`;
     counts.set(key, (counts.get(key) || 0) + 1);
@@ -212,7 +223,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       ok: true,
-      version: '1.3',
+      version: '1.4',
       months,
       generated_at: new Date().toISOString(),
       current_month: currentMonth,
@@ -234,7 +245,7 @@ export default async function handler(req, res) {
         quality: 'current Grado de Interes buckets; categories are mutually exclusive current labels, not sequential funnel stages',
         seller_health_inputs: 'seller metrics are computed only within store and month; health classification is relative to peers in the same store and month',
         ganados: 'Vendido = Si',
-        vin_facturados: 'recognized invoiced VIN sales scoped deterministically to OWN_STORES by ventas_commercial_context_v01 and vehiculo_canonico, grouped by sucursal_venta_id and mes_venta',
+        vin_facturados: 'recognized invoiced VIN sales scoped deterministically to OWN_STORES by ventas_commercial_context_v01 and vehiculo_canonico; commercial billing month runs from calendar day 2 through the day before the next day 2, so day 1 belongs to the prior commercial month',
         caveat: 'CRM uses latest observed snapshot only. Historical transitions between Estado or Grado de Interes are not reconstructed.',
       },
     });
