@@ -97,6 +97,10 @@ Una familia no debe volver a consultar RAW o MASTER para reconstruir reconocimie
 
 `CRM / CONTEXT` expone `crm_context_v01` para obtener el BIG_PICTURE descriptivo del CRM. Consume únicamente `crm_universe_v01` y entrega volumen, mix de demanda, estado comercial observable, distribución OWN_STORES y cobertura. `ASSIGNED_AT` es el reloj comercial por defecto; `CREATED_AT` se reserva para generación de demanda. No diagnostica ni recomienda.
 
+## Brecha VIN certificada
+
+`VENTAS / VIN_GAP` expone `vin_gap_v01` V0.1 para un único mes cerrado en el grain `OWN_STORES × STORE × BRAND × MONTH`. El VIN observado proviene de `ventas_universe_v01`; la referencia proviene de la familia certificada `expected_monthly_*`. Entrega solamente `reference_vin - observed_vin`: no implica oportunidad, capturabilidad, riesgo, deterioro, causalidad ni recomendación.
+
 ## Reglas de uso
 
 - RAW = evidencia, no identidad canónica.

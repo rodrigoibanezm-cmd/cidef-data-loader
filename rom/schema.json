@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Domain API",
-    "version": "1.58.0",
+    "version": "1.59.0",
     "description": "Public read-only OpenAPI surface for the CIDEF agent. Canonical analytical domains are VENTAS, RVM and CRM. Transport endpoint names are compatibility surfaces and do not define conceptual domains."
   },
   "x-cidef-architecture": {
@@ -165,6 +165,7 @@
               "PRODUCT_CHANGE_CONTRIBUTION",
               "STORE_CHANGE_CONTRIBUTION",
               "SELLER_CHANGE_CONTRIBUTION",
+              "VIN_GAP",
               "VIN_GROWTH_DIAGNOSTIC",
               "RELATIVE_PERFORMANCE",
               "DETERIORATION_STATUS"
@@ -546,7 +547,7 @@
       },
       "SalesInput": {
         "type": "object",
-        "description": "Public VENTAS capability input. VIN_GROWTH_DIAGNOSTIC accepts exactly brand_id, store_id and current_month; see VinGrowthDiagnosticInput.",
+        "description": "Public VENTAS capability input. VIN_GAP uses the explicit VinGapInput contract: OWN_STORES, store_id, brand_id and one closed month. VIN_GROWTH_DIAGNOSTIC accepts exactly brand_id, store_id and current_month; see VinGrowthDiagnosticInput.",
         "properties": {
           "commercial_universe": { "type": "string", "enum": ["COMPANY", "OWN_STORES", "DEALERS"] },
           "period": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
@@ -561,6 +562,7 @@
           "brand_id": { "type": "integer" },
           "store_id": { "type": "integer" },
           "current_month": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$" },
+          "month": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$", "description": "VIN_GAP target closed calendar month." },
           "grain": { "type": "string" },
           "pareto_threshold_pct": { "type": "number", "minimum": 0, "maximum": 100 },
           "median_ape_threshold_pct": { "type": "number", "minimum": 0 },
@@ -827,6 +829,18 @@
       "DiagnosticRelation": {
         "type": "string",
         "enum": ["SAME_DIRECTION", "OPPOSITE_DIRECTION", "STORE_MOVED_CONTEXT_FLAT", "STORE_FLAT_CONTEXT_MOVED", "BOTH_FLAT", "NOT_EVALUABLE"]
+      },
+      "VinGapInput": {
+        "type": "object",
+        "description": "vin_gap_v01 version 0.1 input. Exactly one closed OWN_STORES STORE x BRAND calendar month.",
+        "required": ["commercial_universe", "store_id", "brand_id", "month"],
+        "properties": {
+          "commercial_universe": { "type": "string", "const": "OWN_STORES" },
+          "store_id": { "type": "integer", "minimum": 1 },
+          "brand_id": { "type": "integer", "minimum": 1 },
+          "month": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+        },
+        "additionalProperties": false
       },
       "VinGrowthDiagnosticInput": {
         "type": "object",

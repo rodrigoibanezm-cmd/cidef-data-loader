@@ -10,7 +10,7 @@ import {
 } from '../lib/custom-gpt-router.js';
 
 const EXPECTED_COUNTS = Object.freeze({
-  SALES: 15,
+  SALES: 16,
   MARKET: 5,
   CRM: 2,
   DISCOVERY: 4,
@@ -23,9 +23,9 @@ test('registry exposes exactly the designed public domains', () => {
 for (const [domain, count] of Object.entries(EXPECTED_COUNTS)) {
   test(`${domain} exposes the expected capability count`, () => assert.equal(listDomainCapabilities(domain).length, count));
 }
-test('registry exposes exactly 29 public capabilities', () => {
+test('registry exposes exactly 30 public capabilities', () => {
   const total = Object.values(DOMAIN_CAPABILITY_REGISTRY).reduce((sum, registry) => sum + Object.keys(registry).length, 0);
-  assert.equal(total, 29);
+  assert.equal(total, 30);
 });
 test('every public capability maps to an action that exists in the legacy executor', () => {
   const actions = new Set(listCustomGptActions());
@@ -33,6 +33,9 @@ test('every public capability maps to an action that exists in the legacy execut
 });
 test('SALES resolves VIN_GROWTH_DIAGNOSTIC to vin_growth_diagnostic_v01', () => {
   assert.deepEqual(resolveDomainCapability('sales', 'vin_growth_diagnostic'), { domain: 'SALES', capability: 'VIN_GROWTH_DIAGNOSTIC', action: 'vin_growth_diagnostic_v01' });
+});
+test('SALES resolves VIN_GAP to vin_gap_v01', () => {
+  assert.deepEqual(resolveDomainCapability('sales', 'vin_gap'), { domain: 'SALES', capability: 'VIN_GAP', action: 'vin_gap_v01' });
 });
 test('SALES resolves STORE_CHANGE_CONTRIBUTION to the existing physical action', () => {
   assert.deepEqual(resolveDomainCapability('sales', 'store_change_contribution'), { domain: 'SALES', capability: 'STORE_CHANGE_CONTRIBUTION', action: 'ventas_store_change_contribution_v01' });

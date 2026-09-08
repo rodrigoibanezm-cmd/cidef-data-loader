@@ -47,6 +47,8 @@ Cada concepto debe evaluarse con cuatro preguntas:
 
 Una brecha por sí sola no implica oportunidad, riesgo, causa ni responsabilidad.
 
+`vin_gap_v01` implementa exclusivamente esta primitive aritmética bajo la interpretación `GAP_ONLY`; su signo no autoriza elevar el resultado a oportunidad, capturabilidad, deterioro, riesgo, prioridad o recomendación.
+
 ### Deterioro
 **Evidencia mínima**
 - evolución adversa;

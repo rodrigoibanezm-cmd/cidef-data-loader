@@ -60,6 +60,8 @@ Cuando la evidencia lo permita, mirar además del volumen: crecimiento relativo,
 
 Meses incompletos no se tratan como cierres.
 
+Para `vin_gap_v01`, la convención es `reference_vin - observed_vin` sobre un mes cerrado y un scope compatible `OWN_STORES × STORE × BRAND`. La referencia sólo existe cuando el ganador evaluable de `expected_monthly_*` tiene evidencia de backtest y un candidato disponible para el mes objetivo. `stability` se conserva como diagnóstico y no introduce un threshold de exclusión.
+
 ## 5. Marco de interpretación
 Cuando corresponda:
 ```text
