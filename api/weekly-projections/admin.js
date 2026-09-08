@@ -71,6 +71,7 @@ export default async function handler(req, res) {
           wsp.expected_close_date::text AS expected_close_date,
           wsp.crm_opportunity_id,
           crm.estado AS crm_estado,
+          crm.grado_interes AS crm_grado_interes,
           wsp.updated_at
         FROM public.weekly_sales_projection wsp
         JOIN public.sucursales_master s ON s.sucursal_id = wsp.sucursal_id
@@ -78,7 +79,9 @@ export default async function handler(req, res) {
         LEFT JOIN public.modelos_master_v01 m ON m.modelo_id = wsp.modelo_id
         LEFT JOIN public.marcas_master_v01 ma ON ma.marca_id = m.marca_id
         LEFT JOIN LATERAL (
-          SELECT c."Estado" AS estado
+          SELECT
+            c."Estado" AS estado,
+            NULLIF(BTRIM(c."Grado de Interes"), '') AS grado_interes
           FROM public."CRM_Cidef_raw" c
           WHERE c."ID" = wsp.crm_opportunity_id
           ORDER BY c.loaded_at DESC NULLS LAST
