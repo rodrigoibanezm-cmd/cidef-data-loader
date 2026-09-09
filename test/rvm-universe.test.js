@@ -56,6 +56,19 @@ test('rvm_universe_v01 exposes certified product, organization, origin, coverage
   assert.equal(result.period.last_observed_date, '2026-02-12');
   assert.equal(result.lineage.organization_authority, 'rvm_raw.marca = DFM');
   assert.equal(result.lineage.historical_fallback_authority, 'NOT_APPLICABLE');
+  assert.equal(
+    result.lineage.historical_aggregate_authority,
+    'rvm_organization_historical_rule[aggregation_scope=BRAND_AGGREGATE] (aggregate-only; not consumed by detail universe)',
+  );
+});
+
+test('CIDEF detail universe does not consume historical aggregate rules as organization inclusion', () => {
+  const query = buildRvmUniverseQuery(universe({ organization_scope: 'CIDEF' }));
+  assert.match(query.sql, /h\.aggregation_scope='BRAND_AGGREGATE'/);
+  assert.match(query.sql, /WHEN i\.raw_brand_norm='DFM' THEN 'INCLUDED'/);
+  const output = query.sql.slice(query.sql.lastIndexOf('organization_resolution AS MATERIALIZED'));
+  assert.doesNotMatch(output, /HISTORICAL_SOURCE_RULE/);
+  assert.doesNotMatch(output, /hm\.organization_ids.*INCLUDED/s);
 });
 
 test('origin is pais_vin without reinterpretation and CHINA reconciles to the legacy subset', () => {
