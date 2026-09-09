@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Domain API",
-    "version": "1.60.0",
+    "version": "1.61.0",
     "description": "Public read-only OpenAPI surface for the CIDEF agent. Canonical analytical domains are VENTAS, RVM and CRM. Transport endpoint names are compatibility surfaces and do not define conceptual domains."
   },
   "x-cidef-architecture": {
@@ -25,7 +25,7 @@
       "post": {
         "operationId": "cidefSales",
         "summary": "Run one bounded VENTAS capability",
-        "description": "VENTAS domain: CIDEF sales, commercial scope and deterministic sales families.",
+        "description": "VENTAS domain: CIDEF sales, commercial scope and deterministic sales families. PACE_CHANGE measures only change in observed sales pace. STABLE means deterministic absence of change in observed pace between compared segments; it does not mean good performance, sufficient pace, commercial health, target attainment, favorable forecast, or absence of risk.",
         "x-cidef-domain": "VENTAS",
         "requestBody": {
           "required": true,
@@ -147,7 +147,7 @@
     "schemas": {
       "SalesRequest": {
         "type": "object",
-        "description": "Public request for the VENTAS domain. Endpoint name /sales is retained for compatibility.",
+        "description": "Public request for the VENTAS domain. Endpoint name /sales is retained for compatibility. PACE_CHANGE accepts exactly cutoff_date, grain=COMPANY|STORE and store_id only when grain=STORE; runtime rejects tuning knobs such as window_days, thresholds, confidence or history_start_month.",
         "required": ["capability", "input"],
         "properties": {
           "capability": {
@@ -159,6 +159,7 @@
               "CURRENT_MONTH_CLOSE_FORECAST",
               "PREDICTABILITY_DAY",
               "INTRAMONTH_HISTORY",
+              "PACE_CHANGE",
               "PRODUCT_SALES",
               "PRODUCT_DETAIL",
               "PRODUCT_CONCENTRATION",
@@ -548,7 +549,7 @@
       },
       "SalesInput": {
         "type": "object",
-        "description": "Public VENTAS capability input. VIN_GAP uses the explicit VinGapInput contract: OWN_STORES, store_id, brand_id and one closed month. VIN_GROWTH_DIAGNOSTIC accepts exactly brand_id, store_id and current_month; see VinGrowthDiagnosticInput.",
+        "description": "Public VENTAS capability input. PACE_CHANGE is runtime-closed to cutoff_date, grain=COMPANY|STORE and store_id only for STORE; its universe is fixed OWN_STORES and it accepts no window, threshold, confidence or history range tuning. VIN_GAP uses the explicit VinGapInput contract: OWN_STORES, store_id, brand_id and one closed month. VIN_GROWTH_DIAGNOSTIC accepts exactly brand_id, store_id and current_month; see VinGrowthDiagnosticInput.",
         "properties": {
           "commercial_universe": { "type": "string", "enum": ["COMPANY", "OWN_STORES", "DEALERS"] },
           "period": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$" },
@@ -564,7 +565,7 @@
           "store_id": { "type": "integer" },
           "current_month": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$" },
           "month": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$", "description": "VIN_GAP target closed calendar month." },
-          "grain": { "type": "string" },
+          "grain": { "type": "string", "description": "PACE_CHANGE supports only COMPANY or STORE. Other VENTAS capabilities retain their own grain contracts." },
           "pareto_threshold_pct": { "type": "number", "minimum": 0, "maximum": 100 },
           "median_ape_threshold_pct": { "type": "number", "minimum": 0 },
           "p90_ape_threshold_pct": { "type": "number", "minimum": 0 },

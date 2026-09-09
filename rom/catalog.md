@@ -97,6 +97,14 @@ Una familia no debe volver a consultar RAW o MASTER para reconstruir reconocimie
 
 `CRM / CONTEXT` expone `crm_context_v01` para obtener el BIG_PICTURE descriptivo del CRM. Consume únicamente `crm_universe_v01` y entrega volumen, mix de demanda, estado comercial observable, distribución OWN_STORES y cobertura. `ASSIGNED_AT` es el reloj comercial por defecto; `CREATED_AT` se reserva para generación de demanda. No diagnostica ni recomienda.
 
+## Cambio de ritmo de ventas
+
+`SALES / PACE_CHANGE` expone `sales_pace_change_v01` V0.1 para los grains `COMPANY` y `STORE` dentro de `OWN_STORES`. Usa la serie intramensual certificada y cutoff-safe, deriva VIN por día comercial desde el acumulado y compara medianas multiescala sin thresholds, majority, quorum ni forecast. Una clasificación sólo existe cuando todas las ventanas candidatas son evaluables, robustas bajo leave-one-day-out y comparten exactamente el mismo signo.
+
+`STABLE` significa exclusivamente ausencia determinista de cambio en el ritmo observado entre los tramos comparados. No significa buen desempeño, ritmo suficiente, salud comercial, cumplimiento, forecast favorable ni ausencia de riesgo. `NOT_EVALUABLE` rompe continuidad. En STORE, una fila sparse ausente nunca se interpreta automáticamente como cero.
+
+`historical_equivalent_context` es únicamente evidencia descriptiva para el agente y nunca participa en la clasificación de `movement`.
+
 ## Brecha VIN certificada
 
 `VENTAS / VIN_GAP` expone `vin_gap_v01` V0.1 para un único mes cerrado en el grain `OWN_STORES × STORE × BRAND × MONTH`. El VIN observado proviene de `ventas_universe_v01`; la referencia proviene de la familia certificada `expected_monthly_*`. Entrega solamente `reference_vin - observed_vin`: no implica oportunidad, capturabilidad, riesgo, deterioro, causalidad ni recomendación.
