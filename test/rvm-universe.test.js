@@ -54,7 +54,8 @@ test('rvm_universe_v01 exposes certified product, organization, origin, coverage
   assert.deepEqual(result.coverage.origin, { available: 43, unavailable: 2, total: 45 });
   assert.equal(result.validation.valid, true);
   assert.equal(result.period.last_observed_date, '2026-02-12');
-  assert.equal(result.lineage.historical_fallback_authority, 'rvm_organization_historical_rule');
+  assert.equal(result.lineage.organization_authority, 'rvm_raw.marca = DFM');
+  assert.equal(result.lineage.historical_fallback_authority, 'NOT_APPLICABLE');
 });
 
 test('origin is pais_vin without reinterpretation and CHINA reconciles to the legacy subset', () => {
@@ -71,7 +72,7 @@ test('origin is pais_vin without reinterpretation and CHINA reconciles to the le
   assert.doesNotMatch(query.sql, /is_chinese|chinese_market|origin_group/i);
 });
 
-test('Dongfeng multi-importer scopes compose the unchanged certified organization resolver', () => {
+test('Dongfeng multi-importer scopes compose the certified organization resolver', () => {
   for (const scope of ['CIDEF', 'INDUMOTORA', 'MACO_TATTERSALL', 'ALL']) {
     const parsed = universe({ organization_scope: scope, universe_filters: { brand: 'DONGFENG' } });
     const query = buildRvmUniverseQuery(parsed);
