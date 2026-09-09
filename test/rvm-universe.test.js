@@ -68,6 +68,12 @@ test('CIDEF detail universe does not consume historical aggregate rules as organ
   const query = buildRvmUniverseQuery(universe({ organization_scope: 'CIDEF' }));
   assert.match(query.sql, /h\.aggregation_scope='BRAND_AGGREGATE'/);
   assert.match(query.sql, /WHEN i\.raw_brand_norm='DFM' THEN 'INCLUDED'/);
+  const aggregateMembership = query.sql.slice(
+    query.sql.indexOf('brand_aggregate_historical_membership AS MATERIALIZED'),
+    query.sql.indexOf('organization_resolution AS MATERIALIZED'),
+  );
+  assert.doesNotMatch(aggregateMembership, /i\.brand_id IS NULL|h\.brand_id=i\.brand_id/,
+    'BRAND_AGGREGATE authority must not be narrowed by alias-derived canonical brand identity');
   const output = query.sql.slice(query.sql.lastIndexOf('organization_resolution AS MATERIALIZED'));
   assert.doesNotMatch(output, /HISTORICAL_SOURCE_RULE/);
   assert.doesNotMatch(output, /hm\.organization_ids.*INCLUDED/s);
