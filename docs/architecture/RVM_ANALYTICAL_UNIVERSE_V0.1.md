@@ -35,18 +35,38 @@ Lineage is explicit:
 
 - raw source: `rvm_raw`;
 - identity: `producto_aliases_v01`, `modelos_master_v01`, `marcas_master_v01`;
-- organization: `product_organization_membership`, `organizations_master`;
-- historical fallback: `rvm_organization_historical_rule`.
+- organization for CIDEF detail: strict raw source `rvm_raw.marca = 'DFM'`;
+- organization for other certified organization scopes: `product_organization_membership`, `organizations_master`, with historical fallback where applicable;
+- CIDEF historical aggregate authority: `rvm_organization_historical_rule` only when `aggregation_scope = 'BRAND_AGGREGATE'`.
 
 ## Organization scope
 
-The existing contract remains unchanged:
+The public organization-scope enum remains:
 
 `ALL | CIDEF | INDUMOTORA | MACO_TATTERSALL`
 
-Organization is resolved by certified, date-effective model membership when available and by the existing certified historical source rule only as fallback. The output states remain `INCLUDED`, `EXCLUDED_OTHER_ORGANIZATION`, `UNRESOLVED`, and `AMBIGUOUS`.
+### CIDEF — certified granularity boundary
 
-`organization_scope` is independent from market-universe filters. In particular, Dongfeng is not assigned wholesale to any importer; its multi-importer attribution continues to use the existing model and historical authorities.
+CIDEF has two distinct RVM attribution semantics and they must never be mixed.
+
+**Detail / product / model / competitive attribution**
+
+- CIDEF is only raw RVM brand `DFM`.
+- `rvm_universe_v01` with `organization_scope=CIDEF` therefore includes only rows where `master_norm(rvm_raw.marca) = 'DFM'`.
+- Canonical DONGFENG identity, model membership, aliases, or historical organization rules cannot grant CIDEF detail inclusion.
+- Raw brands such as `ZNA`, `DONGFENG`, `DONG FENG`, `DFMSK`, or any other non-DFM value are not CIDEF detail observations.
+- This invariant applies to model/product breakdowns and the competitive family.
+
+**Historical aggregate attribution**
+
+- Certified rows in `rvm_organization_historical_rule` with `aggregation_scope='BRAND_AGGREGATE'` remain valid for aggregate historical CIDEF volume when their temporal rule matches.
+- This allows historical brands such as `ZNA` to contribute to an aggregate CIDEF historical total when explicitly consumed by an aggregate-only analysis.
+- Aggregate historical authority must not resolve or attribute model/product detail and must not feed competitive target-model identity.
+- `rvm_universe_v01` is a detail-capable universe and therefore does not use these historical aggregate rules to grant CIDEF inclusion. Its lineage exposes the aggregate authority separately for auditability.
+
+For `INDUMOTORA` and `MACO_TATTERSALL`, organization attribution continues to use certified date-effective model membership and the certified historical source rule as fallback.
+
+`organization_scope` remains independent from market-universe filters.
 
 ## Market universe dimensions
 
@@ -67,6 +87,8 @@ Entity filters remain separate from universe filters. Therefore an entity such a
 
 The runtime dataset exposes quantity-based coverage for product identity, organization resolution, and origin availability. Validation reconciles each coverage partition to total `cantidad`; warnings expose unresolved/ambiguous product identity and unavailable origin without suppressing rows.
 
+For CIDEF detail, organization inclusion must reconcile to the strict raw DFM attribution for the same temporal and market filters. Historical `BRAND_AGGREGATE` rules are outside that detail reconciliation and are available only to explicit aggregate historical consumers.
+
 ## Migrated consumer
 
 | Consumer | Status | Reason |
@@ -81,14 +103,14 @@ The public longitudinal contract remains unchanged for `MARKET_SIZE`, `ENTITY_VI
 
 | Consumer | Reason |
 |---|---|
-| `rvm_market_history_v01` | Its series, period totals, raw-dimension breakdowns and optional canonical product breakdowns can calculate directly over the prepared events without changing semantics. |
+| `rvm_market_history_v01` | Its series, period totals, raw-dimension breakdowns and optional canonical product breakdowns can calculate directly over the prepared events without changing semantics. Any future CIDEF aggregate-history mode must explicitly consume only `BRAND_AGGREGATE` historical authority and must remain separate from product/model detail. |
 
 ### NEEDS_ADAPTATION
 
 | Consumer | Reason |
 |---|---|
-| `competitive_context_v01` | Builds target-dependent segment/type/fuel candidate universes and current CIDEF portfolio targets. |
-| `competitive_share_trajectory_v01` | Inherits the target-dependent candidate-universe preparation and monthly ranking rules. |
+| `competitive_context_v01` | Builds target-dependent segment/type/fuel candidate universes and current CIDEF portfolio targets. Its CIDEF target attribution is raw DFM-only. |
+| `competitive_share_trajectory_v01` | Inherits the target-dependent candidate-universe preparation and monthly ranking rules. Its CIDEF target attribution is raw DFM-only. |
 | `geographic_market_analysis` | Uses paged geography snapshots, `region_propietario`, legacy brand-origin authority, and a `CAMIONETA → PICK-UP` adapter. |
 | `rvm_market_pareto` | Uses a latest-month snapshot, legacy origin authority, Pareto thresholding, and its own model ranking. |
 | `monthly_seasonality_analysis` | MARKET mode uses raw brand/model labels; CIDEF mode additionally joins RVM vehicle keys to sales notes and applies a distinct observational scope. |
