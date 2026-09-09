@@ -26,5 +26,19 @@ test('applies blind cutoff before LAST recognition by VIN', () => {
   assert.equal(blind.recognizedSales[0].mes_venta, '2026-05');
   assert.equal(blind.recognizedSales[0].cliente, 'MAY');
   assert.equal(blind.cutoff_month, '2026-06');
+  assert.equal(blind.effective_cutoff_date, '2026-07-01');
   assert.equal(blind.coverage.rows_excluded_by_cutoff, 1);
+});
+
+test('cutoff_month includes next calendar month day 01 and excludes day 02', () => {
+  const rows = [
+    row('1', '09/30/26 10:00', { cliente: 'SEP30' }),
+    row('2', '10/01/26 10:00', { cliente: 'OCT1' }),
+    row('3', '10/02/26 10:00', { cliente: 'OCT2' }),
+  ];
+  const september = calculateVentasContext(rows, { cutoffMonth: '2026-09' });
+  assert.equal(september.recognizedSales.length, 1);
+  assert.equal(september.recognizedSales[0].cliente, 'OCT1');
+  assert.equal(september.recognizedSales[0].mes_venta, '2026-09');
+  assert.equal(september.coverage.rows_excluded_by_cutoff, 1);
 });

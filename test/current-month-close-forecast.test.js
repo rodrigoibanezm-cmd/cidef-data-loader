@@ -5,14 +5,22 @@ import { learnCurrentCompletion } from '../lib/daily-close-forecast/learnCurrent
 import { densifyCurrentStores } from '../lib/current-month-forecast/densifyCurrentStores.js';
 import { buildLiveForecast, buildStoreForecasts } from '../lib/current-month-forecast/buildLiveForecast.js';
 
-test('live cutoff rejects future date and unsupported inputs', () => {
-  const now = new Date('2026-09-02T12:00:00Z');
-  assert.equal(parseLiveCutoff({ cutoff_date: '2026-09-02' }, now).dayOfMonth, 2);
-  assert.throws(() => parseLiveCutoff({ cutoff_date: '2026-09-03' }, now), /future/);
-  assert.throws(() => parseLiveCutoff({ cutoff_date: '2026-09-02', x: 1 }, now), /Unsupported/);
+test('live cutoff uses commercial month/day and rejects future date and unsupported inputs', () => {
+  const now = new Date('2026-10-02T12:00:00Z');
+  const first = parseLiveCutoff({ cutoff_date: '2026-09-02' }, now);
+  assert.equal(first.targetMonth, '2026-09');
+  assert.equal(first.dayOfMonth, 1);
+  const close = parseLiveCutoff({ cutoff_date: '2026-10-01' }, now);
+  assert.equal(close.targetMonth, '2026-09');
+  assert.equal(close.dayOfMonth, 30);
+  const next = parseLiveCutoff({ cutoff_date: '2026-10-02' }, now);
+  assert.equal(next.targetMonth, '2026-10');
+  assert.equal(next.dayOfMonth, 1);
+  assert.throws(() => parseLiveCutoff({ cutoff_date: '2026-10-03' }, now), /future/);
+  assert.throws(() => parseLiveCutoff({ cutoff_date: '2026-10-02', x: 1 }, now), /Unsupported/);
 });
 
-test('shared completion learner uses same calendar day median', () => {
+test('shared completion learner uses same commercial day median', () => {
   const learned = learnCurrentCompletion([
     { target_month: '2026-06', day_of_month: 10, observed_to_date: 20, actual_close: 100 },
     { target_month: '2026-07', day_of_month: 10, observed_to_date: 40, actual_close: 100 },

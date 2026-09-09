@@ -4,7 +4,7 @@ import { calculateDailyCloseBacktestContext } from '../lib/motors/daily-close-ba
 import { calculateVentasDailyOrganizationalContext } from '../lib/motors/ventas-daily-organizational-context-v01.js';
 import { calculateVentasContext } from '../lib/ventas/buildVentasContext.js';
 
-const NOW = new Date('2026-09-02T00:00:00Z');
+const NOW = new Date('2026-09-02T12:00:00Z');
 
 function row(id, vin, date, store) {
   return { id, nro_vin_chasis: vin, fecha_factura: date, id_sucursal_vta: store };
@@ -62,6 +62,17 @@ test('matches certified daily organizational context at selected cutoffs', () =>
   assert.equal(result.coverage.tie_groups_resolved, 1);
 });
 
+test('commercial day 1 is calendar day 02 and month end is next calendar month day 01', () => {
+  const result = calculateDailyCloseBacktestContext(
+    rows(), maps(), { start_month: '2026-03', end_month: '2026-03' }, NOW,
+  );
+  const first = result.company_observations.find((item) => item.day_of_month === 1);
+  const last = result.company_observations.at(-1);
+  assert.equal(first.cutoff_date, '2026-03-02');
+  assert.equal(last.cutoff_date, '2026-04-01');
+  assert.equal(last.day_of_month, 31);
+});
+
 test('emits certified zeros only for positive month-end CIDEF store cohorts', () => {
   const result = calculateDailyCloseBacktestContext(
     rows(), maps(), { start_month: '2026-03', end_month: '2026-04' }, NOW,
@@ -79,8 +90,8 @@ test('emits certified zeros only for positive month-end CIDEF store cohorts', ()
 
 test('does not clamp non-monotone store history when observed exceeds final close', () => {
   const sourceRows = [
-    row('1', 'VIN-X', '03/01/2026', '10'),
-    row('2', 'VIN-Y', '03/01/2026', '10'),
+    row('1', 'VIN-X', '03/02/2026', '10'),
+    row('2', 'VIN-Y', '03/02/2026', '10'),
     row('3', 'VIN-X', '03/20/2026', '20'),
   ];
   const result = calculateDailyCloseBacktestContext(
@@ -111,7 +122,7 @@ test('emits seller observations only for date-effective VENDEDOR_CIDEF', () => {
   assert.equal(result.validation.eligible_seller_close_not_above_store, true);
 });
 
-test('rejects an open end month', () => {
+test('rejects an open commercial end month', () => {
   assert.throws(
     () => calculateDailyCloseBacktestContext([], maps(), { start_month: '2026-09', end_month: '2026-09' }, NOW),
     /closed month/,
