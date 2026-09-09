@@ -1,8 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rvmOrganizationResolutionCtes } from '../lib/rvm/rvmOrganizationScopeSql.js';
+import {
+  CIDEF_RVM_DETAIL_RAW_BRAND,
+  CIDEF_RVM_HISTORICAL_AGGREGATION_SCOPE,
+  rvmOrganizationResolutionCtes,
+} from '../lib/rvm/rvmOrganizationScopeSql.js';
 
-test('CIDEF organization scope is determined exclusively by raw DFM brand', () => {
+test('CIDEF organization scope detail is determined exclusively by raw DFM brand', () => {
+  assert.equal(CIDEF_RVM_DETAIL_RAW_BRAND, 'DFM');
   const sql = rvmOrganizationResolutionCtes({
     organizationScope: 'CIDEF',
     organizationParam: '$3',
@@ -15,7 +20,7 @@ test('CIDEF organization scope is determined exclusively by raw DFM brand', () =
   assert.match(sql, /ARRAY\[\(SELECT organization_id FROM selected_organization\)\]::bigint\[\]/);
 });
 
-test('CIDEF inclusion cannot be granted by canonical membership or historical rules', () => {
+test('CIDEF detail inclusion cannot be granted by canonical membership or historical rules', () => {
   const sql = rvmOrganizationResolutionCtes({
     organizationScope: 'CIDEF',
     organizationParam: '$3',
@@ -24,6 +29,24 @@ test('CIDEF inclusion cannot be granted by canonical membership or historical ru
   const output = sql.slice(sql.lastIndexOf('organization_resolution AS MATERIALIZED'));
   assert.doesNotMatch(output, /ANY\(coalesce\(cm\.organization_ids,hm\.organization_ids\)\)/);
   assert.doesNotMatch(output, /CANONICAL_MODEL|HISTORICAL_SOURCE_RULE/);
+});
+
+test('CIDEF historical rules are aggregate-only authority', () => {
+  assert.equal(CIDEF_RVM_HISTORICAL_AGGREGATION_SCOPE, 'BRAND_AGGREGATE');
+  const sql = rvmOrganizationResolutionCtes({
+    organizationScope: 'CIDEF',
+    organizationParam: '$3',
+  });
+
+  const historical = sql.slice(
+    sql.indexOf('historical_organization_membership AS MATERIALIZED'),
+    sql.lastIndexOf('organization_resolution AS MATERIALIZED'),
+  );
+  assert.match(historical, /h\.aggregation_scope='BRAND_AGGREGATE'/);
+
+  const output = sql.slice(sql.lastIndexOf('organization_resolution AS MATERIALIZED'));
+  assert.doesNotMatch(output, /HISTORICAL_SOURCE_RULE/);
+  assert.doesNotMatch(output, /hm\.organization_ids.*INCLUDED/s);
 });
 
 test('non-CIDEF organization scopes preserve canonical and historical resolution', () => {
@@ -36,6 +59,7 @@ test('non-CIDEF organization scopes preserve canonical and historical resolution
     assert.match(sql, /ANY\(coalesce\(cm\.organization_ids,hm\.organization_ids\)\)/);
     assert.match(sql, /CANONICAL_MODEL/);
     assert.match(sql, /HISTORICAL_SOURCE_RULE/);
+    assert.doesNotMatch(sql, /h\.aggregation_scope='BRAND_AGGREGATE'/);
   }
 });
 
