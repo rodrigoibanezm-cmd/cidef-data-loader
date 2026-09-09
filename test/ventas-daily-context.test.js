@@ -34,14 +34,15 @@ function saleSignature(context) {
   }));
 }
 
-test('month-end cutoff_date is equivalent to cutoff_month', () => {
+test('commercial month-end cutoff_date is equivalent to cutoff_month', () => {
   const rows = [
     row({ id: '1', nro_vin_chasis: 'VIN1', fecha_factura: '04/10/26 10:00' }),
     row({ id: '2', nro_vin_chasis: 'VIN1', fecha_factura: '04/30/26 18:00' }),
     row({ id: '3', nro_vin_chasis: 'VIN2', fecha_factura: '05/01/26 08:00' }),
+    row({ id: '4', nro_vin_chasis: 'VIN3', fecha_factura: '05/02/26 08:00' }),
   ];
   const monthly = calculateVentasContext(rows, { cutoffMonth: '2026-04' });
-  const daily = calculateVentasContext(rows, { cutoffDate: '2026-04-30' });
+  const daily = calculateVentasContext(rows, { cutoffDate: '2026-05-01' });
 
   assert.deepEqual(saleSignature(daily), saleSignature(monthly));
   assert.deepEqual(daily.monthlySales, monthly.monthlySales);
@@ -73,13 +74,24 @@ test('cutoff inputs are strict and mutually exclusive', () => {
   );
 });
 
-test('daily motor exposes cutoff-safe snapshot without organization filtering', () => {
+test('daily motor exposes commercial snapshot without organization filtering', () => {
   const context = calculateVentasContext([row()], { cutoffDate: '2026-04-15' });
   const result = calculateVentasDailyContext(context, { cutoffDate: '2026-04-15' });
 
   assert.equal(result.status, 'ok');
+  assert.equal(result.as_of.month, '2026-04');
   assert.equal(result.as_of.month_sales_to_date, 1);
-  assert.equal(result.as_of.day_of_month, 15);
+  assert.equal(result.as_of.day_of_month, 14);
   assert.equal(result.validation.cutoff_context_match, true);
   assert.equal(result.policy.organization_scope.includes('not filtered'), true);
+});
+
+test('calendar day 01 remains in previous commercial month', () => {
+  const context = calculateVentasContext([
+    row({ id: '1', fecha_factura: '05/01/26 10:00' }),
+  ], { cutoffDate: '2026-05-01' });
+  const result = calculateVentasDailyContext(context, { cutoffDate: '2026-05-01' });
+  assert.equal(result.as_of.month, '2026-04');
+  assert.equal(result.as_of.day_of_month, 30);
+  assert.equal(result.as_of.month_sales_to_date, 1);
 });

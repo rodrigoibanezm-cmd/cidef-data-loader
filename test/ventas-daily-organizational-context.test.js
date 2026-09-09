@@ -15,9 +15,9 @@ function maps() {
   };
 }
 
-function context() {
+function context(cutoffDate = '2026-04-15') {
   return {
-    cutoff_date: '2026-04-15',
+    cutoff_date: cutoffDate,
     recognizedSales: [
       { source_id: '1', mes_venta: '2026-03', sucursal_source_key: '10' },
       { source_id: '2', mes_venta: '2026-04', sucursal_source_key: '10' },
@@ -31,13 +31,15 @@ function context() {
   };
 }
 
-function run(ctx = context()) {
-  return calculateVentasDailyOrganizationalContext(ctx, maps(), { cutoffDate: '2026-04-15' });
+function run(ctx = context(), cutoffDate = '2026-04-15') {
+  return calculateVentasDailyOrganizationalContext(ctx, maps(), { cutoffDate });
 }
 
 test('reconciles target-month recognized sales by store identity and channel', () => {
   const result = run();
-  assert.equal(result.version, '0.2');
+  assert.equal(result.version, '0.3');
+  assert.equal(result.as_of.month, '2026-04');
+  assert.equal(result.as_of.day_of_month, 14);
   assert.equal(result.coverage.recognized_sales_in_target_month_to_date, 5);
   assert.equal(result.coverage.resolved_store, 3);
   assert.equal(result.coverage.unresolved_store, 1);
@@ -69,4 +71,12 @@ test('reports a source key actually used by recognized sales when ambiguous', ()
   const result = run();
   assert.equal(result.validation.store_identity_keys_unique, false);
   assert.equal(result.status, 'warning');
+});
+
+test('calendar day 01 aggregates previous commercial month', () => {
+  const ctx = context('2026-05-01');
+  const result = run(ctx, '2026-05-01');
+  assert.equal(result.as_of.month, '2026-04');
+  assert.equal(result.as_of.day_of_month, 30);
+  assert.equal(result.coverage.recognized_sales_in_target_month_to_date, 5);
 });
