@@ -58,8 +58,10 @@ test('rvm_universe_v01 exposes certified product, organization, origin, coverage
   assert.equal(result.lineage.historical_fallback_authority, 'NOT_APPLICABLE');
   assert.equal(
     result.lineage.historical_aggregate_authority,
-    'rvm_organization_historical_rule[aggregation_scope=BRAND_AGGREGATE] (aggregate-only; not consumed by detail universe)',
+    'rvm_organization_historical_rule[aggregation_scope=BRAND_AGGREGATE] via brand_aggregate_organization_bucket',
   );
+  assert.equal(result.data_status, 'CONSOLIDATED');
+  assert.equal(result.snapshot_date, null);
 });
 
 test('CIDEF detail universe does not consume historical aggregate rules as organization inclusion', () => {
@@ -71,7 +73,7 @@ test('CIDEF detail universe does not consume historical aggregate rules as organ
   assert.doesNotMatch(output, /hm\.organization_ids.*INCLUDED/s);
 });
 
-test('origin is pais_vin without reinterpretation and CHINA reconciles to the legacy subset', () => {
+test('pais_vin remains independent while canonical brand origin is exposed for CHINESE_MARKET', () => {
   const all = assembleRvmUniverse(universe(), events);
   const legacyChina = events.filter((event) => String(event.pais_vin).toUpperCase() === 'CHINA');
   const china = assembleRvmUniverse(universe({ universe_filters: { origin: 'CHINA' } }), legacyChina);
@@ -82,7 +84,21 @@ test('origin is pais_vin without reinterpretation and CHINA reconciles to the le
   const query = buildRvmUniverseQuery(universe({ universe_filters: { origin: 'CHINA' } }));
   assert.match(query.sql, /master_norm\(u\.pais_vin\)/);
   assert.ok(query.params.some((value) => Array.isArray(value) && value[0] === 'CHINA'));
-  assert.doesNotMatch(query.sql, /is_chinese|chinese_market|origin_group/i);
+  assert.match(query.sql, /ma\.origin_group AS brand_origin_group/);
+  assert.match(query.sql, /ma\.pais_origen_marca AS brand_origin_country/);
+  assert.match(query.sql, /ma\.origin_source AS brand_origin_source/);
+  assert.doesNotMatch(query.sql, /pais_vin\s*=\s*'CHINA'/i);
+});
+
+test('data_status and snapshot are isolated in the certified universe', () => {
+  const consolidated = buildRvmUniverseQuery(universe());
+  assert.match(consolidated.sql, /r\.data_status=\$3::text/);
+  assert.equal(consolidated.params[2], 'CONSOLIDATED');
+  const preliminary = buildRvmUniverseQuery(parseRvmUniverseInput({ date_from: '2026-09-01', date_to: '2026-09-09', organization_scope: 'CIDEF', data_status: 'PRELIMINARY', snapshot_date: '2026-09-09' }));
+  assert.match(preliminary.sql, /r\.data_status=\$4::text/);
+  assert.match(preliminary.sql, /r\.snapshot_date=\$5::date/);
+  assert.deepEqual(preliminary.params.slice(2), ['CIDEF', 'PRELIMINARY', '2026-09-09']);
+  assert.throws(() => parseRvmUniverseInput({ date_from: '2026-01-01', date_to: '2026-01-31', data_status: 'CONSOLIDATED', snapshot_date: '2026-01-31' }), /SNAPSHOT_DATE_ONLY_VALID_FOR_PRELIMINARY/);
 });
 
 test('Dongfeng multi-importer scopes compose the certified organization resolver', () => {

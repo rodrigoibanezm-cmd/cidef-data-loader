@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CIDEF Agent Domain API",
-    "version": "1.59.0",
+    "version": "1.60.0",
     "description": "Public read-only OpenAPI surface for the CIDEF agent. Canonical analytical domains are VENTAS, RVM and CRM. Transport endpoint names are compatibility surfaces and do not define conceptual domains."
   },
   "x-cidef-architecture": {
@@ -189,6 +189,7 @@
               "SHARE_TRAJECTORY",
               "COMPETITIVE_RELATION",
               "INVERSE_SHARE_MOVEMENT",
+              "SHARE_TRANSFER",
               "MARKET_HISTORY"
             ]
           },
@@ -576,8 +577,19 @@
       },
       "MarketInput": {
         "type": "object",
-        "description": "Public RVM capability input.",
+        "description": "Public RVM capability input. SHARE_TRANSFER follows CompetitiveShareTransferInput.",
         "properties": {
+          "mode": { "type": "string", "enum": ["HISTORICAL", "CURRENT_MTD"] },
+          "subject_entity": { "$ref": "#/components/schemas/CompetitiveTransferSubject" },
+          "comparison_scope": { "type": "string", "enum": ["TOTAL_MARKET", "CHINESE_MARKET", "MODEL_COMPARABLE_SET"] },
+          "competitor_level": { "type": "string", "enum": ["BRAND", "MODEL"] },
+          "temporal_basis": { "type": "string", "enum": ["MONTHLY_YOY", "QUARTER_YOY", "CALENDAR_YEAR_YOY", "ROLLING_12"] },
+          "date_cutoff": { "type": "string", "format": "date" },
+          "persistence_min_periods": { "type": "integer", "minimum": 1 },
+          "persistence_min_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+          "ranking": { "type": "string", "enum": ["CONSISTENCY", "SHARE_MAGNITUDE", "VIN_MAGNITUDE", "CURRENT_MTD"] },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "offset": { "type": "integer", "minimum": 0 },
           "target_model_ids": {
             "type": "array",
             "minItems": 1,
@@ -991,6 +1003,48 @@
           "warnings": { "type": "array", "items": { "type": "string" } }
         },
         "additionalProperties": false
+      },
+      "CompetitiveTransferSubject": {
+        "type": "object",
+        "required": ["level"],
+        "properties": {
+          "level": { "type": "string", "enum": ["CIDEF_TOTAL", "BRAND", "MODEL"] },
+          "brand_id": { "type": "integer", "minimum": 1 },
+          "model_id": { "type": "integer", "minimum": 1 }
+        },
+        "additionalProperties": false
+      },
+      "CompetitiveShareTransferInput": {
+        "type": "object",
+        "required": ["mode", "subject_entity", "comparison_scope", "competitor_level"],
+        "properties": {
+          "mode": { "type": "string", "enum": ["HISTORICAL", "CURRENT_MTD"] },
+          "subject_entity": { "$ref": "#/components/schemas/CompetitiveTransferSubject" },
+          "comparison_scope": { "type": "string", "enum": ["TOTAL_MARKET", "CHINESE_MARKET", "MODEL_COMPARABLE_SET"] },
+          "competitor_level": { "type": "string", "enum": ["BRAND", "MODEL"] },
+          "temporal_basis": { "type": "string", "enum": ["MONTHLY_YOY", "QUARTER_YOY", "CALENDAR_YEAR_YOY", "ROLLING_12"], "default": "MONTHLY_YOY" },
+          "date_from": { "type": "string", "format": "date" },
+          "date_to": { "type": "string", "format": "date" },
+          "date_cutoff": { "type": "string", "format": "date" },
+          "persistence_min_periods": { "type": "integer", "minimum": 1 },
+          "persistence_min_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+          "ranking": { "type": "string", "enum": ["CONSISTENCY", "SHARE_MAGNITUDE", "VIN_MAGNITUDE", "CURRENT_MTD"] },
+          "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "offset": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      },
+      "CompetitiveShareTransferOutput": {
+        "type": "object",
+        "required": ["engine", "version", "status", "warnings", "interpretation"],
+        "properties": {
+          "engine": { "const": "competitive_share_transfer_v01" },
+          "version": { "const": "0.1" },
+          "status": { "type": "string", "enum": ["EVALUABLE", "WARNING", "NOT_EVALUABLE"] },
+          "interpretation": { "const": "CANDIDATE_COMPETITIVE_COUNTERPART" },
+          "warnings": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": true
       },
       "OrganizationScope": {
         "type": "string",

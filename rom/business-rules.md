@@ -47,6 +47,8 @@ Una oportunidad territorial puede sostenerse a nivel de red CIDEF sin poder atri
 
 No interpretar `VIN OWN_STORES / RVM total` ni `VIN DEALERS / RVM total` como penetración del canal salvo que exista un denominador externo certificado compatible.
 
+Para análisis competitivo RVM↔RVM, la autoridad CIDEF depende del nivel: detalle de marca/modelo y mes actual usan marca RAW exacta `DFM`; el agregado `CIDEF_TOTAL` histórico usa sólo reglas certificadas `BRAND_AGGREGATE` según vigencia. La continuidad agregada de ZNA no autoriza continuidad de producto/modelo ni transforma ZNA en DFM.
+
 ## 4. Comparaciones justas
 Preferir comparaciones estructuralmente equivalentes:
 - tienda propia vs tiendas propias;
@@ -89,6 +91,7 @@ No:
 - asumir mala gestión desde bajo desempeño;
 - asumir que una tienda grande necesariamente debe crecer más;
 - convertir correlación en causa;
+- describir movimientos inversos de share como VIN transferidos o sustraídos;
 - mezclar universos para obtener comparaciones llamativas;
 - presentar oportunidad estimada como venta asegurada;
 - interpretar ausencia de evidencia como ausencia del fenómeno.

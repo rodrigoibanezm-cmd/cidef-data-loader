@@ -101,6 +101,12 @@ Una familia no debe volver a consultar RAW o MASTER para reconstruir reconocimie
 
 `VENTAS / VIN_GAP` expone `vin_gap_v01` V0.1 para un único mes cerrado en el grain `OWN_STORES × STORE × BRAND × MONTH`. El VIN observado proviene de `ventas_universe_v01`; la referencia proviene de la familia certificada `expected_monthly_*`. Entrega solamente `reference_vin - observed_vin`: no implica oportunidad, capturabilidad, riesgo, deterioro, causalidad ni recomendación.
 
+## Contrapartes competitivas de share
+
+`MARKET / SHARE_TRANSFER` expone `competitive_share_transfer_v01` V0.1. Identifica movimientos inversos observados entre un sujeto y marcas/modelos dentro del mismo denominador RVM. El resultado es `CANDIDATE_COMPETITIVE_COUNTERPART`, nunca evidencia de VIN transferidos ni causalidad. `CHINESE_MARKET` usa exclusivamente `marcas_master_v01.origin_group='CHINESE'`; `MODEL_COMPARABLE_SET` es un `OBSERVED_RELATION_SET`, no equivalencia física o comercial plena.
+
+En detalle y `CURRENT_MTD`, CIDEF es RAW DFM-only. Sólo `HISTORICAL + CIDEF_TOTAL` consume separadamente `brand_aggregate_organization_bucket`, derivado de reglas certificadas `BRAND_AGGREGATE` y su vigencia (DFM + ZNA cuando corresponde). ZNA no adquiere identidad de modelo DFM.
+
 ## Reglas de uso
 
 - RAW = evidencia, no identidad canónica.

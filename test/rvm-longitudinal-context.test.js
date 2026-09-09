@@ -214,6 +214,16 @@ test('integration builds the certified universe once and calculates without DB a
   assert.deepEqual(result.series.map((row) => row.value), [0.6, 0, null]);
 });
 
+test('longitudinal delegates status isolation to the certified universe without accepting snapshot logic', async () => {
+  let received;
+  await buildRvmLongitudinal({
+    metric: 'MARKET_SIZE', grain: 'TOTAL', organization_scope: 'ALL',
+    date_from: '2026-01-01', date_to: '2026-01-31', time_grain: 'MONTH',
+  }, { buildUniverse: async (input) => { received = input; return preparedUniverse(); } });
+  assert.equal('data_status' in received, false);
+  assert.equal('snapshot_date' in received, false);
+});
+
 test('longitudinal source has no database, SQL, RAW, MASTER or universe CTE execution', async () => {
   const source = await readFile(new URL('../lib/longitudinal/rvm.js', import.meta.url), 'utf8');
   assert.match(source, /buildRvmUniverse/);

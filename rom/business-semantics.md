@@ -269,6 +269,10 @@ Referencias posibles:
 
 Las reglas de compatibilidad física, temporal y de pertenencia viven en MASTER, `business-rules.md` y motores deterministas.
 
+### Contraparte competitiva candidata
+
+Un movimiento inverso simultáneo de share puede sustentar `CANDIDATE_COMPETITIVE_COUNTERPART` cuando sujeto y peer usan el mismo universo, período, estado de datos y corte temporal. Magnitud, repetición y consistencia son evidencia descriptiva separada. No sustentan por sí mismas transferencia causal de VIN. `PERSISTENT` requiere thresholds explícitos en el request; sin ellos sólo se permite `NONE`, `SINGLE_OBSERVATION` o `REPEATED_OBSERVATION`.
+
 ## 5. Nivel de conclusión
 Mantener la conclusión en el nivel realmente soportado por la evidencia.
 

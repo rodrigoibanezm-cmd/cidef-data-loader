@@ -138,3 +138,13 @@ test('domain endpoint rejects non-object input through central router', async ()
   assert.equal(res.statusCode, 400);
   assert.equal(res.payload.error_code, 'INVALID_CAPABILITY_INPUT');
 });
+
+test('MARKET endpoint exposes SHARE_TRANSFER and preserves its closed input', async () => {
+  const input = { mode: 'HISTORICAL', subject_entity: { level: 'CIDEF_TOTAL' }, comparison_scope: 'TOTAL_MARKET', competitor_level: 'BRAND', temporal_basis: 'MONTHLY_YOY', date_from: '2022-01-01', date_to: '2025-12-31' };
+  const res = responseRecorder();
+  let captured;
+  await handleDomainCapabilityRequest('MARKET', request('POST', { capability: 'SHARE_TRANSFER', input }), res, async (payload) => { captured = payload; return { routed: true }; });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(captured, { domain: 'MARKET', capability: 'SHARE_TRANSFER', input });
+  assert.ok(res.payload.result.routed);
+});

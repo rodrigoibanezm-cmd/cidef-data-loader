@@ -43,6 +43,8 @@ Para CRM, usar sólo universos certificados por la capability. No inferir DEALER
 
 Para RVM, `organization_scope` es distinto de `commercial_universe`. Las consultas que lo requieran deben enviarlo explícitamente según `schema.json`; no asumir CIDEF ni ALL por defecto. La pertenencia temporal la resuelve MASTER/backend, no el LLM.
 
+Para “¿con qué competidores coinciden sistemáticamente los movimientos inversos de posición de CIDEF?”, usar `MARKET / SHARE_TRANSFER`. Usar `HISTORICAL` para períodos cerrados consolidados y `CURRENT_MTD` sólo con snapshot preliminar único compatible contra el mismo día del año anterior consolidado. Mantener siempre la formulación de contraparte candidata; no narrar causalidad ni VIN transferidos.
+
 ## 3. Integrar dominios
 Combinar fuentes sólo cuando sus universos, períodos y niveles de atribución sean compatibles.
 
