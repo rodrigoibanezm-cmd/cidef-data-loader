@@ -11,20 +11,23 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       summary: ${{ steps.check.outputs.summary }}
+      ready: ${{ steps.check.outputs.ready }}
     steps:
       - id: check
         shell: bash
         run: |
-          set -euo pipefail
+          set -u
           URL='https://cidef-data-loader.vercel.app/api/custom-gpt'
-          DRY=$(curl --fail-with-body -sS -X POST "$URL" -H 'content-type: application/json' --data '{"action":"price_episode_canonicalizer_v01","input":{"dry_run":true}}')
+          DRY=$(curl -sS -X POST "$URL" -H 'content-type: application/json' --data '{"action":"price_episode_canonicalizer_v01","input":{"dry_run":true}}')
           echo "$DRY"
-          echo "$DRY" | jq -e '.ok == true and .result.dry_run == true and .result.price_versions.unresolved == 0 and .result.vin_assignment.ambiguous == 0 and .result.state_points.source_conflicts == 12' >/dev/null
-          SUMMARY=$(echo "$DRY" | jq -r '"PV\(.result.price_versions.total)/\(.result.price_versions.resolved)/\(.result.price_versions.excluded)/\(.result.price_versions.unresolved)-SP\(.result.state_points.total)/\(.result.state_points.clean)/\(.result.state_points.source_conflicts)-EP\(.result.episodes.total)/\(.result.episodes.clean)/\(.result.episodes.source_conflicts)-VIN\(.result.vin_assignment.eligible)/\(.result.vin_assignment.assigned)/\(.result.vin_assignment.unassigned)/\(.result.vin_assignment.ambiguous)"')
+          READY=$(echo "$DRY" | jq -r '(.ok == true and .result.dry_run == true and .result.price_versions.unresolved == 0 and .result.vin_assignment.ambiguous == 0 and .result.state_points.source_conflicts == 12) | tostring' 2>/dev/null || echo false)
+          SUMMARY=$(echo "$DRY" | jq -r 'if .ok == true then "PV\(.result.price_versions.total)/\(.result.price_versions.resolved)/\(.result.price_versions.excluded)/\(.result.price_versions.unresolved)-SP\(.result.state_points.total)/\(.result.state_points.clean)/\(.result.state_points.source_conflicts)-EP\(.result.episodes.total)/\(.result.episodes.clean)/\(.result.episodes.source_conflicts)-VIN\(.result.vin_assignment.eligible)/\(.result.vin_assignment.assigned)/\(.result.vin_assignment.unassigned)/\(.result.vin_assignment.ambiguous)" else "ERROR-\(.error // \"unknown\")" end' 2>/dev/null | tr ' ' '_' | cut -c1-180)
+          echo "ready=$READY" >> "$GITHUB_OUTPUT"
           echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
 
   refresh:
     needs: dry
+    if: needs.dry.outputs.ready == 'true'
     name: "refresh ${{ needs.dry.outputs.summary }}"
     runs-on: ubuntu-latest
     outputs:
@@ -43,7 +46,8 @@ jobs:
 
   done:
     needs: [dry, refresh]
-    name: "E2E ${{ needs.refresh.outputs.summary }}"
+    if: always()
+    name: "E2E dry=${{ needs.dry.outputs.summary }} real=${{ needs.refresh.outputs.summary }}"
     runs-on: ubuntu-latest
     steps:
-      - run: echo 'E2E complete'
+      - run: test '${{ needs.dry.outputs.ready }}' = 'true' && test '${{ needs.refresh.result }}' = 'success'
