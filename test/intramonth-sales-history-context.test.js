@@ -26,7 +26,37 @@ function dailyCertified(sourceRows, cutoffDate) {
   return calculateVentasDailyOrganizationalContext(context, maps(), { cutoffDate });
 }
 
-test('closed history matches certified daily context and keeps stores sparse positive', () => {
+test('default output is one monthly row with configurable milestone ratios and factors', () => {
+  const sourceRows = [
+    row('1', 'VIN-A', '03/05/2026', '10'),
+    row('2', 'VIN-B', '03/19/2026', '10'),
+    row('3', 'VIN-C', '03/21/2026', '20'),
+    row('4', 'VIN-D', '03/27/2026', '10'),
+    row('5', 'VIN-E', '03/31/2026', '30'),
+  ];
+  const result = calculateIntramonthSalesHistoryContext(
+    sourceRows,
+    maps(),
+    { start_month: '2026-03', end_month: '2026-03', milestone_days: [18, 20, 25] },
+    NOW,
+  );
+
+  assert.equal(result.inputs.output_mode, 'MONTHLY_MILESTONES');
+  assert.equal(result.monthly.length, 1);
+  assert.equal(result.monthly[0].month, '2026-03');
+  assert.equal(result.monthly[0].final_vin, 4);
+  assert.equal(result.monthly[0].vin_d18, 3);
+  assert.equal(result.monthly[0].ratio_d18, 0.75);
+  assert.equal(result.monthly[0].factor_close_d18, 4 / 3);
+  assert.equal(result.monthly[0].vin_d20, 3);
+  assert.equal(result.monthly[0].vin_d25, 3);
+  assert.equal(result.validation.milestone_never_exceeds_close, true);
+  assert.equal(result.validation.ratios_bounded_0_1, true);
+  assert.equal('cidef_daily' in result, false);
+  assert.equal('store_daily' in result, false);
+});
+
+test('DAILY compatibility mode preserves certified daily and sparse store detail', () => {
   const sourceRows = [
     row('1', 'VIN-A', '03/05/2026', '10'),
     row('2', null, '03/10/2026', '10'),
@@ -35,7 +65,10 @@ test('closed history matches certified daily context and keeps stores sparse pos
     row('5', 'VIN-B', '03/31/2026', '10'),
   ];
   const result = calculateIntramonthSalesHistoryContext(
-    sourceRows, maps(), { start_month: '2026-03', end_month: '2026-03' }, NOW,
+    sourceRows,
+    maps(),
+    { start_month: '2026-03', end_month: '2026-03', output_mode: 'DAILY' },
+    NOW,
   );
 
   assert.equal(result.cidef_daily.length, 31);
@@ -49,7 +82,7 @@ test('closed history matches certified daily context and keeps stores sparse pos
   assert.equal(result.validation.store_rows_sparse_positive, true);
 });
 
-test('open month stops at Santiago current date, excludes future evidence and has null labels', () => {
+test('open commercial month is excluded from close-history evaluation', () => {
   const sourceRows = [
     row('1', 'VIN-A', '09/01/2026', '10'),
     row('2', 'VIN-A', '09/10/2026', '20'),
@@ -59,27 +92,45 @@ test('open month stops at Santiago current date, excludes future evidence and ha
     sourceRows, maps(), { start_month: '2026-09', end_month: '2026-09' }, NOW,
   );
 
-  assert.deepEqual(result.cidef_daily.map((row) => row.cutoff_date), [
-    '2026-09-01', '2026-09-02',
-  ]);
-  assert.deepEqual(result.cidef_daily.map((row) => row.accumulated_sales), [1, 2]);
-  assert.equal(result.cidef_daily.every((row) => row.actual_close == null), true);
-  assert.equal(result.store_daily.every((row) => row.actual_close == null), true);
+  assert.deepEqual(result.monthly, []);
+  assert.deepEqual(result.evaluation_exclusions, [{ month: '2026-09', reason: 'OPEN_COMMERCIAL_MONTH' }]);
   assert.equal(result.coverage.observable_source_rows, 2);
+  assert.equal(result.coverage.months_evaluable, 0);
 });
 
-test('calendar emits leap February and closed labels reconcile at month end', () => {
+test('28, 29, 30 and 31-day commercial months reconcile their last day in DAILY mode', () => {
+  const cases = [
+    ['2025-02', 28, '2025-03-01'],
+    ['2024-02', 29, '2024-03-01'],
+    ['2026-04', 30, '2026-05-01'],
+    ['2026-05', 31, '2026-06-01'],
+  ];
+
+  for (const [month, days, finalDate] of cases) {
+    const result = calculateIntramonthSalesHistoryContext(
+      [], maps(), { start_month: month, end_month: month, output_mode: 'DAILY' }, NOW,
+    );
+    assert.equal(result.cidef_daily.length, days);
+    assert.equal(result.cidef_daily.at(-1).cutoff_date, finalDate);
+    assert.equal(result.cidef_daily.at(-1).actual_close, 0);
+    assert.equal(result.validation.closed_month_end_equals_label, true);
+  }
+});
+
+test('zero-sale closed month is returned but excluded from ratio evaluation', () => {
   const result = calculateIntramonthSalesHistoryContext(
-    [], maps(), { start_month: '2024-02', end_month: '2024-02' }, NOW,
+    [], maps(), { start_month: '2024-02', end_month: '2024-02', milestone_days: [20] }, NOW,
   );
-  assert.equal(result.cidef_daily.length, 29);
-  assert.equal(result.cidef_daily.at(-1).cutoff_date, '2024-02-29');
-  assert.equal(result.cidef_daily.at(-1).actual_close, 0);
-  assert.equal(result.validation.closed_month_end_equals_label, true);
-  assert.equal(result.validation.coverage_reconciles, true);
+  assert.equal(result.monthly.length, 1);
+  assert.equal(result.monthly[0].final_vin, 0);
+  assert.equal(result.monthly[0].vin_d20, 0);
+  assert.equal(result.monthly[0].ratio_d20, null);
+  assert.equal(result.monthly[0].factor_close_d20, null);
+  assert.equal(result.monthly[0].evaluable, false);
+  assert.deepEqual(result.evaluation_exclusions, [{ month: '2024-02', reason: 'ZERO_FINAL_VIN' }]);
 });
 
-test('rejects future months and unsupported inputs', () => {
+test('rejects future months, unsupported inputs and invalid milestone configuration', () => {
   assert.throws(
     () => calculateIntramonthSalesHistoryContext(
       [], maps(), { start_month: '2026-10', end_month: '2026-10' }, NOW,
@@ -91,5 +142,11 @@ test('rejects future months and unsupported inputs', () => {
       [], maps(), { start_month: '2026-03', end_month: '2026-03', grain: 'tienda' }, NOW,
     ),
     /Unsupported input/,
+  );
+  assert.throws(
+    () => calculateIntramonthSalesHistoryContext(
+      [], maps(), { start_month: '2026-03', end_month: '2026-03', milestone_days: [0, 32] }, NOW,
+    ),
+    /milestone_days/,
   );
 });
