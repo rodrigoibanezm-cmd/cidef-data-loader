@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/e2e-price-episode-fix.yml'
 
+# E2E rerun after post-audit SQL fix.
 jobs:
   dry:
     runs-on: ubuntu-latest
