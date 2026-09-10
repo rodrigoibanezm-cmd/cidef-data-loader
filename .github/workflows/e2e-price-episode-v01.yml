@@ -16,7 +16,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          URL='https://dealer-data-router-1ff7kf099-rodrigos-projects-479cda2f.vercel.app/api/custom-gpt'
+          URL='https://cidef-data-loader.vercel.app/api/custom-gpt'
           DRY=$(curl --fail-with-body -sS -X POST "$URL" -H 'content-type: application/json' --data '{"action":"price_episode_canonicalizer_v01","input":{"dry_run":true}}')
           echo "$DRY"
           echo "$DRY" | jq -e '.ok == true and .result.dry_run == true and .result.price_versions.unresolved == 0 and .result.vin_assignment.ambiguous == 0 and .result.state_points.source_conflicts == 12' >/dev/null
@@ -34,7 +34,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          URL='https://dealer-data-router-1ff7kf099-rodrigos-projects-479cda2f.vercel.app/api/custom-gpt'
+          URL='https://cidef-data-loader.vercel.app/api/custom-gpt'
           REAL=$(curl --fail-with-body -sS -X POST "$URL" -H 'content-type: application/json' --data '{"action":"price_episode_canonicalizer_v01","input":{"dry_run":false}}')
           echo "$REAL"
           echo "$REAL" | jq -e '.ok == true and .result.dry_run == false and .result.price_versions.unresolved == 0 and .result.vin_assignment.ambiguous == 0 and (.result.audit.overlaps|tonumber) == 0 and (.result.audit.grain_duplicates|tonumber) == 0 and (.result.audit.bridge_duplicates|tonumber) == 0 and (.result.audit.mismatches|tonumber) == 0 and (.result.audit.reconciliation_failures|tonumber) == 0 and (.result.audit.conflict_vins|tonumber) == 0' >/dev/null
