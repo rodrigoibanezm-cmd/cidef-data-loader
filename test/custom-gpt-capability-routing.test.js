@@ -13,19 +13,23 @@ const EXPECTED_COUNTS = Object.freeze({
   SALES: 17,
   MARKET: 7,
   CRM: 2,
+  PRICING: 1,
   DISCOVERY: 4,
   LONGITUDINAL: 3,
 });
 
 test('registry exposes exactly the designed public domains', () => {
-  assert.deepEqual(listCapabilityDomains(), ['SALES', 'MARKET', 'CRM', 'DISCOVERY', 'LONGITUDINAL']);
+  assert.deepEqual(listCapabilityDomains(), ['SALES', 'MARKET', 'CRM', 'PRICING', 'DISCOVERY', 'LONGITUDINAL']);
 });
 for (const [domain, count] of Object.entries(EXPECTED_COUNTS)) {
   test(`${domain} exposes the expected capability count`, () => assert.equal(listDomainCapabilities(domain).length, count));
 }
-test('registry exposes exactly 33 public capabilities', () => {
+test('registry exposes exactly 34 public capabilities', () => {
   const total = Object.values(DOMAIN_CAPABILITY_REGISTRY).reduce((sum, registry) => sum + Object.keys(registry).length, 0);
-  assert.equal(total, 33);
+  assert.equal(total, 34);
+});
+test('PRICING resolves HISTORY to pricing_history_v01', () => {
+  assert.deepEqual(resolveDomainCapability('pricing', 'history'), { domain: 'PRICING', capability: 'HISTORY', action: 'pricing_history_v01' });
 });
 test('MARKET resolves SHARE_TRANSFER to competitive_share_transfer_v01', () => {
   assert.deepEqual(resolveDomainCapability('market', 'share_transfer'), { domain: 'MARKET', capability: 'SHARE_TRANSFER', action: 'competitive_share_transfer_v01' });
