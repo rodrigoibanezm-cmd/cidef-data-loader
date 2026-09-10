@@ -105,6 +105,7 @@ test('data_status and snapshot are isolated in the certified universe', () => {
   assert.match(preliminary.sql, /r\.snapshot_date=\$5::date/);
   assert.deepEqual(preliminary.params.slice(2), ['CIDEF', 'PRELIMINARY', '2026-09-09']);
   assert.throws(() => parseRvmUniverseInput({ date_from: '2026-01-01', date_to: '2026-01-31', data_status: 'CONSOLIDATED', snapshot_date: '2026-01-31' }), /SNAPSHOT_DATE_ONLY_VALID_FOR_PRELIMINARY/);
+  assert.throws(() => parseRvmUniverseInput({ date_from: '2026-09-01', date_to: '2026-09-09', data_status: 'PRELIMINARY' }), /SNAPSHOT_DATE_REQUIRED_FOR_PRELIMINARY/);
 });
 
 test('Dongfeng multi-importer scopes compose the certified organization resolver', () => {

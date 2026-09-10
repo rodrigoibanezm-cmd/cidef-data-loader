@@ -15,7 +15,7 @@ test('custom GPT endpoint exposes router contract version on every response', as
   for (const req of [{ method: 'GET' }, { method: 'POST', body: {} }]) {
     const res = response();
     await handler(req, res);
-    assert.equal(res.body.router_version, '1.50.0');
+    assert.equal(res.body.router_version, '1.51.0');
   }
 });
 
@@ -78,6 +78,22 @@ test('custom GPT endpoint advertises all longitudinal v0.1 motors', async () => 
 test('custom GPT endpoint advertises crm_context_v01', async () => {
   const res = response(); await handler({ method: 'POST', body: {} }, res);
   assert.ok(res.body.allowedActions.includes('crm_context_v01'));
+});
+
+test('custom GPT endpoint advertises competitive_growth_matrix_v01', async () => {
+  const res = response(); await handler({ method: 'POST', body: {} }, res);
+  assert.ok(res.body.allowedActions.includes('competitive_growth_matrix_v01'));
+});
+
+test('custom GPT endpoint dispatches growth matrix validation through the real router', async () => {
+  const res = response();
+  await handler({ method: 'POST', body: {
+    action: 'competitive_growth_matrix_v01',
+    input: { date_from: '2025-02-01', date_to: '2025-01-31', comparison_scopes: ['TOTAL_MARKET'] },
+  } }, res);
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.error_code, 'INVALID_DATE_RANGE');
+  assert.doesNotMatch(res.body.error, /Unknown Custom GPT action/);
 });
 
 test('longitudinal validation errors are deterministic client errors', async () => {

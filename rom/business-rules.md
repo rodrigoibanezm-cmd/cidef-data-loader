@@ -49,6 +49,12 @@ No interpretar `VIN OWN_STORES / RVM total` ni `VIN DEALERS / RVM total` como pe
 
 Para análisis competitivo RVM↔RVM, la autoridad CIDEF depende del nivel: detalle de marca/modelo y mes actual usan marca RAW exacta `DFM`; el agregado `CIDEF_TOTAL` histórico usa sólo reglas certificadas `BRAND_AGGREGATE` según vigencia. La continuidad agregada de ZNA no autoriza continuidad de producto/modelo ni transforma ZNA en DFM.
 
+Para `competitive_growth_matrix_v01`, el numerador CIDEF no proviene de RVM: es siempre `ventas_universe_v01[commercial_universe=COMPANY]`. El benchmark es `rvm_universe_v01[organization_scope=ALL]`. Ambos eventos sólo se comparan por crecimiento, cambio absoluto y dirección; está prohibido interpretar o nombrar `VENTAS_COMPANY / RVM_REGISTRATIONS` como share. BRAND y MODEL usan exclusivamente `marca_id` y `modelo_id` certificados compartidos.
+
+En `competitive_growth_matrix_v01`, `YOY_MONTH`, `MOM` y `ROLLING_12_YOY` consumen directamente el `mes_venta` comercial certificado de VENTAS (día 02 a día 01 siguiente); RVM conserva meses calendario. `CALENDAR_YEAR_YOY` y `YTD_YOY` conservan rangos calendario. `CURRENT_MTD` aplica inicio comercial a VENTAS y día 01 calendario a RVM, con un mismo cutoff efectivo observable y comparación equivalente del año anterior.
+
+`CHINESE_MARKET` se define por `marcas_master_v01.origin_group='CHINESE'` en ambos dominios. `pais_vin` no clasifica una marca como china. Origen nulo permanece `UNKNOWN` y debe reconciliarse con CHINESE y OTHER.
+
 ## 4. Comparaciones justas
 Preferir comparaciones estructuralmente equivalentes:
 - tienda propia vs tiendas propias;

@@ -10,8 +10,8 @@ import {
 } from '../lib/custom-gpt-router.js';
 
 const EXPECTED_COUNTS = Object.freeze({
-  SALES: 16,
-  MARKET: 6,
+  SALES: 17,
+  MARKET: 7,
   CRM: 2,
   DISCOVERY: 4,
   LONGITUDINAL: 3,
@@ -23,12 +23,15 @@ test('registry exposes exactly the designed public domains', () => {
 for (const [domain, count] of Object.entries(EXPECTED_COUNTS)) {
   test(`${domain} exposes the expected capability count`, () => assert.equal(listDomainCapabilities(domain).length, count));
 }
-test('registry exposes exactly 31 public capabilities', () => {
+test('registry exposes exactly 33 public capabilities', () => {
   const total = Object.values(DOMAIN_CAPABILITY_REGISTRY).reduce((sum, registry) => sum + Object.keys(registry).length, 0);
-  assert.equal(total, 31);
+  assert.equal(total, 33);
 });
 test('MARKET resolves SHARE_TRANSFER to competitive_share_transfer_v01', () => {
   assert.deepEqual(resolveDomainCapability('market', 'share_transfer'), { domain: 'MARKET', capability: 'SHARE_TRANSFER', action: 'competitive_share_transfer_v01' });
+});
+test('MARKET resolves GROWTH_MATRIX to competitive_growth_matrix_v01', () => {
+  assert.deepEqual(resolveDomainCapability('market', 'growth_matrix'), { domain: 'MARKET', capability: 'GROWTH_MATRIX', action: 'competitive_growth_matrix_v01' });
 });
 test('every public capability maps to an action that exists in the legacy executor', () => {
   const actions = new Set(listCustomGptActions());

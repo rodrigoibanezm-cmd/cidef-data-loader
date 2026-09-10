@@ -115,6 +115,14 @@ Una familia no debe volver a consultar RAW o MASTER para reconstruir reconocimie
 
 En detalle y `CURRENT_MTD`, CIDEF es RAW DFM-only. Sólo `HISTORICAL + CIDEF_TOTAL` consume separadamente `brand_aggregate_organization_bucket`, derivado de reglas certificadas `BRAND_AGGREGATE` y su vigencia (DFM + ZNA cuando corresponde). ZNA no adquiere identidad de modelo DFM.
 
+## Matriz competitiva de crecimiento
+
+`MARKET / GROWTH_MATRIX` expone `competitive_growth_matrix_v01` V0.1. Compara crecimiento de `VENTAS_COMPANY` desde `ventas_universe_v01[COMPANY]` con inscripciones de `rvm_universe_v01[ALL]` para `TOTAL_MARKET`, `CHINESE_MARKET`, `BRAND` y `MODEL`. No calcula participación ni divide VENTAS por RVM. `CHINESE_MARKET` usa exclusivamente `marcas_master_v01.origin_group='CHINESE'`.
+
+La historia RVM usa sólo `CONSOLIDATED`. `CURRENT_MTD` requiere un único snapshot `PRELIMINARY` compatible y compara al mismo corte calendario del año anterior consolidado; sin snapshot válido devuelve `NOT_EVALUABLE`. La capability describe movimientos y diferenciales observados, sin competidor contraparte, causalidad ni lógica de share transfer.
+
+Las agregaciones mensuales CIDEF consumen el `mes_venta` comercial certificado (día 02 a día 01 siguiente), mientras RVM conserva mes calendario. Los scopes `CALENDAR_YEAR_YOY` y `YTD_YOY` mantienen rangos de fechas calendario.
+
 ## Reglas de uso
 
 - RAW = evidencia, no identidad canónica.

@@ -273,6 +273,12 @@ Las reglas de compatibilidad física, temporal y de pertenencia viven en MASTER,
 
 Un movimiento inverso simultáneo de share puede sustentar `CANDIDATE_COMPETITIVE_COUNTERPART` cuando sujeto y peer usan el mismo universo, período, estado de datos y corte temporal. Magnitud, repetición y consistencia son evidencia descriptiva separada. No sustentan por sí mismas transferencia causal de VIN. `PERSISTENT` requiere thresholds explícitos en el request; sin ellos sólo se permite `NONE`, `SINGLE_OBSERVATION` o `REPEATED_OBSERVATION`.
 
+### Movimiento competitivo de crecimiento
+
+`competitive_growth_matrix_v01` permite afirmar únicamente cómo varían VENTAS COMPANY y el benchmark RVM compatible, su diferencial porcentual y la combinación UP/DOWN/FLAT observada. No demuestra participación de mercado, captura disponible, causalidad ni transferencia desde un competidor específico. Una base anterior cero conserva cambio absoluto y dirección, pero no porcentaje ni diferencial porcentual evaluable.
+
+Sus períodos mensuales son etiquetas comparables con autoridades distintas por fuente: CIDEF usa `mes_venta` comercial certificado y RVM usa mes calendario. El diferencial compara las tasas resultantes; no declara equivalencia entre venta interna e inscripción.
+
 ## 5. Nivel de conclusión
 Mantener la conclusión en el nivel realmente soportado por la evidencia.
 

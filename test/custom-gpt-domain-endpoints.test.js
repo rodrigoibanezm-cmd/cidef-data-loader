@@ -148,3 +148,12 @@ test('MARKET endpoint exposes SHARE_TRANSFER and preserves its closed input', as
   assert.deepEqual(captured, { domain: 'MARKET', capability: 'SHARE_TRANSFER', input });
   assert.ok(res.payload.result.routed);
 });
+
+test('MARKET endpoint exposes GROWTH_MATRIX and preserves its closed input', async () => {
+  const input = { date_from: '2022-01-01', date_to: '2025-12-31', comparison_scopes: ['TOTAL_MARKET'], temporal_comparisons: ['YOY_MONTH'] };
+  const res = responseRecorder();
+  let captured;
+  await handleDomainCapabilityRequest('MARKET', request('POST', { capability: 'GROWTH_MATRIX', input }), res, async (payload) => { captured = payload; return { routed: true }; });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(captured, { domain: 'MARKET', capability: 'GROWTH_MATRIX', input });
+});

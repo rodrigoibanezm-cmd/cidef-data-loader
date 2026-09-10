@@ -3563,3 +3563,16 @@ shared_dependencies
 ```
 
 Después de implementado y validado, ese motor puede incorporarse a la superficie dedicada del agente si resulta útil para seguir diseñando o probando familias superiores.
+### `competitive_growth_matrix_v01`
+
+Compara `VENTAS_COMPANY` desde `ventas_universe_v01[COMPANY]` con `RVM_REGISTRATIONS` desde `rvm_universe_v01[ALL]` sin construir ratios entre dominios. Soporta `TOTAL_MARKET`, `CHINESE_MARKET`, `BRAND` y `MODEL` mediante identidad canónica `marca_id`/`modelo_id`.
+
+Comparaciones: `YOY_MONTH`, `ROLLING_12_YOY`, `MOM`, `CALENDAR_YEAR_YOY`, `YTD_YOY` y `CURRENT_MTD`. Para VENTAS, las comparaciones mensuales consumen `analytical_events.mes_venta` certificado: cada mes comercial corre desde el día calendario 02 hasta el día 01 del mes siguiente. RVM conserva mes calendario. `CALENDAR_YEAR_YOY` y `YTD_YOY` conservan rangos de fechas calendario.
+
+El histórico usa RVM `CONSOLIDATED`; `CURRENT_MTD` usa un único snapshot `PRELIMINARY` compatible contra el mismo corte del año anterior consolidado. En CIDEF el tramo MTD comienza en el inicio del mes comercial; en RVM comienza el día 01 calendario. Sin snapshot válido devuelve filas `NOT_EVALUABLE`.
+
+`CHINESE_MARKET` usa sólo `marcas_master_v01.origin_group='CHINESE'`. `pais_vin` no define origen de marca. La salida contiene cambios absolutos, porcentuales, diferencial en puntos porcentuales, dirección y las nueve combinaciones UP/DOWN/FLAT. No contiene share, competidor contraparte, causalidad ni lógica de transferencia.
+
+```json
+{"action":"competitive_growth_matrix_v01","input":{"date_from":"2022-01-01","date_to":"2025-12-31","comparison_scopes":["TOTAL_MARKET","CHINESE_MARKET","BRAND","MODEL"],"temporal_comparisons":["YOY_MONTH","ROLLING_12_YOY"]}}
+```

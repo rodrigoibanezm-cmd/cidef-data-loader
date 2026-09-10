@@ -67,7 +67,7 @@ test('RVM organization scope is explicit and orthogonal in OpenAPI', () => {
 test('CRM context contract is explicit in OpenAPI', () => {
   const document = schema();
   const schemas = document.components.schemas;
-  assert.equal(document.info.version, '1.60.0');
+  assert.equal(document.info.version, '1.62.0');
   assert.equal(schemas.CrmRequest.type, 'object');
   assert.equal('oneOf' in schemas.CrmRequest, false);
   assert.deepEqual(schemas.CrmRequest.required, ['capability', 'input']);
@@ -144,5 +144,13 @@ test('competitive share transfer contract is explicit and non-causal', () => {
   assert.deepEqual(schemas.CompetitiveShareTransferInput.properties.competitor_level.enum, ['BRAND', 'MODEL']);
   assert.equal(schemas.CompetitiveShareTransferOutput.properties.engine.const, 'competitive_share_transfer_v01');
   assert.equal(schemas.CompetitiveShareTransferOutput.properties.interpretation.const, 'CANDIDATE_COMPETITIVE_COUNTERPART');
+});
+test('competitive growth matrix contract keeps VENTAS and RVM measures distinct', () => {
+  const schemas = schema().components.schemas;
+  assert.ok(schemas.MarketRequest.properties.capability.enum.includes('GROWTH_MATRIX'));
+  assert.deepEqual(schemas.CompetitiveGrowthMatrixInput.properties.comparison_scopes.items.enum, ['TOTAL_MARKET', 'CHINESE_MARKET', 'BRAND', 'MODEL']);
+  assert.equal(schemas.CompetitiveGrowthMatrixOutput.properties.engine.const, 'competitive_growth_matrix_v01');
+  assert.equal(schemas.CompetitiveGrowthMatrixOutput.properties.cidef_measure.const, 'VENTAS_COMPANY');
+  assert.equal(schemas.CompetitiveGrowthMatrixOutput.properties.benchmark_measure.const, 'RVM_REGISTRATIONS');
 });
 test('ROM structure is atomic and exact', () => assert.deepEqual(readdirSync(join(root, 'rom')).sort(), expectedRom));

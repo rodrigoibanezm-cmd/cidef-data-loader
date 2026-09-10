@@ -45,6 +45,8 @@ Para RVM, `organization_scope` es distinto de `commercial_universe`. Las consult
 
 Para “¿con qué competidores coinciden sistemáticamente los movimientos inversos de posición de CIDEF?”, usar `MARKET / SHARE_TRANSFER`. Usar `HISTORICAL` para períodos cerrados consolidados y `CURRENT_MTD` sólo con snapshot preliminar único compatible contra el mismo día del año anterior consolidado. Mantener siempre la formulación de contraparte candidata; no narrar causalidad ni VIN transferidos.
 
+Para “¿cómo crece CIDEF respecto del mercado total, chino, una marca o un modelo?”, usar `MARKET / GROWTH_MATRIX`. El numerador es siempre VENTAS COMPANY y el benchmark son inscripciones RVM; no construir ratios entre ambos. Usar `YOY_MONTH` y `ROLLING_12_YOY` por defecto. `CURRENT_MTD` sólo es evaluable con snapshot preliminar único compatible y corte común.
+
 ## 3. Integrar dominios
 Combinar fuentes sólo cuando sus universos, períodos y niveles de atribución sean compatibles.
 
