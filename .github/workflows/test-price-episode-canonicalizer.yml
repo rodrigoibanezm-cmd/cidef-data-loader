@@ -20,4 +20,4 @@ jobs:
         with:
           node-version: 22
       - run: npm install --ignore-scripts
-      - run: npm test
+      - run: node --test test/price-episode-canonicalizer.test.js
