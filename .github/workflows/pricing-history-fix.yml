@@ -1,0 +1,84 @@
+name: pricing-history-fix
+on:
+  push:
+    paths:
+      - '.github/workflows/pricing-history-fix.yml'
+permissions:
+  contents: write
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Align ROM/OpenAPI with existing PRICING domain
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('rom/schema.json')
+          d=json.loads(p.read_text())
+          d['info']['version']='1.63.0'
+          d['paths']['/api/custom-gpt/pricing']={
+            'post': {
+              'operationId':'cidefPricing',
+              'summary':'Run one bounded published-pricing capability',
+              'description':'PRICING domain: canonical published commercial conditions. HISTORY reports price/bonus episodes and VIN invoiced within the requested calendar-period intersection; it does not report realized transaction price, revenue, margin, elasticity or causality.',
+              'x-cidef-domain':'PRICING',
+              'requestBody':{'required':True,'content':{'application/json':{'schema':{'$ref':'#/components/schemas/PricingRequest'}}}},
+              'responses':{'200':{'description':'Capability completed'},'400':{'description':'Invalid capability or input'},'405':{'description':'POST required'},'500':{'description':'Backend execution error'}}
+            }
+          }
+          schemas=d['components']['schemas']
+          schemas['PricingRequest']={
+            'type':'object','description':'Existing PRICING / HISTORY public request. Published commercial-condition history only.',
+            'required':['capability','input'],
+            'properties':{'capability':{'type':'string','enum':['HISTORY']},'input':{'$ref':'#/components/schemas/PricingInput'}},
+            'additionalProperties':False
+          }
+          schemas['PricingInput']={
+            'type':'object',
+            'description':'pricing_history_v01 V0.1. Identify one canonical VERSION by version_id or exact brand+model+version. Optional date bounds are inclusive calendar dates. include_conflicts is retained for request compatibility; SOURCE_CONFLICT remains visible for integrity.',
+            'properties':{
+              'brand':{'type':'string'},'model':{'type':'string'},'version':{'type':'string'},
+              'version_id':{'type':'integer'},'date_from':{'type':'string','format':'date'},'date_to':{'type':'string','format':'date'},
+              'include_conflicts':{'type':'boolean'},'price_episode_id':{'type':'integer'}
+            },
+            'additionalProperties':False
+          }
+          p.write_text(json.dumps(d,ensure_ascii=False,indent=2)+'\n')
+
+          p=Path('test/rom-consistency.test.js')
+          s=p.read_text()
+          s=s.replace("const requestSchemaByDomain = Object.freeze({ SALES: 'SalesRequest', MARKET: 'MarketRequest', CRM: 'CrmRequest', DISCOVERY: 'DiscoveryRequest', LONGITUDINAL: 'LongitudinalRequest' });", "const requestSchemaByDomain = Object.freeze({ SALES: 'SalesRequest', MARKET: 'MarketRequest', CRM: 'CrmRequest', PRICING: 'PricingRequest', DISCOVERY: 'DiscoveryRequest', LONGITUDINAL: 'LongitudinalRequest' });")
+          s=s.replace("assert.equal(document.info.version, '1.62.0');", "assert.equal(document.info.version, '1.63.0');")
+          insert="""\ntest('PRICING history contract is explicit in OpenAPI', () => {\n  const document = schema();\n  const schemas = document.components.schemas;\n  assert.equal(document.paths['/api/custom-gpt/pricing'].post.operationId, 'cidefPricing');\n  assert.deepEqual(schemas.PricingRequest.properties.capability.enum, ['HISTORY']);\n  assert.equal(schemas.PricingRequest.properties.input.$ref, '#/components/schemas/PricingInput');\n  assert.equal(schemas.PricingInput.additionalProperties, false);\n  for (const field of ['version_id','brand','model','version','date_from','date_to','include_conflicts','price_episode_id']) assert.ok(schemas.PricingInput.properties[field], field);\n});\n"""
+          marker="test('every local OpenAPI reference resolves'"
+          if "PRICING history contract is explicit" not in s:
+            s=s.replace(marker,insert+marker)
+          p.write_text(s)
+
+          p=Path('rom/catalog.md')
+          s=p.read_text()
+          section="""\n## Historia de condición comercial publicada\n\n`PRICING / HISTORY` expone `pricing_history_v01` V0.1 sobre `price_episode_canonico_v01` y `price_episode_vin_v01`. Describe exclusivamente `PUBLISHED_COMMERCIAL_CONDITION`: precio y bonos publicados por episodio canónico. Los filtros `date_from`/`date_to` usan calendario real e intersección inclusiva con la vigencia; los VIN se cuentan únicamente dentro de esa intersección desde el bridge canónico. NULL permanece evidencia no disponible/determinable y nunca se interpreta como cero. `SOURCE_CONFLICT` permanece visible y no se resuelve eligiendo una fuente. La capability no representa precio transaccional realizado, revenue, margen, elasticidad, causalidad ni recomendación.\n"""
+          if '## Historia de condición comercial publicada' not in s:
+            s=s.replace('\n## Reglas de uso\n',section+'\n## Reglas de uso\n')
+          p.write_text(s)
+          PY
+      - name: Targeted pricing and routing tests
+        run: node --test test/pricing-history.test.js test/custom-gpt-capability-routing.test.js test/custom-gpt-domain-endpoints.test.js test/rom-consistency.test.js
+      - name: Full test suite
+        run: npm test
+      - name: Commit ROM alignment
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add rom/schema.json rom/catalog.md test/rom-consistency.test.js
+          git diff --cached --quiet || git commit -m 'docs(pricing): align HISTORY public contract'
+          git push origin main
