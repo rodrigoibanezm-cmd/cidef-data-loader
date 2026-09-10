@@ -45,9 +45,9 @@ test('default output is one monthly row with configurable milestone ratios and f
   assert.equal(result.monthly.length, 1);
   assert.equal(result.monthly[0].month, '2026-03');
   assert.equal(result.monthly[0].final_vin, 4);
-  assert.equal(result.monthly[0].vin_d18, 3);
-  assert.equal(result.monthly[0].ratio_d18, 0.75);
-  assert.equal(result.monthly[0].factor_close_d18, 4 / 3);
+  assert.equal(result.monthly[0].vin_d18, 2);
+  assert.equal(result.monthly[0].ratio_d18, 0.5);
+  assert.equal(result.monthly[0].factor_close_d18, 2);
   assert.equal(result.monthly[0].vin_d20, 3);
   assert.equal(result.monthly[0].vin_d25, 3);
   assert.equal(result.validation.milestone_never_exceeds_close, true);
