@@ -27,11 +27,20 @@ test('version_id and textual identity inputs parse deterministically', () => {
   const p=parsePricingHistoryInput({brand:'DONGFENG',model:'MAGE',version:'MAGE 1.5T E2'}); assert.equal(p.brand,'DONGFENG');
 });
 test('date_from/date_to select overlapping episodes', () => { assert.deepEqual(run({version_id:7176,date_from:'2026-02-15',date_to:'2026-03-10',include_conflicts:true}).history.map(x=>x.price_episode_id),[2,3]); });
+test('date filters use EPISODE_OVERLAP with FULL_EPISODE metrics when cutting an episode', () => {
+  const result=run({version_id:7176,date_from:'2026-02-15',date_to:'2026-02-16',include_conflicts:true});
+  assert.equal(result.date_filter_semantics,'EPISODE_OVERLAP');
+  assert.equal(result.metrics_scope,'FULL_EPISODE');
+  assert.equal(result.history.length,1);
+  const x=result.history[0];
+  assert.deepEqual([x.vigencia_desde,x.vigencia_hasta,x.days_active],['2026-02-01','2026-02-28',28]);
+  assert.deepEqual([x.vin_facturados,x.primer_vin_fecha,x.ultimo_vin_fecha],[2,'2026-02-10','2026-02-20']);
+});
 test('include_conflicts true preserves conflict without invented values or VIN', () => { const x=run().history.find(x=>x.price_episode_id===3); assert.equal(x.precio_lista,null); assert.equal(x.vin_facturados,0); });
 test('include_conflicts false hides conflict from history', () => { assert.equal(run({version_id:7176,include_conflicts:false}).history.some(x=>x.source_status==='SOURCE_CONFLICT'),false); });
 test('days_active is inclusive and null semantics preserved', () => { const x=run().history[0]; assert.equal(x.days_active,31); assert.equal(x.precio_neto,null); assert.equal(x.bono_cidef,null); });
 test('summary is correct', () => { assert.deepEqual(run().summary,{episodes:5,price_changes:1,bonus_changes:1,combined_changes:1,conflicts:1,vin_facturados:4}); });
-test('coverage exposes derivable metrics and explicit unavailable metrics', () => { const c=run().coverage; assert.deepEqual([c.episodes_total,c.episodes_ok,c.episodes_conflict,c.vin_assigned],[5,4,1,4]); assert.equal(c.coverage_ratio,null); });
+test('coverage exposes derivable metrics and explicit unavailable metrics', () => { const c=run().coverage; assert.deepEqual([c.episodes_total,c.episodes_ok,c.episodes_conflict,c.vin_assigned],[5,4,1,4]); assert.equal(c.coverage_ratio,null); assert.equal(c.status,'PARTIAL'); });
 test('no duplicate episodes', () => { assert.throws(()=>run(undefined,[episodes[0],episodes[0]]),/DUPLICATE_PRICE_EPISODE/); });
 test('chronological ascending order', () => { const shuffled=[episodes[4],episodes[0],episodes[2],episodes[1],episodes[3]]; assert.deepEqual(run(undefined,shuffled).history.map(x=>x.price_episode_id),[1,2,3,4,5]); });
 test('VIN reconciliation is enforced against canonical VIN layer', () => { const bad=[...episodes]; bad[0]={...bad[0],vin_facturados_en_vigencia:2}; assert.throws(()=>run(undefined,bad),/VIN_RECONCILIATION_FAILED/); });
