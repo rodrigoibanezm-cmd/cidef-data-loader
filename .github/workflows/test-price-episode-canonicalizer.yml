@@ -1,0 +1,23 @@
+name: Test price episode canonicalizer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/canonical/price-episode-canonicalizer-v01.js'
+      - 'test/price-episode-canonicalizer.test.js'
+      - 'lib/custom-gpt-router.js'
+      - 'api/custom-gpt.js'
+      - '.github/workflows/test-price-episode-canonicalizer.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - run: npm test
