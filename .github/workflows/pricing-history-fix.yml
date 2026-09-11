@@ -16,6 +16,8 @@ jobs:
         with:
           node-version: 20
       - run: npm install
+      - name: Locate stale pricing fixture
+        run: grep -R -n -F "runCustomGptAction routes pricing_history_v01 through registered real motor" test || true
       - name: Align ROM/OpenAPI with existing PRICING domain
         run: |
           python3 - <<'PY'
