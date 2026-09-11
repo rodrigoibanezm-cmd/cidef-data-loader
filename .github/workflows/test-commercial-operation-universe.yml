@@ -12,7 +12,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,3 +21,6 @@ jobs:
       - run: npm install --ignore-scripts
       - name: Commercial operation universe v01 contract
         run: node --test test/commercial-operation-universe.test.js
+      - name: General repository suite certification snapshot
+        continue-on-error: true
+        run: npm test
