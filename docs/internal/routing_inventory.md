@@ -117,7 +117,7 @@ POST /api/custom-gpt/market
 | Capability pública propuesta | Action física actual | Rol |
 |---|---|---|
 | `COMPETITIVE_CONTEXT` | `competitive_context_v01` | Contexto competitivo de un universo RVM |
-| `SHARE_TRAJECTORY` | `competitive_share_trajectory_v01` | Trayectoria de participación |
+| `SHARE_TRAJECTORY` | `competitive_share_trajectory_v01` | Trayectoria de share por modelo comparable o marca canónica |
 | `COMPETITIVE_RELATION` | `competitive_relation_v01` | Relación observada entre entidades competitivas |
 | `INVERSE_SHARE_MOVEMENT` | `competitive_inverse_share_movement_v01` | Movimientos inversos de share con evidencia |
 | `MARKET_HISTORY` | `rvm_market_history_v01` | Evolución histórica de un universo RVM |

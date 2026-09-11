@@ -591,7 +591,7 @@
       },
       "MarketInput": {
         "type": "object",
-        "description": "Public RVM capability input. SHARE_TRANSFER follows CompetitiveShareTransferInput; GROWTH_MATRIX follows CompetitiveGrowthMatrixInput.",
+        "description": "Public RVM capability input. SHARE_TRAJECTORY accepts either the legacy target_model_ids model-peer contract or entity={brand|brand_id} with explicit organization_scope for a canonical brand trajectory. SHARE_TRANSFER follows CompetitiveShareTransferInput; GROWTH_MATRIX follows CompetitiveGrowthMatrixInput.",
         "properties": {
           "mode": { "type": "string", "enum": ["HISTORICAL", "CURRENT_MTD"] },
           "subject_entity": { "$ref": "#/components/schemas/CompetitiveTransferSubject" },
@@ -610,8 +610,11 @@
             "uniqueItems": true,
             "items": { "type": "integer" }
           },
+          "entity": { "$ref": "#/components/schemas/RvmBrandEntity" },
+          "organization_scope": { "$ref": "#/components/schemas/OrganizationScope" },
           "date_from": { "type": "string", "format": "date" },
           "date_to": { "type": "string", "format": "date" },
+          "cutoff_mode": { "type": "string", "enum": ["FULL_PERIOD", "SAME_DAY"] },
           "comparison_scopes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "enum": ["TOTAL_MARKET", "CHINESE_MARKET", "BRAND", "MODEL"] } },
           "temporal_comparisons": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "enum": ["YOY_MONTH", "ROLLING_12_YOY", "MOM", "CALENDAR_YEAR_YOY", "YTD_YOY"] } },
           "include_current_mtd": { "type": "boolean", "default": false },
@@ -1033,6 +1036,17 @@
           "brand_id": { "type": "integer", "minimum": 1 },
           "model_id": { "type": "integer", "minimum": 1 }
         },
+        "additionalProperties": false
+      },
+      "RvmBrandEntity": {
+        "type": "object",
+        "description": "Canonical business identity selector for MARKET / SHARE_TRAJECTORY. Send exactly one of brand or brand_id. Text is resolved by exact MASTER normalization; no fuzzy matching or model expansion is performed by the agent.",
+        "properties": {
+          "brand": { "type": "string", "minLength": 1 },
+          "brand_id": { "type": "integer", "minimum": 1 }
+        },
+        "minProperties": 1,
+        "maxProperties": 1,
         "additionalProperties": false
       },
       "CompetitiveShareTransferInput": {

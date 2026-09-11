@@ -2096,9 +2096,11 @@ Este motor/contexto **no define todavía competidores reales**, no incorpora mic
 
 Motor determinista v0.2 de trayectoria mensual para **Familia 2 — POSICIÓN COMPETITIVA**.
 
-Pregunta:
+Preguntas:
 
 > ¿Cómo cambia mes a mes el share y ranking de los modelos dentro del mismo peer universe observable de un target CIDEF?
+
+> ¿Cómo cambia mes a mes el share de una marca canónica dentro del mercado RVM?
 
 Inputs:
 
@@ -2110,6 +2112,18 @@ geography?: region | comuna
 origin_group?: CHINESE | NON_CHINESE | UNKNOWN
 output_mode?: trajectory | monthly   default trajectory
 entity_keys?: string[]               required only for monthly; max 50
+
+or, for canonical brand trajectory:
+
+entity:
+  brand: string                      exact canonical MASTER identity
+  # or brand_id: bigint
+organization_scope: ALL | CIDEF | INDUMOTORA | MACO_TATTERSALL
+date_from: YYYY-MM-DD
+date_to: YYYY-MM-DD
+time_grain?: MONTH | YEAR            default MONTH
+cutoff_mode?: FULL_PERIOD | SAME_DAY default FULL_PERIOD
+cutoff_date?: YYYY-MM-DD
 ```
 
 Política:
@@ -2122,6 +2136,13 @@ Política:
 - con `origin_group`, el denominador mensual se recalcula dentro del grupo;
 - entidades observadas en el período se zero-fill en meses sin inscripción: units=0, share=0, rank=null;
 - no define competidores ni thresholds.
+- el selector `entity` acepta exactamente `brand` o `brand_id`; no puede mezclarse con `target_model_ids`;
+- una marca textual se resuelve por identidad canónica exacta en `marcas_master_v01`, nunca mediante `LIKE`, fuzzy matching o expansión construida por el agente;
+- la ruta de marca consume `rvm_longitudinal_context_v01` sobre `rvm_universe_v01`; el backend conserva identidad y pertenencia RVM;
+- para marca, `organization_scope` es obligatorio y `ALL` significa mercado total, no una organización MASTER;
+- en `MARKET_SHARE`, `organization_scope` filtra el numerador y el denominador conserva el mercado RVM certificado del mismo período;
+- una marca no resoluble o ambigua retorna estado explícito y no ejecuta una trayectoria parcial;
+- `COMPETITIVE_CONTEXT`, `COMPETITIVE_RELATION` e `INVERSE_SHARE_MOVEMENT` permanecen estrictamente model-scoped porque describen peer universes alrededor de modelos CIDEF.
 
 Outputs:
 
@@ -2136,6 +2157,9 @@ monthly:
 
 both:
   scope + targets + validation + warnings
+
+brand entity:
+  scope + entity + coverage + monthly + change + validation + warnings + metadata
 ```
 
 Validaciones adicionales de monthly:

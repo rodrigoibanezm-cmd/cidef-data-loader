@@ -174,6 +174,11 @@ INVERSE_SHARE_MOVEMENT
 MARKET_HISTORY
 ```
 
+`SHARE_TRAJECTORY` acepta dos contratos compatibles: el legado model-scoped con
+`target_model_ids`, y marca canónica con `entity={brand|brand_id}` más
+`organization_scope` explícito. La ruta de marca resuelve MASTER y consume
+`rvm_universe_v01` en backend; el agente no expande marca a modelos.
+
 ### CRM
 
 ```text
