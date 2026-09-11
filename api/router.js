@@ -17,6 +17,7 @@ const TENANTS = {
       'import_forum',
       'forum_canonicalizer_v01',
       'forum_commercial_bridge_v01',
+      'commercial_operation_master_v01',
       'refresh_vehiculo_canonico_v01',
       'patch_inventario_modelo',
       'rvm_market_history_v01',
