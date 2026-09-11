@@ -1,60 +1,161 @@
 # CIDEF Analytical Runtime
 
-Runtime analítico determinista para CIDEF.
+Runtime analítico determinista para el agente CIDEF.
 
-Este repositorio contiene la capa que permite a un agente consultar datos de negocio mediante capacidades analíticas controladas. Para efectos de esta documentación, las tablas consumidas por el runtime se consideran entradas ya disponibles: la carga, ingesta y construcción de esas tablas queda fuera de alcance.
+Este README es el punto de entrada a la documentación del runtime. Describe cómo el agente consume capacidades analíticas sobre datos ya disponibles. La construcción, carga e ingesta de esas tablas queda fuera de esta frontera documental.
 
-## Principios
+## Arquitectura
 
-- **LLM para semántica; motores para cálculo.** El agente interpreta la pregunta y consume resultados deterministas. Los cálculos y reglas de negocio viven en backend.
-- **No reconstruction.** El agente no debe reconstruir manualmente identidades, universos, relaciones ni cálculos que pertenecen al runtime.
-- **Identidad y universos en backend.** La resolución de entidades y pertenencia ocurre sobre autoridades certificadas del sistema.
-- **Contratos explícitos.** Las capabilities públicas exponen entradas y salidas controladas; los detalles físicos internos no deben convertirse en responsabilidad del agente.
-- **Separación entre cálculo y presentación.** El flujo conceptual es JSON → motores → JSON → render/agente.
+Los dominios analíticos canónicos son:
 
-## Arquitectura de alto nivel
+```text
+VENTAS
+RVM
+CRM
+```
+
+El flujo vigente es:
+
+```text
+pregunta
+→ dominio(s)
+→ por dominio:
+   contexto → agente
+   universo certificado → familia determinista → resultado → agente
+→ semántica de negocio
+→ síntesis
+→ presentación
+```
+
+El contexto y el universo son carriles distintos. El contexto ayuda al agente a interpretar; no entra al cálculo de la familia. Las familias calculan sobre universos previamente preparados y no reconstruyen RAW, MASTER, identidad, pertenencia ni reconocimiento.
+
+## Responsabilidades
+
+### Agente
+
+El agente:
+
+- comprende la pregunta;
+- selecciona dominios y capabilities públicas;
+- integra evidencia entre dominios;
+- aplica reglas y semántica de negocio;
+- sintetiza y presenta resultados.
+
+El agente no redefine métricas, identidad, universos ni cálculos deterministas.
+
+### Backend determinista
+
+El backend:
+
+- resuelve identidad y pertenencia;
+- prepara universos analíticos certificados;
+- ejecuta familias y motores deterministas;
+- valida contratos, scopes e inputs;
+- devuelve evidencia estructurada al agente.
+
+Regla central: **NO RECONSTRUCTION**. Si una lógica pertenece al backend, el agente no debe reconstruirla manualmente.
+
+## Universos certificados
+
+Cada dominio principal tiene una capa interna de preparación analítica:
+
+- VENTAS → `ventas_universe_v01`
+- RVM → `rvm_universe_v01`
+- CRM → `crm_universe_v01`
+
+Estos universos son internos al runtime. No son capabilities públicas ni tablas que el agente deba reconstruir mediante DISCOVERY.
+
+## Superficie pública
+
+El agente trabaja con **dominios y capabilities públicas**, no con nombres físicos de motores.
+
+Endpoints públicos por superficie:
+
+```text
+POST /api/custom-gpt/sales
+POST /api/custom-gpt/market
+POST /api/custom-gpt/crm
+POST /api/custom-gpt/pricing
+POST /api/custom-gpt/discovery
+POST /api/custom-gpt/longitudinal
+```
+
+Cada endpoint acepta un contrato acotado de:
+
+```text
+capability + input
+```
+
+Los nombres de transporte no redefinen los dominios conceptuales:
+
+- `SALES` expone capabilities de VENTAS.
+- `MARKET` expone capabilities de RVM.
+- `CRM` expone capabilities de CRM.
+- `PRICING` es una superficie analítica especializada.
+- `DISCOVERY` es una superficie auxiliar de exploración controlada; no es un dominio analítico.
+- `LONGITUDINAL` es un modo temporal aplicable a VENTAS, RVM o CRM; no es un cuarto dominio analítico.
+
+La autoridad operacional de contratos e inputs públicos es [`rom/schema.json`](./rom/schema.json).
+
+## Capas del runtime
 
 ```text
 Tablas disponibles
       ↓
-Identidad / universos / contexto
+MASTER / autoridades canónicas
       ↓
-Motores deterministas
+contextos + universos certificados
       ↓
-Router / capabilities públicas
+familias / motores deterministas
       ↓
-Agente
+registry + router de capabilities
+      ↓
+API pública
+      ↓
+agente
+      ↓
+semántica + síntesis + presentación
 ```
 
-El runtime transforma preguntas de negocio en consultas a capacidades deterministas. El agente no reemplaza los motores ni reconstruye su lógica.
+El runtime contiene además componentes OLAP, capas canónicas, resolución de identidad, motores analíticos y validaciones compartidas. Su función es encapsular lógica determinista detrás de contratos públicos estables.
 
-## Dominios
+## Documentación canónica
 
-El runtime está organizado actualmente alrededor de los siguientes dominios analíticos:
+### Operación del agente
 
-- **VENTAS** — contexto y análisis determinista de ventas.
-- **RVM** — contexto y análisis del mercado automotor.
-- **CRM** — contexto operacional y comercial de leads.
-- **PRICING** — historia y condición comercial publicada de productos.
-- **DISCOVERY** — acceso controlado de inspección sobre superficies de datos autorizadas.
+- [Instrucciones canónicas](./rom/instructions.md)
+- [Intake: pregunta → plan mínimo de evidencia](./rom/intake.md)
+- [Orquestación analítica](./rom/orchestrator.md)
+- [Reglas de negocio](./rom/business-rules.md)
+- [Semántica analítica](./rom/business-semantics.md)
+- [Síntesis](./rom/synthesis.md)
+- [Presentación](./rom/presentation.md)
+- [Render de discovery](./rom/render.md)
+- [Composición de informes](./rom/report.md)
+- [Catálogo de datos y autoridades](./rom/catalog.md)
+- [Contrato OpenAPI público](./rom/schema.json)
 
-## Documentación
+### Arquitectura y autoridades analíticas
 
-La documentación detallada vive en [`docs/`](./docs/).
+- [Arquitectura analítica canónica](./docs/architecture/CANONICAL_ANALYTICS_V0.1.md)
+- [Gobierno de scope comercial](./docs/architecture/COMMERCIAL_SCOPE_GOVERNANCE_V0.1.md)
+- [Universo analítico VENTAS](./docs/architecture/VENTAS_ANALYTICAL_UNIVERSE_V0.1.md)
+- [Universo analítico RVM](./docs/architecture/RVM_ANALYTICAL_UNIVERSE_V0.1.md)
+- [Universo analítico CRM](./docs/architecture/CRM_ANALYTICAL_UNIVERSE_V0.1.md)
+- [MASTER V0.1](./docs/master/MASTER_LAYER_V0.1.md)
+- [Capa canónica](./docs/canonical/)
+- [Runtime VENTAS](./docs/runtime/)
+- [Analytics](./docs/analytics/)
 
-Su objetivo es describir exclusivamente el sistema existente: qué componentes existen, por qué existen, qué hacen, de qué dependen y qué garantías entregan.
+## Fuera de alcance documental
 
-A medida que cada área sea documentada, este README funcionará como router hacia sus documentos canónicos.
+Esta documentación no cubre la capa de adquisición de datos:
 
-## Fuera de alcance
+- loaders;
+- importadores;
+- parsing de archivos;
+- sincronización de fuentes;
+- pipelines de ingesta;
+- construcción externa de las tablas de entrada.
 
-Esta documentación no cubre:
-
-- loaders e ingesta de datos;
-- parsing de archivos o fuentes;
-- pipelines de carga;
-- migraciones de origen;
-- roadmap o trabajo futuro;
-- diseños todavía no estabilizados.
-
-La documentación describe el **runtime analítico actual**, considerando las tablas de entrada como datos construidos y mantenidos fuera de esta frontera.
+Para esta documentación, el runtime comienza con datos ya disponibles y termina en evidencia analítica interpretable por el agente.
