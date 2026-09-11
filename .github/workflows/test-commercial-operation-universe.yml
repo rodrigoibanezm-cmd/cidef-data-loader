@@ -1,0 +1,23 @@
+name: test-commercial-operation-universe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/commercial-operation-universe/buildCommercialOperationUniverse.js'
+      - 'test/commercial-operation-universe.test.js'
+      - '.github/workflows/test-commercial-operation-universe.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - name: Commercial operation universe v01 contract
+        run: node --test test/commercial-operation-universe.test.js
