@@ -567,6 +567,18 @@
           "current_month": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$" },
           "month": { "type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$", "description": "VIN_GAP target closed calendar month." },
           "grain": { "type": "string", "description": "PACE_CHANGE supports only COMPANY or STORE. Other VENTAS capabilities retain their own grain contracts." },
+          "percentiles": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 10,
+            "uniqueItems": true,
+            "description": "INTRAMONTH_HISTORY only. Optional percentiles for MONTHLY_MILESTONES; decimals are allowed, runtime normalizes values ascending, and the field is incompatible with DAILY.",
+            "items": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
           "pareto_threshold_pct": { "type": "number", "minimum": 0, "maximum": 100 },
           "median_ape_threshold_pct": { "type": "number", "minimum": 0 },
           "p90_ape_threshold_pct": { "type": "number", "minimum": 0 },
