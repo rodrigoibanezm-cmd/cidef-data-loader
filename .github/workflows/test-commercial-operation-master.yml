@@ -1,0 +1,25 @@
+name: test-commercial-operation-master
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/motors/commercial-operation-master-v01.js'
+      - 'lib/motors/forum-commercial-bridge-v01.js'
+      - 'lib/motors/index.js'
+      - 'test/commercial-operation-master.test.js'
+      - '.github/workflows/test-commercial-operation-master.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - name: Commercial operation master contract
+        run: node --test test/commercial-operation-master.test.js
