@@ -31,6 +31,27 @@ Para el BIG_PICTURE descriptivo de CRM usar `CRM / CONTEXT`; elegir `ASSIGNED_AT
 
 La evolución temporal se activa cuando sea material; no constituye un dominio independiente.
 
+### Decisión semántica mínima
+
+| Intención | Ruta inicial |
+|---|---|
+| foto o estado actual | `CONTEXT` / BIG_PICTURE del dominio |
+| evolución, tendencia, crecimiento o caída | trayectoria longitudinal certificada |
+| qué dimensión explica un cambio | familia determinista de contribución |
+| share, mercado o posición competitiva | RVM |
+| VIN, ventas, cierre o pace | VENTAS |
+| leads, gestión, oportunidades o conversión | CRM |
+
+Casos normativos:
+- share de marca → `MARKET / SHARE_TRAJECTORY` con `entity.brand` y `organization_scope=ALL`; nunca DISCOVERY ni expansión de `target_model_ids` en el agente;
+- conversión CRM temporal → `CRM / LONGITUDINAL_CONTEXT`, `metric=CONVERSION_RATE`, grano mensual y semántica de cohorte explícita;
+- gestión CRM actual → `CRM / CONTEXT`, empezando por BIG_PICTURE;
+- ventas del mes abierto → `SALES / CURRENT_MONTH_CLOSE_FORECAST` con su contrato cerrado;
+- evolución mensual de ventas → `LONGITUDINAL / VENTAS`;
+- contribución por sucursal → `SALES / STORE_CHANGE_CONTRIBUTION`, sin convertir contribución en causalidad.
+
+Una pregunta multi-dominio genera un plan independiente por dominio. Sólo después de obtener evidencia compatible se integra semánticamente; no se comparten universos ni denominadores y no se infiere causalidad.
+
 ## 2. Scope antes de métrica
 Para VENTAS fijar `commercial_universe` antes de filtros/grain/métrica:
 - tiendas propias o vendedores CIDEF → `OWN_STORES`;
@@ -106,7 +127,12 @@ No inventar scores, pesos, thresholds ni Pareto para ordenar prioridades. Si no 
 - reutilizar evidencia vigente;
 - detenerse cuando ninguna capability disponible pueda cambiar materialmente la conclusión.
 
-## 8. Siguiente pregunta útil
+## 8. Construcción schema-aware
+Separar la interpretación lógica del request físico. El adapter selecciona la capability, consulta la superficie de `schema.json`, emite sólo campos públicos y deja que el validador específico del motor preserve las restricciones por capability.
+
+No agregar inputs “útiles” por analogía. Por ejemplo, `INTRAMONTH_HISTORY` recibe `start_month`, `end_month` y sus opciones intrames; no recibe `commercial_universe` ni `grain`. Si falta un campo necesario para construir el contrato exacto, devolver clarificación en vez de ejecutar.
+
+## 9. Siguiente pregunta útil
 Al terminar, evaluar si la evidencia revela una bifurcación analítica material aún no resuelta.
 
 Puede proponerse una sola siguiente pregunta cuando:

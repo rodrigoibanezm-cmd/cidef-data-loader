@@ -92,6 +92,7 @@ El intake transforma:
 ```text
 pregunta
 → intención
+→ semántica temporal
 → dominio(s)
 → concepto(s) de negocio
 → evidencia mínima
@@ -105,6 +106,8 @@ La intención puede ser:
 - **acción/priorización**: requiere primero un diagnóstico sustentado y sólo después evaluar accionabilidad.
 
 Cada llamada debe responder una necesidad concreta. El agente no llama capabilities simplemente porque están disponibles.
+
+La planificación determinista puede inspeccionarse mediante `orchestrateQuestion` en `lib/intake-orchestrator/orchestrateQuestion.js`. La resolución temporal vive separada en `lib/intake-orchestrator/temporal.js`; usa `America/Santiago`, distingue períodos cerrados de parciales y no consulta motores analíticos.
 
 ## 4. Dominios analíticos canónicos
 
@@ -168,6 +171,8 @@ La autoridad del contrato público visible al agente es:
 ```text
 rom/schema.json
 ```
+
+El request físico se construye después de resolver intención, tiempo y scope. El adapter verifica que capability y campos existan en `schema.json`, y los validadores propios de cada motor conservan las restricciones más estrechas del contrato específico.
 
 Los endpoints y nombres de transporte son una interfaz; no deben confundirse con la ontología conceptual del agente.
 

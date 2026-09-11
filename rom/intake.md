@@ -4,7 +4,7 @@
 Convertir una pregunta de negocio en el **plan mínimo de evidencia**. No partir desde tablas ni motores físicos.
 
 ```text
-pregunta → intención → dominio(s) → concepto(s) de negocio → evidencia mínima → capability(s)
+pregunta → intención → semántica temporal → dominio(s) → concepto(s) de negocio → evidencia mínima → capability(s)
 ```
 
 `schema.json` define capabilities e inputs. `business-rules.md` define reglas y comparabilidad. `business-semantics.md` define qué evidencia permite declarar cada concepto de negocio. La secuencia posterior pertenece a `orchestrator.md`.
@@ -18,7 +18,23 @@ pregunta → intención → dominio(s) → concepto(s) de negocio → evidencia 
 
 No ampliar una pregunta descriptiva ni mezclar preguntas superiores salvo que el usuario pida una lectura integrada.
 
-## 2. Elegir dominio
+## 2. Resolver temporalidad
+Resolver la expresión temporal antes del routing físico y conservar la decisión en una estructura inspeccionable. La zona horaria canónica es `America/Santiago`; los tests deben inyectar el reloj y nunca depender de la fecha real.
+
+| Expresión | Semántica | Estado |
+|---|---|---|
+| último trimestre / trimestre anterior / previous quarter | último trimestre calendario completamente cerrado | cerrado |
+| últimos N meses | N meses calendario completamente cerrados anteriores al actual | cerrado |
+| últimos N meses incluyendo este mes | desde el primer día de la ventana hasta el cutoff observable | parcial |
+| este trimestre | inicio del trimestre actual hasta el cutoff observable | parcial |
+| mes pasado / último mes cerrado | mes calendario anterior completo | cerrado |
+| YTD | 1 de enero hasta el cutoff observable | parcial |
+| mismo período año anterior | trasladar ambos límites un año, preservando forma y ajustando 29-feb | heredado |
+| mismo día / same-day | comparar sólo hasta el día equivalente mediante `cutoff_mode=SAME_DAY` | parcial |
+
+Para meses, trimestres, semestres, YTD y años, el grano estándar es `MONTH`. El grano diario se reserva para pace, cutoff e intenciones intrames. Una frase sin convención suficiente, como “este último período”, debe producir `TEMPORAL_AMBIGUOUS`; no se completa por intuición.
+
+## 3. Elegir dominio
 Los dominios analíticos son:
 ```text
 VENTAS  resultado y desempeño comercial CIDEF
@@ -30,7 +46,7 @@ Una pregunta puede requerir uno o varios dominios. `LONGITUDINAL` no es un domin
 
 El agente selecciona dominios y capabilities públicas, nunca motores físicos.
 
-## 3. Traducir concepto → evidencia mínima
+## 4. Traducir concepto → evidencia mínima
 Antes de llamar capabilities, identificar qué concepto de negocio se intenta sostener.
 
 Ejemplos:
@@ -42,7 +58,7 @@ Ejemplos:
 
 Si falta una pieza obligatoria, bajar el nivel de conclusión en vez de compensarla con inferencia.
 
-## 4. Evidencia mínima
+## 5. Evidencia mínima
 Cada llamada debe responder una necesidad concreta y poder cambiar, reducir o cerrar el análisis.
 
 Reglas:
@@ -56,7 +72,7 @@ Reglas:
 
 Usar contexto longitudinal cuando la evolución temporal sea material; no por rutina.
 
-## 5. DISCOVERY
+## 6. DISCOVERY
 Usarlo sólo para validar estructura, cobertura o una relación aún no encapsulada.
 
 Orden según necesidad:
@@ -66,7 +82,7 @@ No perfilar por rutina, descargar filas si basta un agregado ni reconstruir manu
 
 RAW aporta evidencia fuente; MASTER aporta identidad y relaciones certificadas. No sustituir MASTER con normalización textual ad hoc.
 
-## 6. Nueva capacidad
+## 7. Nueva capacidad
 Sólo si las capabilities actuales no pueden responder confiablemente.
 
 ```text

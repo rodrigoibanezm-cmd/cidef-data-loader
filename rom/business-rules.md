@@ -68,6 +68,8 @@ Cuando la evidencia lo permita, mirar además del volumen: crecimiento relativo,
 
 Meses incompletos no se tratan como cierres.
 
+La resolución de lenguaje temporal es previa a la selección final de capability y usa `America/Santiago`. “Último trimestre” significa el trimestre calendario cerrado anterior; “últimos N meses” significa N meses calendario cerrados, salvo que el usuario pida incluir el mes abierto. “Este trimestre” y YTD terminan en el cutoff observable y permanecen explícitamente parciales. Las comparaciones same-day deben usar la semántica de cutoff certificada del motor, no recortes o sumas reconstruidos por el agente.
+
 Para `vin_gap_v01`, la convención es `reference_vin - observed_vin` sobre un mes cerrado y un scope compatible `OWN_STORES × STORE × BRAND`. La referencia sólo existe cuando el ganador evaluable de `expected_monthly_*` tiene evidencia de backtest y un candidato disponible para el mes objetivo. `stability` se conserva como diagnóstico y no introduce un threshold de exclusión.
 
 ## 5. Marco de interpretación
