@@ -86,6 +86,20 @@ Contratos de entidades/hechos canónicos que siguen siendo relevantes como entra
 
 Documentos de refresh/rebuild pertenecen a mantenimiento de datos y se clasifican `OUT_OF_RUNTIME_SCOPE` para este recorrido documental.
 
+### `database/` — CURRENT
+
+Mapa físico vigente de la base Neon consumida por CIDEF.
+
+Documenta:
+
+- tablas existentes y su clasificación (`RAW`, `MASTER`, `CANONICAL`, `BRIDGE`, `ANALYTICAL`, `OPERATIONAL`, `STAGING`, `TEMP`, `LEGACY`);
+- grain y claves físicas relevantes;
+- relaciones PK/FK;
+- autoridades y límites de reconstrucción;
+- separación explícita entre tablas vigentes, legacy y auxiliares.
+
+Punto de entrada: [`database/README.md`](./database/README.md).
+
 ### `runtime/` — REFERENCE
 
 Documenta componentes runtime reales, especialmente piezas de VENTAS.
@@ -94,7 +108,9 @@ Estos documentos pueden describir capas internas anteriores a los universos cert
 
 ### `schemas/` — REFERENCE
 
-Referencia física de tablas y campos. Sirve para inspección y trazabilidad, no para definir por sí sola semántica analítica o contratos de negocio.
+Referencia física histórica/específica de algunas tablas y campos. Sirve para inspección y trazabilidad, no para definir por sí sola semántica analítica o contratos de negocio.
+
+Para el mapa físico vigente completo, consultar `database/`.
 
 ### `business-agent/` — HISTORICAL
 
