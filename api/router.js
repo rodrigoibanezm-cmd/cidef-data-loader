@@ -14,6 +14,7 @@ const TENANTS = {
       'import_rvm',
       'import_rvm_preliminary',
       'import_crm_cidef',
+      'import_forum',
       'refresh_vehiculo_canonico_v01',
       'patch_inventario_modelo',
       'rvm_market_history_v01',
