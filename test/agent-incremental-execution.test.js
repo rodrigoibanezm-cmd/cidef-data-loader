@@ -10,6 +10,7 @@ import { containsForbiddenArchitecture } from '../lib/analyze/publicSanitizer.js
 import { decideIntent } from '../lib/decide/decideIntent.js';
 import { verifyResolutionToken } from '../lib/resolve/resolutionToken.js';
 import { resolveSemanticParse } from '../lib/resolve/resolveSemanticParse.js';
+import { resolveExecutionRequirement } from '../lib/analyze/executionRegistry.js';
 
 const NOW = new Date('2026-09-11T16:00:00Z');
 const NOW_MS = NOW.getTime();
@@ -100,9 +101,75 @@ async function analyze(bundle, intent, executor, extra = {}) {
   });
 }
 
-test('STATUS current month executes one required investigation and skips optional SALES_CONTEXT', async () => {
+test('COMPANY current result is explicitly not evaluable and never executes own-store forecast', async () => {
   const resolution = await resolve('STATUS', 'COMPANY', 'CIDEF', '¿Cómo va CIDEF este mes?');
-  const intent = intentFrom(resolution);
+  const intent = intentFrom(resolution, {
+    scope: { organization_scope: 'CIDEF', commercial_universe: 'COMPANY' },
+  });
+  const calls = [];
+  const out = await analyze(resolution, intent, async (spec) => {
+    calls.push(spec);
+    return { cidef_propio: { observed_to_date: 260 } };
+  }, { includePrivateTrace: true });
+  const iteration = out.analysis_iteration;
+  assert.equal(calls.length, 0);
+  assert.equal(iteration.status, 'STOP');
+  assert.equal(iteration.response_payload.status, 'NOT_EVALUABLE');
+  assert.equal(iteration.response_payload.reason_code, 'NO_CERTIFIED_EXECUTION_MAPPING');
+  assert.equal(iteration.response_payload.scope.commercial_universe, 'COMPANY');
+  assert.equal(iteration.response_payload.scope.organization_scope, 'CIDEF');
+  assert.equal('data' in iteration.response_payload, false);
+  assert.deepEqual(iteration.context_payload, { status: 'NOT_REQUIRED', items: [] });
+  assert.equal(iteration.sufficiency.status, 'INSUFFICIENT');
+  assert.equal('continuation_id' in iteration, false);
+  assert.deepEqual(out._private.decision_plan.evidence_requirements,
+    [{ type: 'CURRENT_RESULT', requirement: 'REQUIRED' }]);
+});
+
+test('own-store forecast evidence keeps OWN_STORES and organization scope separate', async () => {
+  const resolution = await resolve('STATUS');
+  const intent = intentFrom(resolution, {
+    scope: { organization_scope: 'CIDEF', commercial_universe: 'OWN_STORES' },
+  });
+  const calls = [];
+  const raw = { cidef_propio: { observed_to_date: 260, forecast_close: 1537.52 } };
+  const out = await analyze(resolution, intent, async (spec) => {
+    calls.push(spec);
+    return raw;
+  });
+  assert.deepEqual(calls, [{ domain: 'SALES', capability: 'CURRENT_MONTH_CLOSE_FORECAST',
+    input: { cutoff_date: intent.period.date_to } }]);
+  assert.equal(out.analysis_iteration.response_payload.status, 'AVAILABLE');
+  assert.deepEqual(out.analysis_iteration.response_payload.scope,
+    { organization_scope: 'CIDEF', commercial_universe: 'OWN_STORES' });
+  assert.deepEqual(out.analysis_iteration.response_payload.data, raw);
+});
+
+test('forecast mappings honor the requested or default commercial universe', () => {
+  const authority = { entity: { type: 'COMPANY', display_name: 'CIDEF' },
+    defaults: { scope: { commercial_universe: 'COMPANY' } } };
+  for (const commercial_universe of ['COMPANY', 'DEALERS', null]) {
+    const plan = { temporal: { type: 'CURRENT_MTD', date_to: '2026-09-12' },
+      scope_requirements: { organization_scope: 'CIDEF', commercial_universe } };
+    for (const type of ['CURRENT_RESULT', 'CLOSE_EXPECTATION']) {
+      assert.equal(resolveExecutionRequirement({ type }, plan, authority), null);
+    }
+  }
+  const ownPlan = { temporal: { type: 'CURRENT_MTD', date_to: '2026-09-12' },
+    scope_requirements: { organization_scope: 'CIDEF', commercial_universe: 'OWN_STORES' } };
+  assert.equal(resolveExecutionRequirement({ type: 'CLOSE_EXPECTATION' }, ownPlan, authority)
+    .capability, 'CURRENT_MONTH_CLOSE_FORECAST');
+  const closedPlan = { ...ownPlan,
+    temporal: { type: 'LAST_CLOSED_MONTH', date_from: '2026-08-01', date_to: '2026-08-31' },
+    scope_requirements: { organization_scope: 'CIDEF', commercial_universe: 'COMPANY' } };
+  const closed = resolveExecutionRequirement({ type: 'CURRENT_RESULT' }, closedPlan, authority);
+  assert.equal(closed.capability, 'VENTAS');
+  assert.equal(closed.input.commercial_universe, 'COMPANY');
+});
+
+test('STATUS own stores current month executes one required investigation and skips optional SALES_CONTEXT', async () => {
+  const resolution = await resolve('STATUS', 'COMPANY', 'CIDEF', '¿Cómo va CIDEF este mes?');
+  const intent = intentFrom(resolution, { scope: { organization_scope: 'CIDEF', commercial_universe: 'OWN_STORES' } });
   const authority = verifyResolutionToken(resolution.resolution_id, {
     secret: SECRET, nowMs: NOW_MS,
   });
@@ -137,7 +204,7 @@ test('STATUS current month executes one required investigation and skips optiona
 
 test('one required investigation runs per call and completed work is not repeated', async () => {
   const resolution = await resolve('PERFORMANCE');
-  const intent = intentFrom(resolution);
+  const intent = intentFrom(resolution, { scope: { organization_scope: 'CIDEF', commercial_universe: 'OWN_STORES' } });
   const calls = [];
   const executor = async (spec) => {
     calls.push(`${spec.domain}/${spec.capability}`);
@@ -162,7 +229,7 @@ test('one required investigation runs per call and completed work is not repeate
 
 test('equivalent physical executions satisfy multiple required evidence requirements once', async () => {
   const resolution = await resolve('EXPECTATION');
-  const intent = intentFrom(resolution);
+  const intent = intentFrom(resolution, { scope: { organization_scope: 'CIDEF', commercial_universe: 'OWN_STORES' } });
   const calls = [];
   const out = await analyze(resolution, intent, async (spec) => {
     calls.push(spec);
@@ -201,7 +268,7 @@ test('required context executes only with its associated investigation', async (
 
 test('final sufficiency is PARTIAL when some required evidence is unavailable', async () => {
   const resolution = await resolve('PERFORMANCE');
-  const intent = intentFrom(resolution);
+  const intent = intentFrom(resolution, { scope: { organization_scope: 'CIDEF', commercial_universe: 'OWN_STORES' } });
   const executor = async (spec) => {
     if (spec.capability === 'VENTAS') {
       throw Object.assign(new Error('unavailable'), { code: 'EVIDENCE_UNAVAILABLE' });
@@ -280,7 +347,7 @@ test('continuation token is bound to resolution, decision plan and intent', asyn
 
 test('individual capability payload remains intact and arrays are not truncated', async () => {
   const resolution = await resolve('STATUS');
-  const intent = intentFrom(resolution);
+  const intent = intentFrom(resolution, { scope: { organization_scope: 'CIDEF', commercial_universe: 'OWN_STORES' } });
   const raw = {
     rows: Array.from({ length: 1000 }, (_, index) => ({ index, values: [index, index + 1] })),
     nested: { alpha: { beta: 'preserved' } },
@@ -292,7 +359,7 @@ test('individual capability payload remains intact and arrays are not truncated'
 
 test('public iteration strips all private execution vocabulary', async () => {
   const resolution = await resolve('STATUS');
-  const intent = intentFrom(resolution);
+  const intent = intentFrom(resolution, { scope: { organization_scope: 'CIDEF', commercial_universe: 'OWN_STORES' } });
   const out = await analyze(resolution, intent, async () => ({
     domain: 'SALES', capability: 'PRIVATE', motor: 'x', table: 'raw', sql: 'select 1',
     target_model_ids: [1], question_family: 'PRIVATE', dependency_graph: { x: 1 }, value: 7,
