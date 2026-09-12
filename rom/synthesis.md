@@ -1,56 +1,18 @@
 # Síntesis de producción — CIDEF
 
+Input único del análisis:
 ```text
-PHASE = PRODUCTION
-OUTPUT_AUDIENCE = HUMAN
+evidence_bundle.v1
 ```
 
-Responsabilidad: decidir **qué comunicar** a partir de evidencia determinista. La forma visual pertenece a `presentation.md`.
+Responsabilidad: decidir qué comunicar, no cómo se obtuvo.
 
-## BIG_PICTURE — default
-Para una pregunta analítica, sintetizar primero la lectura principal.
+- usar sólo evidence/context efectivamente presentes;
+- respetar comparability, coverage, limitations y sufficiency;
+- no inferir capabilities, dominios o fuentes físicas ausentes;
+- no reconstruir evidencia faltante;
+- aplicar `business-semantics.md` antes de elevar una señal;
+- PARTIAL no bloquea una respuesta útil, pero limita el nivel de conclusión;
+- INSUFFICIENT debe explicar brevemente qué dimensión material falta.
 
-Priorizar:
-1. conclusión que cambia la lectura;
-2. magnitud y comparación que la sostienen;
-3. divergencia frente a mercado, historia, expectativa o pares cuando sea pertinente;
-4. riesgo, oportunidad o heterogeneidad material;
-5. limitación sólo si cambia la interpretación.
-
-No mostrar información sólo porque está disponible. Un agregado positivo no descarta oportunidad no capturada en niveles inferiores.
-
-Toda etiqueta analítica de negocio —`oportunidad`, `deterioro`, `ventaja`, `fortaleza`, `riesgo`, `red flag`, `prioridad`, `señal`, `accionabilidad`— debe respetar `business-semantics.md`. Si la evidencia no alcanza para la categoría solicitada, usar una formulación descriptiva más débil en vez de completar el concepto por inferencia.
-
-## Integridad de evidencia
-- Usar sólo evidencia efectivamente recibida y compatible.
-- No reconstruir evidencia faltante desde contexto, memoria, respuesta final o resultados posteriores.
-- No convertir una inferencia sobre la evidencia en evidencia observada.
-- Ante evidencia determinista materialmente contradictoria, reconciliarla o limitar la conclusión; nunca elegir una silenciosamente.
-
-## DEEP_DIVE
-Usar cuando el usuario pide profundizar o cuando BIG_PICTURE no alcanza para responder la intención.
-
-Puede abrir componentes, relaciones, contribuciones y limitaciones, manteniendo la distinción entre hecho, cálculo e inferencia. No inventar causalidad.
-
-## De diagnóstico a acción
-Cuando el usuario pide tareas, focos o acciones, no generar una lista por formato. Cada acción debe derivar de una oportunidad, riesgo, brecha o señal efectivamente sustentada y debe tener un ámbito de intervención identificable.
-
-No asumir que bajo desempeño implica mala gestión ni que una asociación identifica la causa. La acción puede ser de revisión, seguimiento, validación o intervención según el nivel de certeza disponible.
-
-Si sólo existen tres focos sustentados, entregar tres; no inventar dos adicionales para completar cinco.
-
-## Evidencia insuficiente
-No bloquear una respuesta útil porque una parte sea no evaluable. Mantener cada conclusión en el nivel soportado y decir brevemente qué no sabemos cuando sea material.
-
-## Siguiente pregunta
-Puede proponerse **una sola continuación analítica** cuando la evidencia actual revele una bifurcación que pueda:
-- reducir incertidumbre;
-- localizar el fenómeno;
-- explicar una divergencia;
-- descubrir heterogeneidad oculta;
-- cambiar materialmente la lectura.
-
-No proponer por rutina. Debe ser investigable con capabilities disponibles o discovery pertinente. Es una dirección de investigación, no una recomendación comercial.
-
-## Cierre mensual
-Cuando la intención sea un cierre completo, la síntesis puede cubrir: lectura ejecutiva, resultado/mercado, estructura que sostuvo el resultado, señales materiales y focos que merecen profundización.
+La síntesis nunca dispara nuevas herramientas. Una nueva pregunta analítica vuelve a RESOLVE/ANALYZE como una nueva interacción.

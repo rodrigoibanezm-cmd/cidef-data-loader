@@ -1,109 +1,27 @@
 # Reglas de negocio CIDEF
 
-Autoridad permanente para interpretar cómo funciona el negocio. No redefine cálculos, identidad ni contratos deterministas. La definición de conceptos analíticos como oportunidad, deterioro, riesgo, ventaja, red flag o prioridad vive en `business-semantics.md`.
+Estas reglas gobiernan interpretación; las reglas que cambian cálculo, identidad, pertenencia o inclusión deben existir también en backend determinístico.
 
-## 1. Norte comercial
-La unidad central de resultado es el **VIN vendido**. Priorizar análisis que ayuden a entender, proteger o aumentar VIN: nivel, crecimiento, riesgo y crecimiento disponible.
+## Resultado central
+La unidad central de resultado es VIN vendido.
 
-Stock, costo, margen, precio o flujo administrativo son secundarios salvo que la pregunta los requiera o exista evidencia de vínculo con VIN.
-
-CIDEF viene de crecimiento y buenos resultados: no presumir crisis ni buscar defectos artificialmente. El desafío es detectar dónde un negocio que funciona bien puede capturar menos crecimiento del disponible.
-
-**Crecer no implica capturar todo el potencial.** Una tienda o marca puede crecer y simultáneamente perder posición, quedar bajo su trayectoria o esconder focos de oportunidad.
-
-## 2. Universos comerciales
+## Universos comerciales
 ```text
-COMPANY    = resultado CIDEF reconocido
-OWN_STORES = tiendas propias CIDEF
-DEALERS    = red de concesionarios independientes
+COMPANY
+OWN_STORES
+DEALERS
 ```
+`commercial_universe` describe canal y no equivale a `organization_scope`.
 
-`commercial_universe` describe canal y es independiente de `organization_scope` de RVM.
+No mezclar universos no equivalentes. Tiendas propias se comparan con tiendas propias; dealers con dealers; vendedor sólo dentro de universos donde su rol esté certificado.
 
-Tiendas propias y dealers contribuyen a COMPANY, pero no son universos equivalentes:
-- tienda propia se evalúa dentro de `OWN_STORES`;
-- dealer se evalúa dentro de `DEALERS`;
-- `COMPANY` se usa para preguntas corporativas o métricas deterministas de contribución/mix.
+## Mercado
+RVM describe mercado/matriculaciones y no identifica por sí solo canal CIDEF. Una referencia de mercado debe conservar denominador, período y cutoff compatibles.
 
-No mezclar universos para desempeño, crecimiento, share, riesgo u oportunidad. Las relaciones válidas entre numerador y denominador las define la métrica determinista; no inventarlas en el agente.
+## Temporalidad
+Mes abierto no equivale a cierre. Same-day requiere corte equivalente certificado. La expresión temporal se groundea en RESOLVE usando `America/Santiago`; EXECUTE aplica la semántica física adecuada.
 
-### OWN_STORES
-Cuando exista evidencia, la navegación puede usar:
-`tienda → marca → vendedor → producto/modelo → CRM → VIN`.
+## Interpretación
+Crecer no implica capturar todo el potencial. Una brecha no implica causalidad, oportunidad ni responsabilidad.
 
-### DEALERS
-Es una red externa. Según evidencia:
-`dealer/grupo → territorio → marca → producto/modelo → VIN → evolución/posición → RVM territorial`.
-
-No asumir que CRM, vendedores u otras variables internas de tiendas propias existen para dealers.
-
-## 3. RVM, territorio y canal
-RVM describe matriculaciones del mercado. No identifica por sí solo si una venta corresponde a `OWN_STORES`, `DEALERS` u otro actor.
-
-Antes de atribuir una señal geográfica a CIDEF determinar:
-`territorio → presencia CIDEF → OWN_STORES/DEALERS/ambos → universo comparable`.
-
-Una oportunidad territorial puede sostenerse a nivel de red CIDEF sin poder atribuirse a una tienda o dealer específico. En ese caso mantener la conclusión en ese nivel.
-
-No interpretar `VIN OWN_STORES / RVM total` ni `VIN DEALERS / RVM total` como penetración del canal salvo que exista un denominador externo certificado compatible.
-
-Para análisis competitivo RVM↔RVM, la autoridad CIDEF depende del nivel: detalle de marca/modelo y mes actual usan marca RAW exacta `DFM`; el agregado `CIDEF_TOTAL` histórico usa sólo reglas certificadas `BRAND_AGGREGATE` según vigencia. La continuidad agregada de ZNA no autoriza continuidad de producto/modelo ni transforma ZNA en DFM.
-
-Para `competitive_growth_matrix_v01`, el numerador CIDEF no proviene de RVM: es siempre `ventas_universe_v01[commercial_universe=COMPANY]`. El benchmark es `rvm_universe_v01[organization_scope=ALL]`. Ambos eventos sólo se comparan por crecimiento, cambio absoluto y dirección; está prohibido interpretar o nombrar `VENTAS_COMPANY / RVM_REGISTRATIONS` como share. BRAND y MODEL usan exclusivamente `marca_id` y `modelo_id` certificados compartidos.
-
-En `competitive_growth_matrix_v01`, `YOY_MONTH`, `MOM` y `ROLLING_12_YOY` consumen directamente el `mes_venta` comercial certificado de VENTAS (día 02 a día 01 siguiente); RVM conserva meses calendario. `CALENDAR_YEAR_YOY` y `YTD_YOY` conservan rangos calendario. `CURRENT_MTD` aplica inicio comercial a VENTAS y día 01 calendario a RVM, con un mismo cutoff efectivo observable y comparación equivalente del año anterior.
-
-`CHINESE_MARKET` se define por `marcas_master_v01.origin_group='CHINESE'` en ambos dominios. `pais_vin` no clasifica una marca como china. Origen nulo permanece `UNKNOWN` y debe reconciliarse con CHINESE y OTHER.
-
-## 4. Comparaciones justas
-Preferir comparaciones estructuralmente equivalentes:
-- tienda propia vs tiendas propias;
-- dealer vs dealers;
-- vendedor dentro de su universo aplicable;
-- marca vs mercado relevante;
-- modelo vs universo competitivo pertinente;
-- presente vs historia comparable.
-
-Cuando la evidencia lo permita, mirar además del volumen: crecimiento relativo, posición, share, trayectoria, expectativa y gap.
-
-Meses incompletos no se tratan como cierres.
-
-La resolución de lenguaje temporal es previa a la selección final de capability y usa `America/Santiago`. “Último trimestre” significa el trimestre calendario cerrado anterior; “últimos N meses” significa N meses calendario cerrados, salvo que el usuario pida incluir el mes abierto. “Este trimestre” y YTD terminan en el cutoff observable y permanecen explícitamente parciales. Las comparaciones same-day deben usar la semántica de cutoff certificada del motor, no recortes o sumas reconstruidos por el agente.
-
-Para `vin_gap_v01`, la convención es `reference_vin - observed_vin` sobre un mes cerrado y un scope compatible `OWN_STORES × STORE × BRAND`. La referencia sólo existe cuando el ganador evaluable de `expected_monthly_*` tiene evidencia de backtest y un candidato disponible para el mes objetivo. `stability` se conserva como diagnóstico y no introduce un threshold de exclusión.
-
-## 5. Marco de interpretación
-Cuando corresponda:
-```text
-VIN observado
-→ cambio temporal
-→ expectativa
-→ contexto
-→ gap
-→ evidencia explicativa
-→ interpretación semántica
-```
-
-La interpretación semántica de `oportunidad`, `riesgo`, `deterioro`, `ventaja`, `fortaleza`, `red flag`, `prioridad`, `señal` y `accionabilidad` se rige por `business-semantics.md`.
-
-Distinguir siempre hecho, cálculo, interpretación y causalidad, aunque producción no necesite mostrar esas etiquetas.
-
-La bajada natural es:
-`CIDEF → universo comercial → tienda/dealer → marca → vendedor cuando aplique → producto/modelo`.
-
-Bajar de nivel sólo para explicar o localizar VIN, no para producir detalle por sí mismo.
-
-## 6. Prudencia
-No:
-- buscar culpables;
-- asumir mala gestión desde bajo desempeño;
-- asumir que una tienda grande necesariamente debe crecer más;
-- convertir correlación en causa;
-- describir movimientos inversos de share como VIN transferidos o sustraídos;
-- mezclar universos para obtener comparaciones llamativas;
-- presentar oportunidad estimada como venta asegurada;
-- interpretar ausencia de evidencia como ausencia del fenómeno.
-
-Cuando la evidencia sea insuficiente: `NO_SABEMOS` o equivalente sustentado.
-
-Las equivalencias físicas, temporales y de pertenencia viven en MASTER/motores, no en este documento.
+No convertir correlación en causa, ausencia de evidencia en cero, ni diferencia llamativa en prioridad sin regla sustentada.
