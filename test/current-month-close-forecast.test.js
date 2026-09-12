@@ -4,6 +4,52 @@ import { parseLiveCutoff } from '../lib/current-month-forecast/parseLiveCutoff.j
 import { learnCurrentCompletion } from '../lib/daily-close-forecast/learnCurrentCompletion.js';
 import { densifyCurrentStores } from '../lib/current-month-forecast/densifyCurrentStores.js';
 import { buildLiveForecast, buildStoreForecasts } from '../lib/current-month-forecast/buildLiveForecast.js';
+import { parseFechaFactura } from '../lib/motors/ventas-monthly-dedup-sensitivity-v01.js';
+import { findTrainingStartMonth } from '../lib/daily-close-forecast/findTrainingStartMonth.js';
+import { calculateCurrentMonthCloseForecast } from '../lib/motors/current-month-close-forecast-v01.js';
+
+test('all 14 real RAW date samples parse and supply training history through August', () => {
+  const values = [
+    '2020-05-31 00:00:00', '2020-12-31 00:00:00',
+    '2021-01-07 00:00:00', '2021-12-31 00:00:00',
+    '2022-01-03 00:00:00', '2022-12-31 00:00:00',
+    '2023-01-03 00:00:00', '2023-12-31 00:00:00',
+    '2024-01-02 00:00:00', '2024-12-31 00:00:00',
+    '2025-01-02 00:00:00', '2025-12-31 00:00:00',
+    '2026-01-02 00:00:00', '2026-09-11 00:00:00',
+  ];
+  assert.equal(values.filter(value => !parseFechaFactura(value)?.error).length, 14);
+  assert.equal(findTrainingStartMonth(values.map(fecha_factura => ({ fecha_factura })), '2026-08'), '2020-05');
+  assert.throws(() => findTrainingStartMonth([{ fecha_factura: values.at(-1) }], '2026-08'), /No parseable ventas history/);
+});
+
+test('September forecast builds canonical history without changing legacy forecast results', () => {
+  const rows = [];
+  for (let month = 1; month <= 9; month += 1) {
+    for (const day of [5, 20]) {
+      const id = rows.length + 1;
+      rows.push({ id, nro_vin_chasis: `VIN-${id}`, id_sucursal_vta: '10',
+        fecha_factura: `2026-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} 00:00:00` });
+    }
+  }
+  const maps = { stores: new Map([['10', {
+    canonical_id: 1, nombre_canonico: 'Store A', tipo_canal: 'CIDEF', match_count: 1,
+  }]]), sellers: new Map() };
+  const roster = [{ sucursal_id: 1, sucursal: 'Store A', tipo_canal: 'CIDEF' }];
+  const input = { cutoff_date: '2026-09-12' };
+  const now = new Date('2026-09-12T12:00:00Z');
+  const result = calculateCurrentMonthCloseForecast(rows, maps, roster, input, now);
+  assert.equal(result.historical.backtest_end_month, '2026-08');
+  assert.equal(result.cidef_propio.observed_to_date, 1);
+  assert.ok(result.cidef_propio.historical_observations > 0);
+  assert.equal(result.cidef_propio.forecast_status, 'EVALUABLE');
+  assert.equal(result.cidef_propio.forecast_close, 2);
+  const legacy = rows.map(row => {
+    const [year, month, day] = row.fecha_factura.substring(0, 10).split('-');
+    return { ...row, fecha_factura: `${month}/${day}/${year} 0:00:00` };
+  });
+  assert.deepEqual(result, calculateCurrentMonthCloseForecast(legacy, maps, roster, input, now));
+});
 
 test('live cutoff uses commercial month/day and rejects future date and unsupported inputs', () => {
   const now = new Date('2026-10-02T12:00:00Z');

@@ -10,7 +10,39 @@ test('parseFechaFactura parses observed RAW format and leap day', () => {
   assert.equal(parseFechaFactura('1/5/2025 9:07').month, '2025-01');
   assert.equal(parseFechaFactura('02/29/24 23:59').month, '2024-02');
   assert.equal(parseFechaFactura('02/29/23 23:59').error, 'invalid_date');
-  assert.equal(parseFechaFactura('2025-01-01').error, 'unsupported_format');
+  assert.equal(parseFechaFactura('2025-01-01').month, '2025-01');
+});
+
+test('canonical dates retain calendar components and legacy date outputs', () => {
+  for (const [canonical, legacy, expected] of [
+    ['2026-08-31 00:00:00', '8/31/26 0:00:00', '2026-08-31T00:00:00.000Z'],
+    ['2020-05-31 00:00:00', '5/31/2020 0:00:00', '2020-05-31T00:00:00.000Z'],
+    ['2024-02-29 23:59:59', '2/29/24 23:59:59', '2024-02-29T23:59:59.000Z'],
+  ]) {
+    const parsed = parseFechaFactura(canonical);
+    const old = parseFechaFactura(legacy);
+    assert.equal(parsed.date.toISOString(), expected);
+    assert.deepEqual(parsed.date, old.date);
+    assert.equal(parsed.month, old.month);
+    assert.equal(parsed.raw, canonical);
+  }
+  for (const value of ['2026-08-31', '2026-08-31 0:00', '2026-08-31 0:00:00']) {
+    assert.equal(parseFechaFactura(value).date.toISOString(), '2026-08-31T00:00:00.000Z');
+  }
+});
+
+test('canonical parser rejects invalid calendars, times and unsupported formats', () => {
+  for (const value of ['2023-02-29', '2026-02-30', '2026-04-31', '2026-00-01',
+    '2026-13-01', '2026-01-00', '2026-01-32', '2026-01-02 24:00:00',
+    '2026-01-02 0:60:00', '2026-01-02 0:00:60']) {
+    assert.equal(parseFechaFactura(value).error, 'invalid_date', value);
+  }
+  for (const value of ['bad-date', '31/08/2026', '2026-8-31',
+    '2026-08-31T00:00:00Z', '2026-08-31 00:00:00+00:00', '46635']) {
+    assert.ok(parseFechaFactura(value).error, value);
+  }
+  assert.equal(parseFechaFactura(null), null);
+  assert.equal(parseFechaFactura(''), null);
 });
 
 test('single VIN stays in same month in FIRST and LAST', () => {
