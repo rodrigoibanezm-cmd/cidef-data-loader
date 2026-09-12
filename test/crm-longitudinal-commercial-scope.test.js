@@ -5,9 +5,9 @@ import { parseCrmLongitudinalInput } from '../lib/longitudinal/crm.js';
 
 test('COMPANY keeps unresolved store identity and OWN_STORES admits only resolved CIDEF stores', () => {
   const rows = [
-    { lead_id:'1', source_rows:3, store_raw:'Bellavista',store_raw_norm:'BELLAVISTA',store_match_count:1,sucursal_id:7,sucursal_nombre:'BELLAVISTA',tipo_canal:'CIDEF',product_interest_norm:null,seller_raw_norm:null },
-    { lead_id:'2', source_rows:3, store_raw:'Dealer X',store_raw_norm:'DEALER X',store_match_count:1,sucursal_id:70,sucursal_nombre:'DEALER X',tipo_canal:'DEALER',product_interest_norm:null,seller_raw_norm:null },
-    { lead_id:'3', source_rows:3, store_raw:'Automotora Austral',store_raw_norm:'AUTOMOTORA AUSTRAL',store_match_count:null,sucursal_id:null,tipo_canal:null,product_interest_norm:null,seller_raw_norm:null },
+    { lead_id:'1', source_rows:3, rn:1, store_raw:'Bellavista',store_raw_norm:'BELLAVISTA',store_match_count:1,sucursal_id:7,sucursal_nombre:'BELLAVISTA',tipo_canal:'CIDEF',product_interest_norm:null,seller_raw_norm:null },
+    { lead_id:'2', source_rows:3, rn:1, store_raw:'Dealer X',store_raw_norm:'DEALER X',store_match_count:1,sucursal_id:70,sucursal_nombre:'DEALER X',tipo_canal:'DEALER',product_interest_norm:null,seller_raw_norm:null },
+    { lead_id:'3', source_rows:3, rn:1, store_raw:'Automotora Austral',store_raw_norm:'AUTOMOTORA AUSTRAL',store_match_count:null,sucursal_id:null,tipo_canal:null,product_interest_norm:null,seller_raw_norm:null },
   ];
   const company=assembleCrmUniverse(rows,{commercial_universe:'COMPANY'}); const own=assembleCrmUniverse(rows,{commercial_universe:'OWN_STORES'});
   assert.equal(company.analytical_events.length,3); assert.equal(own.analytical_events.length,1);
