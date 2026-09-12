@@ -3,7 +3,7 @@
 Estas pruebas validan:
 ```text
 intent.v1
-→ evidence_bundle.v1
+→ analysis_iteration.v1 completadas hasta STOP
 → conclusión máxima permitida
 ```
 

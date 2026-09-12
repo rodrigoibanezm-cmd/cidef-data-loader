@@ -2,7 +2,7 @@
 
 Input conceptual:
 ```text
-evidence_bundle.v1
+analysis_iteration.v1 completadas hasta STOP
 → concepto de negocio
 → synthesis
 ```
@@ -29,4 +29,4 @@ Categorías más fuertes requieren más evidencia compatible, no menos.
 - Red flag: sólo con criterio determinista explícito de materialidad/excepcionalidad.
 - Prioridad: hallazgo sustentado + relevancia + accionabilidad + base válida para competir por atención.
 
-`COMPLETE/PARTIAL/INSUFFICIENT` proviene del `evidence_bundle` y es relativo a la pregunta.
+`COMPLETE/PARTIAL/INSUFFICIENT` proviene de la última `analysis_iteration` y es relativo a la pregunta.

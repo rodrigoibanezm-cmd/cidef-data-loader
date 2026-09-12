@@ -11,7 +11,7 @@ QUESTION
 → resolution_bundle.v1
 → intent.v1
 → ANALYZE
-→ evidence_bundle.v1
+→ una o más analysis_iteration.v1
 → business semantics
 → synthesis
 → presentation
@@ -20,7 +20,7 @@ QUESTION
 ## Autoridades
 - RESOLVE: grounding determinístico de identidad, temporalidad, opciones y disponibilidad.
 - DECIDE backend: familia de pregunta, evidencia necesaria, comparabilidad, contexto y drill policy.
-- EXECUTE backend: dependencias, universos, capacidades y orden físico.
+- EXECUTE backend: dependencias, universos, capacidades, orden físico y continuidad incremental.
 - MASTER: identidad y pertenencia.
 - `business-rules.md`: reglas de negocio e interpretación.
 - `business-semantics.md`: evidencia → conceptos de negocio.
@@ -48,3 +48,5 @@ drill-down
 - LONGITUDINAL y DISCOVERY no son dominios analíticos públicos.
 - DISCOVERY no es fallback para una pregunta de negocio.
 - Evidencia insuficiente se mantiene como PARTIAL/INSUFFICIENT o `NO_SABEMOS`.
+- Cada ANALYZE ejecuta una sola investigación requerida. Si devuelve `CONTINUE`, repetir ANALYZE usando exactamente el `continuation_id` recibido; si devuelve `STOP`, sintetizar.
+- `response_payload` y `context_payload` son carriles distintos. No mezclar contexto con el resultado ni reconstruir outputs previos.

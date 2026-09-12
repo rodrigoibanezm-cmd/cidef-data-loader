@@ -20,11 +20,14 @@ test('EXECUTE obtains required context privately and does not expose drill polic
   const authority={entity:{type:'BRAND',display_name:'FOTON',canonical_id:'89'},defaults:{scope:{organization_scope:null,commercial_universe:null}}};
   const intent={version:'intent.v1',question_type:'PERFORMANCE',entity:{type:'BRAND',value:'FOTON'},period:{type:'LAST_CLOSED_QUARTER',date_from:'2026-04-01',date_to:'2026-06-30'},comparison:'YOY',scope:{organization_scope:null,commercial_universe:null},depth:'STANDARD',semantic_provenance:{}};
   const executor=async spec=>({status:'OK',domain:spec.domain,capability:spec.capability,engine:'private_engine',policy:{table:'private_table'},value:1});
-  const out=await executeDecisionPlan(plan,authority,intent,{executor,includePrivateTrace:true});
-  assert.equal(out.evidence_bundle.context.market.status,'AVAILABLE');
-  assert.equal('drill' in out.evidence_bundle,false);
-  assert.equal(containsForbiddenArchitecture(out.evidence_bundle),false);
-  assert.equal(out._private.drill_control.stop_condition,'QUESTION_SUFFICIENT');
+  const first=await executeDecisionPlan(plan,authority,intent,{executor,includePrivateTrace:true});
+  assert.equal(first.analysis_iteration.status,'CONTINUE');
+  assert.deepEqual(first.analysis_iteration.context_payload,{status:'NOT_REQUIRED',items:[]});
+  const out=await executeDecisionPlan(plan,authority,intent,{executor,includePrivateTrace:true,continuationState:first._continuation_state});
+  assert.equal(out.analysis_iteration.context_payload.status,'AVAILABLE');
+  assert.equal('drill' in out.analysis_iteration,false);
+  assert.equal(containsForbiddenArchitecture(out.analysis_iteration),false);
+  assert.equal(out.analysis_iteration.sufficiency.status,'COMPLETE');
   assert.ok(out._private.execution_trace.some(x=>x.context_type==='MARKET_CONTEXT'));
 });
 
@@ -44,10 +47,11 @@ test('required analytical context degrades sufficiency when unavailable', async 
   const authority={entity:{type:'BRAND',display_name:'FOTON',canonical_id:'89'},defaults:{scope:{organization_scope:null,commercial_universe:null}}};
   const intent={version:'intent.v1',question_type:'PERFORMANCE',entity:{type:'BRAND',value:'FOTON'},period:{type:'LAST_CLOSED_QUARTER',date_from:'2026-04-01',date_to:'2026-06-30'},comparison:'YOY',scope:{organization_scope:null,commercial_universe:null},depth:'STANDARD',semantic_provenance:{}};
   const executor=async spec=>{ if(spec.capability==='COMPETITIVE_CONTEXT') throw Object.assign(new Error('context unavailable'),{code:'CONTEXT_UNAVAILABLE'}); return {status:'OK',value:1}; };
-  const out=await executeDecisionPlan(plan,authority,intent,{executor});
-  assert.equal(out.evidence_bundle.sufficiency.status,'PARTIAL');
-  assert.ok(out.evidence_bundle.sufficiency.reason_codes.includes('REQUIRED_CONTEXT_NOT_EVALUABLE'));
-  assert.equal(out.evidence_bundle.context.market.status,'NOT_EVALUABLE');
+  const first=await executeDecisionPlan(plan,authority,intent,{executor});
+  const out=await executeDecisionPlan(plan,authority,intent,{executor,continuationState:first._continuation_state});
+  assert.equal(out.analysis_iteration.sufficiency.status,'PARTIAL');
+  assert.ok(out.analysis_iteration.sufficiency.reason_codes.includes('REQUIRED_CONTEXT_NOT_EVALUABLE'));
+  assert.equal(out.analysis_iteration.context_payload.status,'NOT_EVALUABLE');
 });
 
 test('required evidence degrades sufficiency when unavailable', async () => {
@@ -67,7 +71,7 @@ test('required evidence degrades sufficiency when unavailable', async () => {
   const intent={version:'intent.v1',question_type:'STATUS',entity:{type:'COMPANY',value:'CIDEF'},period:{type:'CURRENT_MTD',date_from:'2026-09-01',date_to:'2026-09-11'},comparison:'NONE',scope:{organization_scope:null,commercial_universe:'COMPANY'},depth:'STANDARD',semantic_provenance:{}};
   const executor=async()=>{ throw Object.assign(new Error('evidence unavailable'),{code:'EVIDENCE_UNAVAILABLE'}); };
   const out=await executeDecisionPlan(plan,authority,intent,{executor});
-  assert.ok(['PARTIAL','INSUFFICIENT'].includes(out.evidence_bundle.sufficiency.status));
-  assert.notEqual(out.evidence_bundle.sufficiency.status,'COMPLETE');
-  assert.ok(out.evidence_bundle.sufficiency.reason_codes.some(code=>code.includes('REQUIRED')));
+  assert.equal(out.analysis_iteration.status,'STOP');
+  assert.equal(out.analysis_iteration.sufficiency.status,'INSUFFICIENT');
+  assert.ok(out.analysis_iteration.sufficiency.reason_codes.some(code=>code.includes('REQUIRED')));
 });

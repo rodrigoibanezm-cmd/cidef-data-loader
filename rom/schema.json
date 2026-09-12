@@ -6,7 +6,7 @@
     "description": "Public semantic surface for the CIDEF agent. The agent parses the business question, RESOLVE grounds identity, time and scope deterministically, and ANALYZE returns certified evidence for synthesis. Physical execution details remain private."
   },
   "x-cidef-architecture": {
-    "flow": "QUESTION -> SEMANTIC_PARSE -> RESOLVE -> RESOLUTION_BUNDLE -> INTENT -> ANALYZE -> EVIDENCE_BUNDLE -> SYNTHESIS",
+    "flow": "QUESTION -> SEMANTIC_PARSE -> RESOLVE -> RESOLUTION_BUNDLE -> INTENT -> ANALYZE -> ANALYSIS_ITERATION -> SYNTHESIS",
     "public_operations": [
       "RESOLVE",
       "ANALYZE"
@@ -67,7 +67,7 @@
       "post": {
         "operationId": "cidefAnalyze",
         "summary": "Analyze one grounded business intent",
-        "description": "Executes the grounded intent using the deterministic analytical layer and returns a public evidence bundle for synthesis. The agent does not construct physical requests or joins.",
+        "description": "Executes only the next required deterministic investigation and returns its response and associated required context as a public analysis iteration. Repeat with continuation_id only when status is CONTINUE.",
         "requestBody": {
           "required": true,
           "content": {
@@ -487,29 +487,36 @@
           },
           "intent": {
             "$ref": "#/components/schemas/Intent"
+          },
+          "continuation_id": {
+            "type": "string",
+            "description": "Opaque continuation returned by the preceding ANALYZE iteration. Omit on the first call."
           }
         },
         "additionalProperties": false
       },
-      "EvidenceItem": {
+      "AnalysisResponsePayload": {
         "type": "object",
         "required": [
-          "kind",
           "status",
+          "kinds",
           "period",
           "scope",
           "coverage"
         ],
         "properties": {
-          "kind": {
-            "type": "string"
-          },
           "status": {
             "type": "string",
             "enum": [
               "AVAILABLE",
               "NOT_EVALUABLE"
             ]
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "reason_code": {
             "type": "string"
@@ -537,18 +544,88 @@
             "additionalProperties": true
           },
           "data": {
-            "type": "object",
-            "additionalProperties": true
+            "description": "Complete sanitized deterministic output of the current investigation."
           }
         },
         "additionalProperties": false
       },
-      "Sufficiency": {
+      "AnalysisContextItem": {
+        "type": "object",
+        "required": [
+          "kind",
+          "status"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "NOT_EVALUABLE"
+            ]
+          },
+          "reason_code": {
+            "type": "string"
+          },
+          "data": {
+            "description": "Complete sanitized deterministic context output associated with the current investigation."
+          }
+        },
+        "additionalProperties": false
+      },
+      "AnalysisContextPayload": {
         "type": "object",
         "required": [
           "status",
-          "answered",
-          "unanswered",
+          "items"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "NOT_REQUIRED",
+              "NOT_EVALUABLE"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnalysisContextItem"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "AnalysisProgress": {
+        "type": "object",
+        "required": [
+          "required_completed",
+          "required_total",
+          "required_remaining"
+        ],
+        "properties": {
+          "required_completed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "required_total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "required_remaining": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "additionalProperties": false
+      },
+      "AnalysisSufficiency": {
+        "type": "object",
+        "required": [
+          "status",
           "reason_codes"
         ],
         "properties": {
@@ -560,18 +637,6 @@
               "INSUFFICIENT"
             ]
           },
-          "answered": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "unanswered": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
           "reason_codes": {
             "type": "array",
             "items": {
@@ -581,60 +646,45 @@
         },
         "additionalProperties": false
       },
-      "EvidenceBundle": {
+      "AnalysisIteration": {
         "type": "object",
-        "description": "Public analytical output consumed by business semantics and synthesis.",
+        "description": "One incremental analytical result. It contains no output from preceding iterations.",
         "required": [
           "version",
-          "intent",
-          "evidence",
-          "context",
-          "comparability",
-          "coverage",
-          "limitations",
-          "sufficiency",
-          "semantic_provenance"
+          "status",
+          "response_payload",
+          "context_payload",
+          "progress",
+          "sufficiency"
         ],
         "properties": {
           "version": {
             "type": "string",
             "enum": [
-              "evidence_bundle.v1"
+              "analysis_iteration.v1"
             ]
           },
-          "intent": {
-            "$ref": "#/components/schemas/Intent"
+          "status": {
+            "type": "string",
+            "enum": [
+              "CONTINUE",
+              "STOP"
+            ]
           },
-          "evidence": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/EvidenceItem"
-            }
+          "response_payload": {
+            "$ref": "#/components/schemas/AnalysisResponsePayload"
           },
-          "context": {
-            "type": "object",
-            "additionalProperties": true
+          "context_payload": {
+            "$ref": "#/components/schemas/AnalysisContextPayload"
           },
-          "comparability": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "coverage": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "limitations": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+          "progress": {
+            "$ref": "#/components/schemas/AnalysisProgress"
           },
           "sufficiency": {
-            "$ref": "#/components/schemas/Sufficiency"
+            "$ref": "#/components/schemas/AnalysisSufficiency"
           },
-          "semantic_provenance": {
-            "type": "object",
-            "additionalProperties": true
+          "continuation_id": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -643,14 +693,14 @@
         "type": "object",
         "required": [
           "ok",
-          "evidence_bundle"
+          "analysis_iteration"
         ],
         "properties": {
           "ok": {
             "type": "boolean"
           },
-          "evidence_bundle": {
-            "$ref": "#/components/schemas/EvidenceBundle"
+          "analysis_iteration": {
+            "$ref": "#/components/schemas/AnalysisIteration"
           }
         },
         "additionalProperties": false

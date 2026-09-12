@@ -107,12 +107,13 @@ test('DECIDE family and drill policy are private deterministic output', async ()
 test('public evidence strips physical architecture and technical ids', async () => {
   const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},'este mes'));
   const out=await analyzeIntent({resolution_id:bundle.resolution_id,intent:intentFrom(bundle)},{tokenSecret:SECRET,nowMs:NOW_MS,executor});
-  assert.equal(out.evidence_bundle.version,'evidence_bundle.v1');
-  assert.equal(containsForbiddenArchitecture(out.evidence_bundle),false);
-  assert.equal(JSON.stringify(out.evidence_bundle).includes('target_model_ids'),false);
-  assert.equal(JSON.stringify(out.evidence_bundle).includes('SHARE_TRAJECTORY'),false);
-  assert.equal('drill' in out.evidence_bundle,false);
-  assert.ok(out.evidence_bundle.context.market || out.evidence_bundle.context.sales);
+  assert.equal(out.analysis_iteration.version,'analysis_iteration.v1');
+  assert.equal(containsForbiddenArchitecture(out.analysis_iteration),false);
+  assert.equal(JSON.stringify(out.analysis_iteration).includes('target_model_ids'),false);
+  assert.equal(JSON.stringify(out.analysis_iteration).includes('SHARE_TRAJECTORY'),false);
+  assert.equal('drill' in out.analysis_iteration,false);
+  assert.ok(out.analysis_iteration.response_payload);
+  assert.ok(out.analysis_iteration.context_payload);
 });
 
 test('analyze refuses entity drift after RESOLVE', async () => {
@@ -142,10 +143,10 @@ for(const [question,semantic_parse] of E2E){
     assert.equal(resolution.ready,true);
     const intent=intentFrom(resolution,{comparison: semantic_parse.comparison ?? undefined});
     const out=await analyzeIntent({resolution_id:resolution.resolution_id,intent},{tokenSecret:SECRET,nowMs:NOW_MS,executor,includePrivateTrace:true});
-    assert.equal(out.evidence_bundle.version,CONTRACT_VERSIONS.evidence_bundle);
-    assert.equal(containsForbiddenArchitecture(out.evidence_bundle),false);
+    assert.equal(out.analysis_iteration.version,CONTRACT_VERSIONS.analysis_iteration);
+    assert.equal(containsForbiddenArchitecture(out.analysis_iteration),false);
     assert.ok(out._private.decision_plan.question_family);
-    assert.ok(['COMPLETE','PARTIAL','INSUFFICIENT'].includes(out.evidence_bundle.sufficiency.status));
+    assert.ok(['COMPLETE','PARTIAL','INSUFFICIENT'].includes(out.analysis_iteration.sufficiency.status));
   });
 }
 

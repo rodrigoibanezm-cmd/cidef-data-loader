@@ -2,7 +2,7 @@
 
 Input:
 ```text
-uno o más evidence_bundle.v1 ya ejecutados por ANALYZE
+una o más secuencias analysis_iteration.v1 completadas hasta STOP
 ```
 
 `report.md` sólo compone y ordena bloques. No reabre routing, no decide capabilities y no inicia drill-down.

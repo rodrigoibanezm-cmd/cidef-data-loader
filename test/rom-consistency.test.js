@@ -87,6 +87,12 @@ test('legacy competitive contracts remain explicit in internal schema', () => {
 test('public agent schema exposes only RESOLVE and ANALYZE', () => {
   const document = publicSchema();
   assert.deepEqual(Object.keys(document.paths).sort(), ['/api/analyze', '/api/resolve']);
+  const schemas = document.components.schemas;
+  assert.ok(schemas.AnalyzeRequest.properties.continuation_id);
+  assert.equal(schemas.AnalysisIteration.properties.version.enum[0], 'analysis_iteration.v1');
+  assert.deepEqual(schemas.AnalyzeResponse.required, ['ok', 'analysis_iteration']);
+  assert.ok(schemas.AnalysisIteration.properties.response_payload);
+  assert.ok(schemas.AnalysisIteration.properties.context_payload);
   const serialized = JSON.stringify(document);
   for (const forbidden of [
     'capability', 'motor', 'target_model_ids', 'ventas_universe_v01', 'rvm_universe_v01',

@@ -11,13 +11,25 @@ Responsabilidades:
 1. validar plan;
 2. traducir requerimientos semánticos mediante `executionRegistry`;
 3. resolver dependencias físicas privadas;
-4. ejecutar infraestructura determinística existente;
-5. obtener sólo contextos requeridos por DECIDE;
-6. validar comparabilidad/cobertura;
-7. ejecutar únicamente drill permitido;
-8. detenerse por stop conditions;
-9. evaluar suficiencia relativa a la pregunta;
-10. construir `evidence_bundle.v1`.
+4. construir una cola ordenada de investigaciones requeridas;
+5. ejecutar sólo la próxima investigación pendiente;
+6. obtener únicamente su contexto requerido y asociado;
+7. no ejecutar contexto opcional automáticamente;
+8. evaluar progreso y suficiencia contra el plan completo;
+9. emitir `CONTINUE` o `STOP` determinísticamente;
+10. construir `analysis_iteration.v1` sin resultados de iteraciones anteriores.
+
+Una investigación corresponde a un requerimiento de evidencia requerido más su contexto requerido asociado. Si varios requerimientos resuelven a la misma ejecución física, una sola ejecución puede satisfacerlos conjuntamente.
+
+`CONTINUE` incluye un `continuation_id` opaco y firmado. La siguiente llamada reconstruye el mismo plan y ejecuta solamente la próxima investigación. `STOP` omite el token.
+
+La salida mantiene carriles separados:
+```text
+response_payload
+context_payload
+```
+
+El contexto puede ser `NOT_REQUIRED`. EXECUTE nunca acumula ni reenvía outputs anteriores.
 
 Prohibido:
 ```text
