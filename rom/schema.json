@@ -1,1 +1,660 @@
-{"openapi":"3.1.0","info":{"title":"CIDEF Agent API","version":"2.0.0","description":"Public semantic surface. The agent parses language, RESOLVE grounds it, and ANALYZE returns certified evidence. Execution details are private."},"servers":[{"url":"https://cidef-data-loader.vercel.app"}],"paths":{"/api/resolve":{"post":{"operationId":"cidefResolve","summary":"Ground an LLM semantic parse deterministically","requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/ResolveRequest"}}}},"responses":{"200":{"description":"Grounded semantic resolution","content":{"application/json":{"schema":{"$ref":"#/components/schemas/ResolveResponse"}}}},"400":{"description":"Invalid or ambiguous semantic parse"}}}},"/api/analyze":{"post":{"operationId":"cidefAnalyze","summary":"Analyze a grounded semantic intent","requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/AnalyzeRequest"}}}},"responses":{"200":{"description":"Certified public evidence","content":{"application/json":{"schema":{"$ref":"#/components/schemas/AnalyzeResponse"}}}},"400":{"description":"Intent invalid for grounded resolution"}}}}},"components":{"schemas":{"SemanticParse":{"type":"object","additionalProperties":false,"required":["version","question_type"],"properties":{"version":{"type":"string","const":"semantic_parse.v1"},"question_type":{"type":"string","enum":["STATUS","PERFORMANCE","CHANGE","EXPECTATION","EXPLANATION","COMPARISON","OPPORTUNITY","RISK","ACTION"]},"entity":{"type":["object","null"],"additionalProperties":false,"properties":{"type":{"type":"string","enum":["COMPANY","STORE","SELLER","BRAND","MODEL"]},"value":{"type":"string"}}},"period":{"type":["object","null"],"additionalProperties":false,"properties":{"expression":{"type":"string"}}},"comparison":{"type":["string","null"],"enum":["NONE","YOY","SAME_CUTOFF_YOY","PREVIOUS_PERIOD","EXPECTED","PEERS","MARKET",null]},"scope":{"type":["object","null"],"additionalProperties":false,"properties":{"organization_scope":{"type":["string","null"],"enum":["CIDEF","INDUMOTORA","MACO_TATTERSALL","ALL",null]},"commercial_universe":{"type":["string","null"],"enum":["COMPANY","OWN_STORES","DEALERS",null]}}},"depth":{"type":["string","null"],"enum":["SUMMARY","STANDARD","DEEP",null]}}},"ResolveRequest":{"type":"object","additionalProperties":false,"required":["question","semantic_parse"],"properties":{"question":{"type":"string"},"semantic_parse":{"$ref":"#/components/schemas/SemanticParse"}}},"Intent":{"type":"object","additionalProperties":false,"required":["version","question_type","entity","period"],"properties":{"version":{"type":"string","const":"intent.v1"},"question_type":{"type":"string","enum":["STATUS","PERFORMANCE","CHANGE","EXPECTATION","EXPLANATION","COMPARISON","OPPORTUNITY","RISK","ACTION"]},"entity":{"type":"object","additionalProperties":false,"required":["type","value"],"properties":{"type":{"type":"string","enum":["COMPANY","STORE","SELLER","BRAND","MODEL"]},"value":{"type":"string"}}},"period":{"type":"object","additionalProperties":false,"required":["type","date_from","date_to"],"properties":{"type":{"type":"string"},"date_from":{"type":"string","format":"date"},"date_to":{"type":"string","format":"date"}}},"comparison":{"type":"string","enum":["NONE","YOY","SAME_CUTOFF_YOY","PREVIOUS_PERIOD","EXPECTED","PEERS","MARKET"]},"scope":{"type":"object","additionalProperties":false,"properties":{"organization_scope":{"type":["string","null"],"enum":["CIDEF","INDUMOTORA","MACO_TATTERSALL","ALL",null]},"commercial_universe":{"type":["string","null"],"enum":["COMPANY","OWN_STORES","DEALERS",null]}}},"depth":{"type":"string","enum":["SUMMARY","STANDARD","DEEP"]},"semantic_provenance":{"type":"object","additionalProperties":false,"properties":{"question_type":{"type":"string","enum":["USER_EXPRESSED","LLM_PARSED","BACKEND_RESOLVED","DETERMINISTIC_DEFAULT"]},"entity":{"type":"string","enum":["USER_EXPRESSED","LLM_PARSED","BACKEND_RESOLVED","DETERMINISTIC_DEFAULT"]},"period":{"type":"string","enum":["USER_EXPRESSED","LLM_PARSED","BACKEND_RESOLVED","DETERMINISTIC_DEFAULT"]},"comparison":{"type":"string","enum":["USER_EXPRESSED","LLM_PARSED","BACKEND_RESOLVED","DETERMINISTIC_DEFAULT"]},"scope":{"type":"string","enum":["USER_EXPRESSED","LLM_PARSED","BACKEND_RESOLVED","DETERMINISTIC_DEFAULT"]},"depth":{"type":"string","enum":["USER_EXPRESSED","LLM_PARSED","BACKEND_RESOLVED","DETERMINISTIC_DEFAULT"]}}}}},"AnalyzeRequest":{"type":"object","additionalProperties":false,"required":["resolution_id","intent"],"properties":{"resolution_id":{"type":"string"},"intent":{"$ref":"#/components/schemas/Intent"}}},"ResolutionBundle":{"type":"object","additionalProperties":false,"required":["version","resolution_id","understood","resolved","availability","ambiguity","allowed","defaults","missing","ready"],"properties":{"version":{"type":"string","const":"resolution_bundle.v1"},"resolution_id":{"type":"string"},"question":{"type":"string"},"understood":{"type":"object","additionalProperties":true},"resolved":{"type":"object","additionalProperties":false,"properties":{"entity":{"type":"object","additionalProperties":true},"period":{"type":"object","additionalProperties":true},"scope":{"type":["object","null"],"additionalProperties":true}}},"availability":{"type":"object","additionalProperties":false,"properties":{"current_result":{"$ref":"#/components/schemas/AvailabilityItem"},"market_comparison":{"$ref":"#/components/schemas/AvailabilityItem"},"historical_comparison":{"$ref":"#/components/schemas/AvailabilityItem"}}},"ambiguity":{"type":"object","additionalProperties":true},"allowed":{"type":"object","additionalProperties":true},"defaults":{"type":"object","additionalProperties":true},"missing":{"type":"array","items":{"$ref":"#/components/schemas/MissingItem"}},"ready":{"type":"boolean"}}},"AvailabilityItem":{"type":"object","additionalProperties":false,"required":["available","through"],"properties":{"available":{"type":["boolean","null"]},"through":{"type":["string","null"],"format":"date"}}},"MissingItem":{"type":"object","additionalProperties":false,"required":["field","kind"],"properties":{"field":{"type":"string"},"kind":{"type":"string","enum":["MISSING_BUT_DEFAULTABLE","MISSING_REQUIRES_USER","UNSUPPORTED"]}}},"ResolveResponse":{"type":"object","additionalProperties":false,"required":["ok","resolution_bundle"],"properties":{"ok":{"type":"boolean","const":true},"resolution_bundle":{"$ref":"#/components/schemas/ResolutionBundle"}}},"EvidenceItem":{"type":"object","additionalProperties":false,"required":["kind","status","period","scope","coverage"],"properties":{"kind":{"type":"string"},"status":{"type":"string","enum":["AVAILABLE","NOT_EVALUABLE"]},"reason_code":{"type":"string"},"period":{"type":"object","additionalProperties":false,"properties":{"date_from":{"type":"string","format":"date"},"date_to":{"type":"string","format":"date"}}},"scope":{"type":"object","additionalProperties":false,"properties":{"organization_scope":{"type":["string","null"]},"commercial_universe":{"type":["string","null"]}}},"coverage":{"type":"object","additionalProperties":true},"data":{"type":"object","additionalProperties":true}}},"EvidenceBundle":{"type":"object","additionalProperties":false,"required":["version","intent","evidence","context","comparability","coverage","limitations","sufficiency","semantic_provenance"],"properties":{"version":{"type":"string","const":"evidence_bundle.v1"},"intent":{"$ref":"#/components/schemas/Intent"},"evidence":{"type":"array","items":{"$ref":"#/components/schemas/EvidenceItem"}},"context":{"type":"object","additionalProperties":true},"comparability":{"type":"object","additionalProperties":true},"coverage":{"type":"object","additionalProperties":true},"limitations":{"type":"array","items":{"type":"string"}},"sufficiency":{"type":"object","additionalProperties":false,"required":["status","answered","unanswered","reason_codes"],"properties":{"status":{"type":"string","enum":["COMPLETE","PARTIAL","INSUFFICIENT"]},"answered":{"type":"array","items":{"type":"string"}},"unanswered":{"type":"array","items":{"type":"string"}},"reason_codes":{"type":"array","items":{"type":"string"}}}},"semantic_provenance":{"type":"object","additionalProperties":true}}},"AnalyzeResponse":{"type":"object","additionalProperties":false,"required":["ok","evidence_bundle"],"properties":{"ok":{"type":"boolean","const":true},"evidence_bundle":{"$ref":"#/components/schemas/EvidenceBundle"}}}}}}
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CIDEF Agent API",
+    "version": "2.0.0",
+    "description": "Public semantic surface for the CIDEF agent. The agent parses the business question, RESOLVE grounds identity, time and scope deterministically, and ANALYZE returns certified evidence for synthesis. Physical execution details remain private."
+  },
+  "x-cidef-architecture": {
+    "flow": "QUESTION -> SEMANTIC_PARSE -> RESOLVE -> RESOLUTION_BUNDLE -> INTENT -> ANALYZE -> EVIDENCE_BUNDLE -> SYNTHESIS",
+    "public_operations": [
+      "RESOLVE",
+      "ANALYZE"
+    ],
+    "invariants": [
+      "The agent expresses semantic intent only",
+      "Identity, temporal grounding, scope and defaults are resolved deterministically",
+      "Physical execution details are private",
+      "The agent synthesizes only returned evidence and context",
+      "Missing evidence is never reconstructed ad hoc"
+    ]
+  },
+  "servers": [
+    {
+      "url": "https://cidef-data-loader.vercel.app"
+    }
+  ],
+  "paths": {
+    "/api/resolve": {
+      "post": {
+        "operationId": "cidefResolve",
+        "summary": "Resolve one semantic business question",
+        "description": "Grounds the agent semantic parse into deterministic identity, temporal interpretation, valid scope, availability, defaults and ambiguity. It does not return analytical business results.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Semantic resolution completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid semantic parse or unresolved required input"
+          },
+          "405": {
+            "description": "POST required"
+          },
+          "500": {
+            "description": "Backend execution error"
+          }
+        }
+      }
+    },
+    "/api/analyze": {
+      "post": {
+        "operationId": "cidefAnalyze",
+        "summary": "Analyze one grounded business intent",
+        "description": "Executes the grounded intent using the deterministic analytical layer and returns a public evidence bundle for synthesis. The agent does not construct physical requests or joins.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Certified evidence returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Intent is invalid, expired or inconsistent with the grounded resolution"
+          },
+          "405": {
+            "description": "POST required"
+          },
+          "500": {
+            "description": "Backend execution error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SemanticParse": {
+        "type": "object",
+        "description": "Semantic parse produced by the agent from the user's natural-language question. Omit fields that are not expressed or safely inferable; do not send technical identifiers.",
+        "required": [
+          "version",
+          "question_type"
+        ],
+        "properties": {
+          "version": {
+            "type": "string",
+            "enum": [
+              "semantic_parse.v1"
+            ]
+          },
+          "question_type": {
+            "type": "string",
+            "enum": [
+              "STATUS",
+              "PERFORMANCE",
+              "CHANGE",
+              "EXPECTATION",
+              "EXPLANATION",
+              "COMPARISON",
+              "OPPORTUNITY",
+              "RISK",
+              "ACTION"
+            ]
+          },
+          "entity": {
+            "$ref": "#/components/schemas/SemanticEntity"
+          },
+          "period": {
+            "$ref": "#/components/schemas/SemanticPeriod"
+          },
+          "comparison": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "YOY",
+              "SAME_CUTOFF_YOY",
+              "PREVIOUS_PERIOD",
+              "EXPECTED",
+              "PEERS",
+              "MARKET"
+            ]
+          },
+          "scope": {
+            "$ref": "#/components/schemas/SemanticScope"
+          },
+          "depth": {
+            "type": "string",
+            "enum": [
+              "SUMMARY",
+              "STANDARD",
+              "DEEP"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SemanticEntity": {
+        "type": "object",
+        "required": [
+          "type",
+          "value"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "COMPANY",
+              "STORE",
+              "SELLER",
+              "BRAND",
+              "MODEL"
+            ]
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SemanticPeriod": {
+        "type": "object",
+        "required": [
+          "expression"
+        ],
+        "properties": {
+          "expression": {
+            "type": "string",
+            "description": "Natural business-time expression, for example este mes, agosto 2026, último trimestre or a date range."
+          }
+        },
+        "additionalProperties": false
+      },
+      "SemanticScope": {
+        "type": "object",
+        "properties": {
+          "organization_scope": {
+            "type": "string",
+            "enum": [
+              "CIDEF",
+              "INDUMOTORA",
+              "MACO_TATTERSALL",
+              "ALL"
+            ]
+          },
+          "commercial_universe": {
+            "type": "string",
+            "enum": [
+              "COMPANY",
+              "OWN_STORES",
+              "DEALERS"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResolveRequest": {
+        "type": "object",
+        "description": "Public RESOLVE request. Send the original question plus the semantic parse produced by the agent.",
+        "required": [
+          "question",
+          "semantic_parse"
+        ],
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "semantic_parse": {
+            "$ref": "#/components/schemas/SemanticParse"
+          }
+        },
+        "example": {
+          "question": "¿Cuánto creció el share de Foton el último trimestre?",
+          "semantic_parse": {
+            "version": "semantic_parse.v1",
+            "question_type": "PERFORMANCE",
+            "entity": {
+              "type": "BRAND",
+              "value": "Foton"
+            },
+            "period": {
+              "expression": "último trimestre"
+            },
+            "comparison": "YOY",
+            "depth": "STANDARD"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AvailabilityItem": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "through": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MissingItem": {
+        "type": "object",
+        "required": [
+          "field",
+          "kind"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "MISSING_BUT_DEFAULTABLE",
+              "MISSING_REQUIRES_USER",
+              "UNSUPPORTED"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResolutionBundle": {
+        "type": "object",
+        "description": "Grounded semantic context returned by RESOLVE. It contains no analytical business result.",
+        "required": [
+          "version",
+          "resolution_id",
+          "understood",
+          "resolved",
+          "availability",
+          "ambiguity",
+          "allowed",
+          "defaults",
+          "missing",
+          "ready"
+        ],
+        "properties": {
+          "version": {
+            "type": "string",
+            "enum": [
+              "resolution_bundle.v1"
+            ]
+          },
+          "resolution_id": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "understood": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "resolved": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "availability": {
+            "type": "object",
+            "properties": {
+              "current_result": {
+                "$ref": "#/components/schemas/AvailabilityItem"
+              },
+              "market_comparison": {
+                "$ref": "#/components/schemas/AvailabilityItem"
+              },
+              "historical_comparison": {
+                "$ref": "#/components/schemas/AvailabilityItem"
+              }
+            },
+            "additionalProperties": true
+          },
+          "ambiguity": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "allowed": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "defaults": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingItem"
+            }
+          },
+          "ready": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResolveResponse": {
+        "type": "object",
+        "required": [
+          "ok",
+          "resolution_bundle"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "resolution_bundle": {
+            "$ref": "#/components/schemas/ResolutionBundle"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Intent": {
+        "type": "object",
+        "description": "Grounded analytical intent sent back to ANALYZE. Use values returned or permitted by RESOLVE; do not invent technical fields.",
+        "required": [
+          "version",
+          "question_type",
+          "entity",
+          "period"
+        ],
+        "properties": {
+          "version": {
+            "type": "string",
+            "enum": [
+              "intent.v1"
+            ]
+          },
+          "question_type": {
+            "type": "string",
+            "enum": [
+              "STATUS",
+              "PERFORMANCE",
+              "CHANGE",
+              "EXPECTATION",
+              "EXPLANATION",
+              "COMPARISON",
+              "OPPORTUNITY",
+              "RISK",
+              "ACTION"
+            ]
+          },
+          "entity": {
+            "$ref": "#/components/schemas/SemanticEntity"
+          },
+          "period": {
+            "type": "object",
+            "required": [
+              "type",
+              "date_from",
+              "date_to"
+            ],
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "date_from": {
+                "type": "string",
+                "format": "date"
+              },
+              "date_to": {
+                "type": "string",
+                "format": "date"
+              }
+            },
+            "additionalProperties": true
+          },
+          "comparison": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "YOY",
+              "SAME_CUTOFF_YOY",
+              "PREVIOUS_PERIOD",
+              "EXPECTED",
+              "PEERS",
+              "MARKET"
+            ]
+          },
+          "scope": {
+            "$ref": "#/components/schemas/SemanticScope"
+          },
+          "depth": {
+            "type": "string",
+            "enum": [
+              "SUMMARY",
+              "STANDARD",
+              "DEEP"
+            ]
+          },
+          "semantic_provenance": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "USER_EXPRESSED",
+                "LLM_PARSED",
+                "BACKEND_RESOLVED",
+                "DETERMINISTIC_DEFAULT"
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "AnalyzeRequest": {
+        "type": "object",
+        "description": "Public ANALYZE request. resolution_id binds the request to the preceding deterministic RESOLVE result.",
+        "required": [
+          "resolution_id",
+          "intent"
+        ],
+        "properties": {
+          "resolution_id": {
+            "type": "string"
+          },
+          "intent": {
+            "$ref": "#/components/schemas/Intent"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EvidenceItem": {
+        "type": "object",
+        "required": [
+          "kind",
+          "status",
+          "period",
+          "scope",
+          "coverage"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "NOT_EVALUABLE"
+            ]
+          },
+          "reason_code": {
+            "type": "string"
+          },
+          "period": {
+            "type": "object",
+            "properties": {
+              "date_from": {
+                "type": "string",
+                "format": "date"
+              },
+              "date_to": {
+                "type": "string",
+                "format": "date"
+              }
+            },
+            "additionalProperties": true
+          },
+          "scope": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "coverage": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Sufficiency": {
+        "type": "object",
+        "required": [
+          "status",
+          "answered",
+          "unanswered",
+          "reason_codes"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "COMPLETE",
+              "PARTIAL",
+              "INSUFFICIENT"
+            ]
+          },
+          "answered": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unanswered": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "EvidenceBundle": {
+        "type": "object",
+        "description": "Public analytical output consumed by business semantics and synthesis.",
+        "required": [
+          "version",
+          "intent",
+          "evidence",
+          "context",
+          "comparability",
+          "coverage",
+          "limitations",
+          "sufficiency",
+          "semantic_provenance"
+        ],
+        "properties": {
+          "version": {
+            "type": "string",
+            "enum": [
+              "evidence_bundle.v1"
+            ]
+          },
+          "intent": {
+            "$ref": "#/components/schemas/Intent"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvidenceItem"
+            }
+          },
+          "context": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "comparability": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "coverage": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sufficiency": {
+            "$ref": "#/components/schemas/Sufficiency"
+          },
+          "semantic_provenance": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AnalyzeResponse": {
+        "type": "object",
+        "required": [
+          "ok",
+          "evidence_bundle"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "evidence_bundle": {
+            "$ref": "#/components/schemas/EvidenceBundle"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
