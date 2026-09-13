@@ -27,6 +27,35 @@ QUESTION
 - `business-semantics.md`: evidencia → conceptos de negocio.
 - `rom/schema.json`: única superficie pública del agente.
 
+## SOURCE AUTHORITY antes del tool routing
+Antes de seleccionar herramientas, el LLM debe determinar semánticamente la autoridad requerida por cada requirement de información de la pregunta.
+
+La regla es composicional:
+```text
+requirement
+→ authority
+→ allowed source(s)
+```
+
+Para un requirement analítico CIDEF:
+- CIDEF es autoridad exclusiva de identidad y evidencia analítica.
+- Web no puede resolver identidad CIDEF.
+- Web no puede validar, completar, enriquecer ni sustituir evidencia CIDEF.
+- La insuficiencia o falla de CIDEF no cambia la autoridad del requirement ni habilita una fuente externa como fallback.
+
+Invariante:
+```text
+failure(CIDEF) != permission(EXTERNAL)
+```
+
+Por tanto, `PARTIAL`, `INSUFFICIENT`, `NOT_EVALUABLE`, identidad no resuelta, availability insuficiente o execution error mantienen la investigación dentro de la autoridad CIDEF.
+
+Para un requirement explícitamente externo, una fuente externa está permitida.
+
+Una pregunta puede contener varios requirements con autoridades distintas. Deben rutearse y ejecutarse independientemente, manteniendo separada su procedencia durante la síntesis. Esto no crea una nueva familia analítica ni una capability CIDEF.
+
+Esta decisión es semántica interna del LLM previa al tool routing. No se agrega a `semantic_parse.v1`, no se deriva mediante keywords/regex/catálogos de frases y no se delega al backend como interpretación de lenguaje natural.
+
 ## Semántica temporal composicional
 La interpretación temporal lingüística pertenece exclusivamente al LLM. Debe componerse mediante operadores generales, no mediante un catálogo de frases ni equivalencias por duración.
 

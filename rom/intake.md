@@ -8,6 +8,21 @@ lenguaje natural
 
 El LLM extrae candidatos semánticos y materializa la intención temporal lingüística como un rango calendario explícito.
 
+Antes de seleccionar herramientas, el LLM también debe determinar semánticamente la autoridad requerida por cada requirement de información. Esta decisión es interna al agente y ocurre antes del tool routing:
+```text
+requirement
+→ authority
+→ allowed source(s)
+```
+
+Reglas de autoridad:
+- requirement analítico CIDEF → identidad y evidencia analítica exclusivamente desde CIDEF;
+- una falla o insuficiencia CIDEF no habilita Web ni otra fuente externa como fallback;
+- requirement explícitamente externo → fuente externa permitida;
+- si la pregunta contiene requirements de autoridades distintas, se separan, se rutean independientemente y conservan provenance separado hasta la síntesis.
+
+La autoridad de fuente NO es un campo de `semantic_parse.v1`, no crea un `question_type`, no crea una familia analítica y no se materializa mediante keywords, regex, tablas o catálogos de frases.
+
 Campos permitidos:
 ```text
 question_type
