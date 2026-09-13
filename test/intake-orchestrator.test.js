@@ -14,14 +14,20 @@ import { parseRvmBrandShareTrajectoryInput } from '../lib/rvm-brand-share-trajec
 const options = Object.freeze({
   now: '2026-09-11T09:00:00-03:00', timezone: 'America/Santiago',
 });
-const decide = (question) => orchestrateQuestion(question, options);
+const Q2_2026 = { date_from: '2026-04-01', date_to: '2026-06-30' };
+const LAST3_CLOSED = { date_from: '2026-06-01', date_to: '2026-08-31' };
+const CURRENT_MTD = { date_from: '2026-09-01', date_to: '2026-09-11' };
+const JUN_AUG = { date_from: '2026-06-01', date_to: '2026-08-31' };
+const decide = (question, period = null) => orchestrateQuestion(question, {
+  ...options, ...(period ? { period } : {}),
+});
 const onlyPlan = (decision) => {
   assert.equal(decision.plans.length, 1);
   return decision.plans[0];
 };
 
 test('RVM brand share growth routes to monthly SHARE_TRAJECTORY without reconstructed model ids', () => {
-  const decision = decide('¿Cuánto creció el share de Foton el último trimestre?');
+  const decision = decide('¿Cuánto creció el share de Foton el último trimestre?', Q2_2026);
   const plan = onlyPlan(decision);
   assert.equal(decision.status, 'READY');
   assert.deepEqual(decision.intent.domains, ['RVM']);
@@ -40,13 +46,13 @@ test('RVM brand share growth routes to monthly SHARE_TRAJECTORY without reconstr
 });
 
 test('last three closed months do not collapse into last closed quarter', () => {
-  const decision = decide('¿Cuánto cambió el share de Foton en los últimos 3 meses?');
-  assert.deepEqual([decision.temporal.semantic_type, decision.temporal.date_from, decision.temporal.date_to],
-    ['LAST_N_CLOSED_CALENDAR_MONTHS', '2026-06-01', '2026-08-31']);
+  const decision = decide('¿Cuánto cambió el share de Foton en los últimos 3 meses?', LAST3_CLOSED);
+  assert.deepEqual([decision.temporal.type, decision.temporal.date_from, decision.temporal.date_to],
+    ['LAST_N_CLOSED_MONTHS', '2026-06-01', '2026-08-31']);
 });
 
 test('CRM conversion change routes to longitudinal cohort semantics, not CONTEXT', () => {
-  const decision = decide('¿Mejoró la conversión CRM el último trimestre?');
+  const decision = decide('¿Mejoró la conversión CRM el último trimestre?', Q2_2026);
   const plan = onlyPlan(decision);
   assert.equal(plan.route.capability, 'LONGITUDINAL_CONTEXT');
   assert.equal(plan.metric, 'CONVERSION_RATE');
@@ -57,7 +63,7 @@ test('CRM conversion change routes to longitudinal cohort semantics, not CONTEXT
 });
 
 test('CRM present-state question starts with CONTEXT BIG_PICTURE', () => {
-  const plan = onlyPlan(decide('¿Cómo está la gestión de leads?'));
+  const plan = onlyPlan(decide('¿Cómo está la gestión de leads?', CURRENT_MTD));
   assert.equal(plan.analytical_need, 'BIG_PICTURE');
   assert.equal(plan.route.capability, 'CONTEXT');
   assert.equal(plan.scope.state_semantics, 'CURRENT_STATE');
@@ -65,7 +71,7 @@ test('CRM present-state question starts with CONTEXT BIG_PICTURE', () => {
 });
 
 test('current-month sales uses the certified open-period forecast contract', () => {
-  const plan = onlyPlan(decide('¿Cómo vienen las ventas este mes?'));
+  const plan = onlyPlan(decide('¿Cómo vienen las ventas este mes?', CURRENT_MTD));
   assert.equal(plan.analytical_need, 'CURRENT_OPEN_PERIOD');
   assert.equal(plan.route.capability, 'CURRENT_MONTH_CLOSE_FORECAST');
   assert.deepEqual(plan.request.input, { cutoff_date: '2026-09-11' });
@@ -73,7 +79,7 @@ test('current-month sales uses the certified open-period forecast contract', () 
 });
 
 test('monthly sales evolution routes through VENTAS longitudinal with a schema-valid input', () => {
-  const decision = decide('¿Cómo evolucionaron las ventas entre junio y agosto?');
+  const decision = decide('¿Cómo evolucionaron las ventas entre junio y agosto?', JUN_AUG);
   const plan = onlyPlan(decision);
   assert.equal(plan.route.transport_domain, 'LONGITUDINAL');
   assert.equal(plan.route.transport_capability, 'VENTAS');
@@ -94,7 +100,7 @@ test('store explanation selects deterministic contribution and requests missing 
 });
 
 test('store contribution builds its closed physical contract when dates are explicit', () => {
-  const plan = onlyPlan(decide('¿Qué sucursal explica la caída de ventas entre junio y agosto?'));
+  const plan = onlyPlan(decide('¿Qué sucursal explica la caída de ventas entre junio y agosto?', JUN_AUG));
   assert.deepEqual(plan.request.input, { period_a: '2026-06', period_b: '2026-08' });
   assert.doesNotThrow(() => parseChangeContributionInput(plan.request.input, new Date(options.now)));
 });
@@ -123,7 +129,7 @@ test('orchestrator can plan RVM, VENTAS and CRM together', () => {
 });
 
 test('schema-aware intramonth adapter emits only runtime-supported fields', () => {
-  const temporal = decide('¿Cómo evolucionaron las ventas entre junio y agosto?').temporal;
+  const temporal = decide('¿Cómo evolucionaron las ventas entre junio y agosto?', JUN_AUG).temporal;
   const request = buildIntramonthHistoryRequest(temporal, {
     outputMode: 'MONTHLY_MILESTONES', commercial_universe: 'COMPANY', grain: 'MONTH',
   });
