@@ -85,10 +85,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # The previous step writes test-output.txt. It is runtime output, not repository
-          # source, and may quote intentionally rejected contract terms from negative tests.
-          rm -f test-output.txt
+          rm -f test-output.txt residual-report.txt
+          touch residual-report.txt
 
+          failed=0
           forbidden=(
             'resolveTemporalIntent'
             'TEMPORAL_AMBIGUOUS'
@@ -98,28 +98,41 @@ jobs:
             'PERIOD_MAP'
           )
           for term in "${forbidden[@]}"; do
-            if grep -R -n -F "$term" . --exclude-dir=.git --exclude-dir=.github --exclude-dir=node_modules; then
-              echo "Forbidden residual found: $term"
-              exit 1
+            matches="$(grep -R -n -F "$term" . --exclude-dir=.git --exclude-dir=.github --exclude-dir=node_modules --exclude=residual-report.txt || true)"
+            if [ -n "$matches" ]; then
+              printf 'FORBIDDEN: %s\n%s\n' "$term" "$matches" | tee -a residual-report.txt
+              failed=1
             fi
           done
 
-          expression_hits="$(grep -R -n -F 'period.expression' . --exclude-dir=.git --exclude-dir=.github --exclude-dir=node_modules || true)"
+          expression_hits="$(grep -R -n -F 'period.expression' . --exclude-dir=.git --exclude-dir=.github --exclude-dir=node_modules --exclude=residual-report.txt || true)"
           expression_unexpected="$(printf '%s\n' "$expression_hits" | grep -v '^./test/temporal-boundary.test.js:' | sed '/^$/d' || true)"
           if [ -n "$expression_unexpected" ]; then
-            echo 'Unexpected period.expression residuals:'
-            printf '%s\n' "$expression_unexpected"
-            exit 1
+            printf 'UNEXPECTED period.expression:\n%s\n' "$expression_unexpected" | tee -a residual-report.txt
+            failed=1
           fi
 
-          if grep -R -n -E 'último trimestre|ultimo trimestre|last quarter|este mes|this month|año pasado|ano pasado|last year' lib api 2>/dev/null; then
-            echo 'Natural-language temporal parsing residual found under runtime code.'
-            exit 1
+          runtime_language="$(grep -R -n -E 'último trimestre|ultimo trimestre|last quarter|este mes|this month|año pasado|ano pasado|last year' lib api 2>/dev/null || true)"
+          if [ -n "$runtime_language" ]; then
+            printf 'RUNTIME NATURAL-LANGUAGE TEMPORAL PARSING:\n%s\n' "$runtime_language" | tee -a residual-report.txt
+            failed=1
           fi
 
-          if grep -R -n -F "intake-orchestrator/temporal.js" lib api test rom 2>/dev/null; then
-            echo 'Removed temporal parser path is still referenced.'
-            exit 1
+          removed_path="$(grep -R -n -F 'intake-orchestrator/temporal.js' lib api test rom 2>/dev/null || true)"
+          if [ -n "$removed_path" ]; then
+            printf 'REMOVED PARSER PATH REFERENCE:\n%s\n' "$removed_path" | tee -a residual-report.txt
+            failed=1
           fi
 
-          echo 'Temporal boundary scan passed.'
+          if [ "$failed" -ne 0 ]; then
+            exit 1
+          fi
+          echo 'Temporal boundary scan passed.' | tee residual-report.txt
+
+      - name: Upload temporal residual report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: temporal-residual-report
+          path: residual-report.txt
+          if-no-files-found: ignore
