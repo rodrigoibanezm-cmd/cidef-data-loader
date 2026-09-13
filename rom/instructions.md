@@ -1,7 +1,7 @@
 # CIDEF — Instrucciones canónicas
 
 ## Rol del agente
-El agente comprende lenguaje natural y sintetiza evidencia. No planifica ejecución física.
+El agente comprende lenguaje natural, materializa la intención temporal como `date_from` + `date_to` y sintetiza evidencia. No planifica ejecución física.
 
 Flujo público:
 ```text
@@ -18,7 +18,8 @@ QUESTION
 ```
 
 ## Autoridades
-- RESOLVE: grounding determinístico de identidad, temporalidad, opciones y disponibilidad.
+- LLM semantic parse: semántica lingüística, incluida la conversión de expresiones temporales humanas a un rango explícito.
+- RESOLVE: validación/certificación determinista de identidad, rango temporal, opciones, disponibilidad y metadata temporal derivada.
 - DECIDE backend: familia de pregunta, evidencia necesaria, comparabilidad, contexto y drill policy.
 - EXECUTE backend: dependencias, universos, capacidades, orden físico y continuidad incremental.
 - MASTER: identidad y pertenencia.
@@ -44,6 +45,7 @@ drill-down
 - NO RECONSTRUCTION.
 - No hacer joins ad hoc.
 - No reconstruir MASTER ni target IDs.
+- El backend nunca interpreta expresiones temporales naturales: recibe `period.date_from` + `period.date_to`.
 - `commercial_universe` y `organization_scope` son dimensiones distintas.
 - LONGITUDINAL y DISCOVERY no son dominios analíticos públicos.
 - DISCOVERY no es fallback para una pregunta de negocio.

@@ -32,8 +32,12 @@ const executor = async spec => ({
   commercial_scope:{universe:'COMPANY'}
 });
 
-function parse(question_type, entity, expression, extra={}) {
-  return {version:'semantic_parse.v1',question_type,entity,period:{expression},comparison:extra.comparison??null,scope:extra.scope??null,depth:extra.depth??null};
+const CURRENT_MTD={date_from:'2026-09-01',date_to:'2026-09-11'};
+const LAST_CLOSED_MONTH={date_from:'2026-08-01',date_to:'2026-08-31'};
+const LAST_CLOSED_QUARTER={date_from:'2026-04-01',date_to:'2026-06-30'};
+const LAST_TWO_CLOSED_MONTHS={date_from:'2026-07-01',date_to:'2026-08-31'};
+function parse(question_type, entity, period, extra={}) {
+  return {version:'semantic_parse.v1',question_type,entity,period,comparison:extra.comparison??null,scope:extra.scope??null,depth:extra.depth??null};
 }
 async function resolve(question, semantic_parse) {
   return resolveSemanticParse({question,semantic_parse},{entityResolver,availabilityProvider,tokenSecret:SECRET,now:NOW,nowMs:NOW_MS});
@@ -54,13 +58,13 @@ function intentFrom(bundle, overrides={}) {
 // contract
 
 test('semantic_parse.v1 is closed and rejects physical fields', () => {
-  const ok = validateSemanticParse(parse('PERFORMANCE',{type:'BRAND',value:'Foton'},'este mes'));
+  const ok = validateSemanticParse(parse('PERFORMANCE',{type:'BRAND',value:'Foton'},CURRENT_MTD));
   assert.equal(ok.question_type,'PERFORMANCE');
-  assert.throws(() => validateSemanticParse({...parse('STATUS',{type:'COMPANY',value:'CIDEF'},'este mes'),domain:'VENTAS'}), /INVALID_SEMANTIC_PARSE/);
+  assert.throws(() => validateSemanticParse({...parse('STATUS',{type:'COMPANY',value:'CIDEF'},CURRENT_MTD),domain:'VENTAS'}), /INVALID_SEMANTIC_PARSE/);
 });
 
 test('resolve grounds temporal/entity and applies deterministic defaults without exposing architecture', async () => {
-  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},'este mes'));
+  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},CURRENT_MTD));
   assert.equal(bundle.version,'resolution_bundle.v1');
   assert.equal(bundle.resolved.entity.display_name,'FOTON');
   assert.equal(bundle.resolved.period.type,'CURRENT_MTD');
@@ -74,13 +78,13 @@ test('resolve grounds temporal/entity and applies deterministic defaults without
 
 test('resolve preserves real ambiguity instead of guessing', async () => {
   const ambiguousResolver=async ({type})=>({status:'AMBIGUOUS',resolved:false,type,candidates:[{display_name:'A'},{display_name:'B'}]});
-  const bundle=await resolveSemanticParse({question:'x',semantic_parse:parse('STATUS',{type:'STORE',value:'Plaza'},'este mes')},{entityResolver:ambiguousResolver,availabilityProvider,tokenSecret:SECRET,now:NOW,nowMs:NOW_MS});
+  const bundle=await resolveSemanticParse({question:'x',semantic_parse:parse('STATUS',{type:'STORE',value:'Plaza'},CURRENT_MTD)},{entityResolver:ambiguousResolver,availabilityProvider,tokenSecret:SECRET,now:NOW,nowMs:NOW_MS});
   assert.equal(bundle.ready,false);
   assert.deepEqual(bundle.missing.find(x=>x.field==='entity'),{field:'entity',kind:'MISSING_REQUIRES_USER'});
 });
 
 test('resolution token rejects tampering', async () => {
-  const bundle=await resolve('¿Cómo va CIDEF este mes?',parse('PERFORMANCE',{type:'COMPANY',value:'CIDEF'},'este mes'));
+  const bundle=await resolve('¿Cómo va CIDEF este mes?',parse('PERFORMANCE',{type:'COMPANY',value:'CIDEF'},CURRENT_MTD));
   const parts=bundle.resolution_id.split('.');
   parts[2]=(parts[2][0]==='A'?'B':'A')+parts[2].slice(1);
   const tampered=parts.join('.');
@@ -89,14 +93,14 @@ test('resolution token rejects tampering', async () => {
 });
 
 test('DECIDE rejects invalid semantic combinations', async () => {
-  const bundle=await resolve('expectativa agosto',parse('EXPECTATION',{type:'COMPANY',value:'CIDEF'},'mes pasado'));
+  const bundle=await resolve('expectativa agosto',parse('EXPECTATION',{type:'COMPANY',value:'CIDEF'},LAST_CLOSED_MONTH));
   const authority=verifyResolutionToken(bundle.resolution_id,{secret:SECRET,nowMs:NOW_MS});
   const intent=intentFrom(bundle,{comparison:'EXPECTED'});
   assert.throws(()=>decideIntent(intent,authority),/EXPECTATION requires CURRENT_MTD/);
 });
 
 test('DECIDE family and drill policy are private deterministic output', async () => {
-  const bundle=await resolve('share Foton',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},'último trimestre'));
+  const bundle=await resolve('share Foton',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},LAST_CLOSED_QUARTER));
   const authority=verifyResolutionToken(bundle.resolution_id,{secret:SECRET,nowMs:NOW_MS});
   const plan=decideIntent(intentFrom(bundle,{comparison:'YOY'}),authority);
   assert.equal(plan.question_family,'COMPETITIVE_PERFORMANCE');
@@ -105,7 +109,7 @@ test('DECIDE family and drill policy are private deterministic output', async ()
 });
 
 test('public evidence strips physical architecture and technical ids', async () => {
-  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},'este mes'));
+  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},CURRENT_MTD));
   const out=await analyzeIntent({resolution_id:bundle.resolution_id,intent:intentFrom(bundle)},{tokenSecret:SECRET,nowMs:NOW_MS,executor});
   assert.equal(out.analysis_iteration.version,'analysis_iteration.v1');
   assert.equal(containsForbiddenArchitecture(out.analysis_iteration),false);
@@ -117,7 +121,7 @@ test('public evidence strips physical architecture and technical ids', async () 
 });
 
 test('analyze refuses entity drift after RESOLVE', async () => {
-  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},'este mes'));
+  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},CURRENT_MTD));
   const intent=intentFrom(bundle,{entity:{type:'BRAND',value:'DONGFENG'}});
   await assert.rejects(()=>analyzeIntent({resolution_id:bundle.resolution_id,intent},{tokenSecret:SECRET,nowMs:NOW_MS,executor}),/INTENT_ENTITY_DIFFERS_FROM_RESOLUTION/);
 });
@@ -130,11 +134,11 @@ test('public schema exposes only RESOLVE and ANALYZE and no execution vocabulary
 });
 
 const E2E=[
-  ['¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},'este mes')],
-  ['¿Cuánto creció el share de Foton el último trimestre?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},'último trimestre',{comparison:'YOY'})],
-  ['¿Cómo va CIDEF este mes?',parse('PERFORMANCE',{type:'COMPANY',value:'CIDEF'},'este mes')],
-  ['¿Qué sucursal explica el cambio?',parse('EXPLANATION',{type:'COMPANY',value:'CIDEF'},'últimos 2 meses')],
-  ['¿Qué está pasando que debería preocuparme?',parse('RISK',{type:'COMPANY',value:'CIDEF'},'este mes')],
+  ['¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},CURRENT_MTD)],
+  ['¿Cuánto creció el share de Foton el último trimestre?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},LAST_CLOSED_QUARTER,{comparison:'YOY'})],
+  ['¿Cómo va CIDEF este mes?',parse('PERFORMANCE',{type:'COMPANY',value:'CIDEF'},CURRENT_MTD)],
+  ['¿Qué sucursal explica el cambio?',parse('EXPLANATION',{type:'COMPANY',value:'CIDEF'},LAST_TWO_CLOSED_MONTHS)],
+  ['¿Qué está pasando que debería preocuparme?',parse('RISK',{type:'COMPANY',value:'CIDEF'},CURRENT_MTD)],
 ];
 
 for(const [question,semantic_parse] of E2E){
@@ -151,24 +155,24 @@ for(const [question,semantic_parse] of E2E){
 }
 
 test('resolution token rejects expiry', async () => {
-  const bundle=await resolve('¿Cómo va CIDEF este mes?',parse('PERFORMANCE',{type:'COMPANY',value:'CIDEF'},'este mes'));
+  const bundle=await resolve('¿Cómo va CIDEF este mes?',parse('PERFORMANCE',{type:'COMPANY',value:'CIDEF'},CURRENT_MTD));
   assert.throws(()=>verifyResolutionToken(bundle.resolution_id,{secret:SECRET,nowMs:NOW_MS+(31*60*1000)}),/RESOLUTION_ID_EXPIRED/);
 });
 
 test('analyze refuses question_type drift after RESOLVE', async () => {
-  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},'este mes'));
+  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},CURRENT_MTD));
   const intent=intentFrom(bundle,{question_type:'STATUS'});
   await assert.rejects(()=>analyzeIntent({resolution_id:bundle.resolution_id,intent},{tokenSecret:SECRET,nowMs:NOW_MS,executor}),/INTENT_QUESTION_TYPE_DIFFERS_FROM_RESOLUTION/);
 });
 
 test('analyze refuses period drift after RESOLVE', async () => {
-  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},'este mes'));
+  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},CURRENT_MTD));
   const intent=intentFrom(bundle,{period:{type:bundle.resolved.period.type,date_from:bundle.resolved.period.date_from,date_to:'2026-09-10'}});
   await assert.rejects(()=>analyzeIntent({resolution_id:bundle.resolution_id,intent},{tokenSecret:SECRET,nowMs:NOW_MS,executor}),/INTENT_PERIOD_DIFFERS_FROM_RESOLUTION/);
 });
 
 test('analyze refuses comparison outside RESOLVE allowed set', async () => {
-  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},'este mes'));
+  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},CURRENT_MTD));
   const authority=verifyResolutionToken(bundle.resolution_id,{secret:SECRET,nowMs:NOW_MS});
   authority.allowed.comparison=['SAME_CUTOFF_YOY'];
   const token=issueResolutionToken(authority,{secret:SECRET,nowMs:NOW_MS});
@@ -177,7 +181,7 @@ test('analyze refuses comparison outside RESOLVE allowed set', async () => {
 });
 
 test('analyze refuses organization scope outside RESOLVE allowed set', async () => {
-  const bundle=await resolve('¿Cómo va CIDEF este mes?',parse('PERFORMANCE',{type:'COMPANY',value:'CIDEF'},'este mes'));
+  const bundle=await resolve('¿Cómo va CIDEF este mes?',parse('PERFORMANCE',{type:'COMPANY',value:'CIDEF'},CURRENT_MTD));
   const all=['CIDEF','INDUMOTORA','MACO_TATTERSALL','ALL'];
   const forbidden=all.find(v=>!bundle.allowed.scope.organization_scope.includes(v));
   assert.ok(forbidden,'test requires organization scope outside allowed set');
@@ -186,7 +190,7 @@ test('analyze refuses organization scope outside RESOLVE allowed set', async () 
 });
 
 test('analyze refuses commercial universe outside RESOLVE allowed set', async () => {
-  const bundle=await resolve('¿Cómo va CIDEF este mes?',parse('PERFORMANCE',{type:'COMPANY',value:'CIDEF'},'este mes'));
+  const bundle=await resolve('¿Cómo va CIDEF este mes?',parse('PERFORMANCE',{type:'COMPANY',value:'CIDEF'},CURRENT_MTD));
   const authority=verifyResolutionToken(bundle.resolution_id,{secret:SECRET,nowMs:NOW_MS});
   authority.allowed.scope.commercial_universe=['COMPANY'];
   const token=issueResolutionToken(authority,{secret:SECRET,nowMs:NOW_MS});
@@ -195,7 +199,7 @@ test('analyze refuses commercial universe outside RESOLVE allowed set', async ()
 });
 
 test('analyze refuses depth outside RESOLVE allowed set', async () => {
-  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},'este mes'));
+  const bundle=await resolve('¿Cómo va Foton este mes?',parse('PERFORMANCE',{type:'BRAND',value:'Foton'},CURRENT_MTD));
   const authority=verifyResolutionToken(bundle.resolution_id,{secret:SECRET,nowMs:NOW_MS});
   authority.allowed.depth=['STANDARD'];
   const token=issueResolutionToken(authority,{secret:SECRET,nowMs:NOW_MS});

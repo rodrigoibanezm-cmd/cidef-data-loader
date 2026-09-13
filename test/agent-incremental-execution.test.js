@@ -34,7 +34,7 @@ function semanticParse(questionType, entityType = 'COMPANY', entityValue = 'CIDE
     version: CONTRACT_VERSIONS.semantic_parse,
     question_type: questionType,
     entity: { type: entityType, value: entityValue },
-    period: { expression: 'este mes' },
+    period: { date_from: '2026-09-01', date_to: '2026-09-11' },
     comparison: null,
     scope: null,
     depth: null,
