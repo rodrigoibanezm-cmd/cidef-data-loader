@@ -109,7 +109,8 @@
         "description": "Semantic parse produced by the agent from the user's natural-language question. The agent must materialize temporal language as period.date_from + period.date_to; do not send technical identifiers.",
         "required": [
           "version",
-          "question_type"
+          "question_type",
+          "period"
         ],
         "properties": {
           "version": {
