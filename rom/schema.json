@@ -29,7 +29,7 @@
       "post": {
         "operationId": "cidefResolve",
         "summary": "Resolve one semantic business question",
-        "description": "Grounds the agent semantic parse into deterministic identity, temporal interpretation, valid scope, availability, defaults and ambiguity. It does not return analytical business results.",
+        "description": "Validates and certifies the agent semantic parse into deterministic identity, explicit temporal range, derived temporal metadata, valid scope, availability, defaults and ambiguity. It never interprets natural-language time expressions. It does not return analytical business results.",
         "requestBody": {
           "required": true,
           "content": {
@@ -106,7 +106,7 @@
     "schemas": {
       "SemanticParse": {
         "type": "object",
-        "description": "Semantic parse produced by the agent from the user's natural-language question. Omit fields that are not expressed or safely inferable; do not send technical identifiers.",
+        "description": "Semantic parse produced by the agent from the user's natural-language question. The agent must materialize temporal language as period.date_from + period.date_to; do not send technical identifiers.",
         "required": [
           "version",
           "question_type"
@@ -190,12 +190,19 @@
       "SemanticPeriod": {
         "type": "object",
         "required": [
-          "expression"
+          "date_from",
+          "date_to"
         ],
         "properties": {
-          "expression": {
+          "date_from": {
             "type": "string",
-            "description": "Natural business-time expression, for example este mes, agosto 2026, último trimestre or a date range."
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "date_to": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
           }
         },
         "additionalProperties": false
@@ -248,7 +255,8 @@
               "value": "Foton"
             },
             "period": {
-              "expression": "último trimestre"
+              "date_from": "2026-04-01",
+              "date_to": "2026-06-30"
             },
             "comparison": "YOY",
             "depth": "STANDARD"

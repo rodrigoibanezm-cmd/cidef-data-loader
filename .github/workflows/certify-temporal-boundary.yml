@@ -1,0 +1,57 @@
+name: certify-temporal-boundary
+
+on:
+  push:
+    branches:
+      - refactor/temporal-boundary-cleanup
+
+jobs:
+  certify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Run full test suite
+        run: npm test
+
+      - name: Certify rejected temporal architecture is absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden=(
+            'resolveTemporalIntent'
+            'TEMPORAL_AMBIGUOUS'
+            'LAST_CLOSED_CALENDAR_QUARTER'
+            'CURRENT_MONTH_TO_DATE'
+            'semantic_type'
+          )
+          for term in "${forbidden[@]}"; do
+            if grep -R -n -F "$term" . --exclude-dir=.git --exclude-dir=node_modules; then
+              echo "Forbidden residual found: $term"
+              exit 1
+            fi
+          done
+
+          expression_hits="$(grep -R -n -F 'period.expression' . --exclude-dir=.git --exclude-dir=node_modules || true)"
+          expression_unexpected="$(printf '%s\n' "$expression_hits" | grep -v '^./test/temporal-boundary.test.js:' | sed '/^$/d' || true)"
+          if [ -n "$expression_unexpected" ]; then
+            echo "Unexpected period.expression residuals:"
+            printf '%s\n' "$expression_unexpected"
+            exit 1
+          fi
+
+          if grep -R -n -E 'último trimestre|ultimo trimestre|last quarter|este mes|this month|año pasado|ano pasado|last year' lib api 2>/dev/null; then
+            echo 'Natural-language temporal parsing residual found under runtime code.'
+            exit 1
+          fi
+
+          echo 'Temporal boundary scan passed.'
