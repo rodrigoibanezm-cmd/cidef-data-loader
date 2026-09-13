@@ -60,7 +60,7 @@ jobs:
             'OpenAPI exposes a closed explicit VIN_GAP input and keeps the Actions root object-compatible'
           )
           for name in "${expected_failures[@]}"; do
-            if ! grep -F "- $name" test-output.txt >/dev/null; then
+            if ! grep -F -- "- $name" test-output.txt >/dev/null; then
               echo "Missing expected baseline failure: $name"
               exit 1
             fi
