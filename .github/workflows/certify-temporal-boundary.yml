@@ -85,6 +85,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # The previous step writes test-output.txt. It is runtime output, not repository
+          # source, and may quote intentionally rejected contract terms from negative tests.
+          rm -f test-output.txt
+
           forbidden=(
             'resolveTemporalIntent'
             'TEMPORAL_AMBIGUOUS'
