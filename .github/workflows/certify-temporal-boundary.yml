@@ -94,13 +94,13 @@ jobs:
             'PERIOD_MAP'
           )
           for term in "${forbidden[@]}"; do
-            if grep -R -n -F "$term" . --exclude-dir=.git --exclude-dir=node_modules; then
+            if grep -R -n -F "$term" . --exclude-dir=.git --exclude-dir=.github --exclude-dir=node_modules; then
               echo "Forbidden residual found: $term"
               exit 1
             fi
           done
 
-          expression_hits="$(grep -R -n -F 'period.expression' . --exclude-dir=.git --exclude-dir=node_modules || true)"
+          expression_hits="$(grep -R -n -F 'period.expression' . --exclude-dir=.git --exclude-dir=.github --exclude-dir=node_modules || true)"
           expression_unexpected="$(printf '%s\n' "$expression_hits" | grep -v '^./test/temporal-boundary.test.js:' | sed '/^$/d' || true)"
           if [ -n "$expression_unexpected" ]; then
             echo 'Unexpected period.expression residuals:'
