@@ -4,7 +4,7 @@
 Convertir una pregunta de negocio en el **plan mínimo de evidencia**. No partir desde tablas ni motores físicos.
 
 ```text
-pregunta → intención → semántica temporal → dominio(s) → concepto(s) de negocio → evidencia mínima → capability(s)
+pregunta → intención → período materializado → dominio(s) → concepto(s) de negocio → evidencia mínima → capability(s)
 ```
 
 `schema.json` define capabilities e inputs. `business-rules.md` define reglas y comparabilidad. `business-semantics.md` define qué evidencia permite declarar cada concepto de negocio. La secuencia posterior pertenece a `orchestrator.md`.
@@ -19,20 +19,30 @@ pregunta → intención → semántica temporal → dominio(s) → concepto(s) d
 No ampliar una pregunta descriptiva ni mezclar preguntas superiores salvo que el usuario pida una lectura integrada.
 
 ## 2. Resolver temporalidad
-Resolver la expresión temporal antes del routing físico y conservar la decisión en una estructura inspeccionable. La zona horaria canónica es `America/Santiago`; los tests deben inyectar el reloj y nunca depender de la fecha real.
+La interpretación del lenguaje temporal pertenece a la capa semántica. El `semantic_parse.v1` debe materializar el período como un rango explícito:
 
-| Expresión | Semántica | Estado |
-|---|---|---|
-| último trimestre / trimestre anterior / previous quarter | último trimestre calendario completamente cerrado | cerrado |
-| últimos N meses | N meses calendario completamente cerrados anteriores al actual | cerrado |
-| últimos N meses incluyendo este mes | desde el primer día de la ventana hasta el cutoff observable | parcial |
-| este trimestre | inicio del trimestre actual hasta el cutoff observable | parcial |
-| mes pasado / último mes cerrado | mes calendario anterior completo | cerrado |
-| YTD | 1 de enero hasta el cutoff observable | parcial |
-| mismo período año anterior | trasladar ambos límites un año, preservando forma y ajustando 29-feb | heredado |
-| mismo día / same-day | comparar sólo hasta el día equivalente mediante `cutoff_mode=SAME_DAY` | parcial |
+```json
+{
+  "period": {
+    "date_from": "YYYY-MM-DD",
+    "date_to": "YYYY-MM-DD"
+  }
+}
+```
 
-Para meses, trimestres, semestres, YTD y años, el grano estándar es `MONTH`. El grano diario se reserva para pace, cutoff e intenciones intrames. Una frase sin convención suficiente, como “este último período”, debe producir `TEMPORAL_AMBIGUOUS`; no se completa por intuición.
+RESOLVE no interpreta frases temporales, sinónimos ni expresiones lingüísticas. Recibe el rango materializado y lo valida/certifica de forma determinista. La zona horaria canónica es `America/Santiago`; los tests deben inyectar el reloj y nunca depender de la fecha real.
+
+A partir exclusivamente de `date_from`, `date_to` y la fecha actual, el backend puede derivar metadata temporal necesaria para routing, comparabilidad y cutoff. Esa metadata es derivada: no reemplaza al rango explícito como autoridad temporal pública.
+
+Reglas:
+- `date_from` y `date_to` son obligatorios y usan formato ISO `YYYY-MM-DD`;
+- ambas fechas deben existir en el calendario;
+- `date_from <= date_to`;
+- disponibilidad y cutoff se certifican contra las fuentes, no se infieren desde la frase original;
+- comparaciones como YOY trasladan el rango de forma determinista cuando corresponde;
+- no existe fallback a parsing lingüístico dentro de RESOLVE.
+
+Para períodos calendario agregados, el grano estándar es `MONTH`. El grano diario se reserva para pace, cutoff e intenciones intrames cuando la capability correspondiente lo exige.
 
 ## 3. Elegir dominio
 Los dominios analíticos son:
