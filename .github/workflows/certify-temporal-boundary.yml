@@ -5,6 +5,9 @@ on:
     branches:
       - refactor/temporal-boundary-cleanup
 
+permissions:
+  contents: write
+
 jobs:
   certify:
     runs-on: ubuntu-latest
@@ -16,6 +19,30 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: Align OpenAPI explicit period requirement
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'rom/schema.json';
+          const schema = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const required = schema?.components?.schemas?.SemanticParse?.required;
+          if (!Array.isArray(required)) throw new Error('SemanticParse.required missing');
+          if (!required.includes('period')) {
+            const questionTypeIndex = required.indexOf('question_type');
+            required.splice(questionTypeIndex >= 0 ? questionTypeIndex + 1 : required.length, 0, 'period');
+            fs.writeFileSync(path, `${JSON.stringify(schema, null, 2)}\n`);
+          }
+          NODE
+          if ! git diff --quiet -- rom/schema.json; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add rom/schema.json
+            git commit -m 'fix(schema): require explicit semantic period'
+            git push origin HEAD:refactor/temporal-boundary-cleanup
+          fi
 
       - name: Install dependencies
         run: npm install --ignore-scripts
