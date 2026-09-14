@@ -2,8 +2,14 @@ import { buildVentasUniverse } from '../../lib/ventas-universe/buildVentasUniver
 import { getDb, handleApiError, parsePositiveBigInt, parseWeekStart } from '../../lib/weekly-projections/db.js';
 
 function buildSalesMtd(universe, targetMonth) {
+  const salesFrom = `${targetMonth}-02`;
+  const salesTo = `${targetMonth}-07`;
   const events = (universe?.analytical_events || [])
-    .filter((event) => event.mes_venta === targetMonth);
+    .filter((event) => {
+      if (event.mes_venta !== targetMonth) return false;
+      const date = String(event.fecha_venta_iso || '').slice(0, 10);
+      return date >= salesFrom && date <= salesTo;
+    });
   const grouped = new Map();
 
   for (const event of events) {
@@ -30,6 +36,8 @@ function buildSalesMtd(universe, targetMonth) {
 
   return {
     month: targetMonth,
+    date_from: salesFrom,
+    date_to: salesTo,
     cutoff_date: cutoffDate,
     total_units: events.length,
     rows: [...grouped.values()].sort((a, b) =>
