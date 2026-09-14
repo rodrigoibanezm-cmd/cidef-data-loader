@@ -3,12 +3,11 @@ import { getDb, handleApiError, parsePositiveBigInt, parseWeekStart } from '../.
 
 function buildSalesMtd(universe, targetMonth) {
   const salesFrom = `${targetMonth}-02`;
-  const salesTo = `${targetMonth}-07`;
   const events = (universe?.analytical_events || [])
     .filter((event) => {
       if (event.mes_venta !== targetMonth) return false;
       const date = String(event.fecha_venta_iso || '').slice(0, 10);
-      return date >= salesFrom && date <= salesTo;
+      return date >= salesFrom;
     });
   const grouped = new Map();
 
@@ -37,7 +36,7 @@ function buildSalesMtd(universe, targetMonth) {
   return {
     month: targetMonth,
     date_from: salesFrom,
-    date_to: salesTo,
+    date_to: cutoffDate,
     cutoff_date: cutoffDate,
     total_units: events.length,
     rows: [...grouped.values()].sort((a, b) =>
