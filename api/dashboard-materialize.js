@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     }
     if (!expected) {
       const sql = getDb();
-      const rows = await sql.query(\"SELECT EXISTS (SELECT 1 FROM public.dashboard_company_snapshot_v01 WHERE contract_version='dashboard_snapshot_v01_1') AS exists\");
+      const rows = await sql.query("SELECT EXISTS (SELECT 1 FROM public.dashboard_company_snapshot_v01 WHERE contract_version='dashboard_snapshot_v01_1') AS exists");
       if (rows[0]?.exists) {
         return res.status(503).json({ ok: false, error: 'DASHBOARD_REFRESH_TOKEN_NOT_CONFIGURED' });
       }
