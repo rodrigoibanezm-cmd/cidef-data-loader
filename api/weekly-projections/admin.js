@@ -1,13 +1,13 @@
 import { buildVentasUniverse } from '../../lib/ventas-universe/buildVentasUniverse.js';
 import { getDb, handleApiError, parsePositiveBigInt, parseWeekStart } from '../../lib/weekly-projections/db.js';
 
-function buildSalesMtd(universe, targetMonth) {
+function buildSalesMtd(universe, targetMonth, cutoffDate) {
   const salesFrom = `${targetMonth}-02`;
   const events = (universe?.analytical_events || [])
     .filter((event) => {
       if (event.mes_venta !== targetMonth) return false;
       const date = String(event.fecha_venta_iso || '').slice(0, 10);
-      return date >= salesFrom;
+      return date >= salesFrom && date <= cutoffDate;
     });
   const grouped = new Map();
 
@@ -25,13 +25,6 @@ function buildSalesMtd(universe, targetMonth) {
     }
     grouped.get(key).units += 1;
   }
-
-  const cutoffDate = events.length
-    ? events.reduce((max, event) => {
-      const date = String(event.fecha_venta_iso || '').slice(0, 10);
-      return date > max ? date : max;
-    }, '') || null
-    : null;
 
   return {
     month: targetMonth,
@@ -115,7 +108,7 @@ export default async function handler(req, res) {
       week_start: weekStart,
       sucursal_id: sucursalId,
       summary,
-      sales_mtd: buildSalesMtd(ventasUniverse, targetMonth),
+      sales_mtd: buildSalesMtd(ventasUniverse, targetMonth, weekStart),
       projections: rows,
     });
   } catch (error) {
