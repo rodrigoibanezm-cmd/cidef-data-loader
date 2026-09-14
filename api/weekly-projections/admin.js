@@ -1,10 +1,18 @@
 import { buildVentasUniverse } from '../../lib/ventas-universe/buildVentasUniverse.js';
 import { getDb, handleApiError, parsePositiveBigInt, parseWeekStart } from '../../lib/weekly-projections/db.js';
 
+function salesStartForMonth(targetMonth) {
+  return `${targetMonth}-${targetMonth.slice(5, 7) === '09' ? '02' : '01'}`;
+}
+function isCasaMatrizEvent(event) {
+  return String(event?.certified_store_name || '').trim().toLowerCase() === 'casa matriz';
+}
+
 function buildSalesMtd(universe, targetMonth, cutoffDate) {
-  const salesFrom = `${targetMonth}-02`;
+  const salesFrom = salesStartForMonth(targetMonth);
   const events = (universe?.analytical_events || []).filter((event) => {
     if (event.canonical_commercial_universe !== 'OWN_STORES') return false;
+    if (isCasaMatrizEvent(event)) return false;
     if (event.mes_venta !== targetMonth) return false;
     const date = String(event.fecha_venta_iso || '').slice(0, 10);
     return date >= salesFrom && date <= cutoffDate;
@@ -68,8 +76,11 @@ function buildEvolution(previousCut, currentCut, previousProjectionRows, previou
     const p=pm.get(key), a=ps.get(key), c=cs.get(key);
     const prev=Number(a?.units||0), proj=Number(p?.units||0), cur=Number(c?.units||0), exp=prev+proj, inc=cur-prev;
     return { sucursal_id:c?.sucursal_id??a?.sucursal_id??p?.sucursal_id??null, sucursal:c?.sucursal||a?.sucursal||p?.sucursal||'Sin tienda', previous_sales_mtd:prev, previous_projection:proj, expected_current:exp, current_sales_mtd:cur, new_sales:inc, projection_fulfillment:ratio(inc,proj), expected_fulfillment:ratio(cur,exp) };
-  }).sort((a,b)=>a.sucursal.localeCompare(b.sucursal));
-  return { previous_cut:previousCut, current_cut:currentCut, previous_sales_mtd:previousSold, previous_projection:previousProjection, expected_current:expected, current_sales_mtd:currentSold, new_sales:newSales, projection_fulfillment:ratio(newSales,previousProjection), expected_fulfillment:ratio(currentSold,expected), stores };
+  }).filter((row)=>String(row.sucursal||'').trim().toLowerCase()!=='casa matriz').sort((a,b)=>a.sucursal.localeCompare(b.sucursal));
+  const totals=stores.reduce((acc,row)=>{acc.previous_sales_mtd+=row.previous_sales_mtd;acc.previous_projection+=row.previous_projection;acc.current_sales_mtd+=row.current_sales_mtd;return acc;},{previous_sales_mtd:0,previous_projection:0,current_sales_mtd:0});
+  const expectedCurrent=totals.previous_sales_mtd+totals.previous_projection;
+  const newSales=totals.current_sales_mtd-totals.previous_sales_mtd;
+  return { previous_cut:previousCut, current_cut:currentCut, previous_sales_mtd:totals.previous_sales_mtd, previous_projection:totals.previous_projection, expected_current:expectedCurrent, current_sales_mtd:totals.current_sales_mtd, new_sales:newSales, projection_fulfillment:ratio(newSales,totals.previous_projection), expected_fulfillment:ratio(totals.current_sales_mtd,expectedCurrent), stores };
 }
 
 function dateParts(value) {
@@ -91,16 +102,17 @@ function minusDays(value, days) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 }
 function periodSnapshot(universe, cutoffDate, sucursalId, label) {
-  const month = cutoffDate.slice(0,7), salesFrom = `${month}-02`, weekFrom = minusDays(cutoffDate, 6), id = sucursalId ? String(sucursalId) : null;
+  const month = cutoffDate.slice(0,7), salesFrom = salesStartForMonth(month), weekFrom = minusDays(cutoffDate, 6), id = sucursalId ? String(sucursalId) : null;
   const events = (universe?.analytical_events || []).filter((event) => {
     if (event.canonical_commercial_universe !== 'OWN_STORES') return false;
+    if (isCasaMatrizEvent(event)) return false;
     if (id && String(event.certified_store_id) !== id) return false;
     return true;
   });
   const dated = events.map((event) => ({ event, date:String(event.fecha_venta_iso||'').slice(0,10) }));
   const mtd = dated.filter(({event,date}) => event.mes_venta === month && date >= salesFrom && date <= cutoffDate).length;
   const last7 = dated.filter(({date}) => date >= weekFrom && date <= cutoffDate).length;
-  return { label, month, cutoff_date:cutoffDate, effective_cutoff_date:universe?.period?.cutoff_date ?? cutoffDate, mtd_units:mtd, last_7d_units:last7 };
+  return { label, month, date_from:salesFrom, week_from:weekFrom, cutoff_date:cutoffDate, effective_cutoff_date:universe?.period?.cutoff_date ?? cutoffDate, mtd_units:mtd, last_7d_units:last7 };
 }
 
 async function buildHistoricalContext(currentUniverse, weekStart, sucursalId) {
@@ -115,7 +127,9 @@ async function buildHistoricalContext(currentUniverse, weekStart, sucursalId) {
   const universes = await Promise.all(historical.map((ref)=>buildVentasUniverse({ commercial_universe:'OWN_STORES', cutoff_date:ref.date })));
   historical.forEach((ref,index)=>{ref.universe=universes[index];});
   const periods = refs.map((ref)=>periodSnapshot(ref.universe,ref.date,sucursalId,ref.label));
-  const current=periods[0], yoy=periods.find((p)=>p.label==='YOY');
+  const current=periods[0], yoy=periods.find((p)=>p.label==='YOY'), previous3=periods.filter((p)=>['M-1','M-2','M-3'].includes(p.label));
+  const avg=(values)=>values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
+  const avgMtd=avg(previous3.map((p)=>p.mtd_units)), avgWeek=avg(previous3.map((p)=>p.last_7d_units));
   return {
     periods,
     yoy: yoy ? {
@@ -126,6 +140,12 @@ async function buildHistoricalContext(currentUniverse, weekStart, sucursalId) {
       current_last_7d: current.last_7d_units,
       yoy_last_7d: yoy.last_7d_units,
     } : null,
+    recent_3m: {
+      avg_mtd: avgMtd,
+      avg_last_7d: avgWeek,
+      mtd_change: avgMtd ? (current.mtd_units-avgMtd)/avgMtd : null,
+      last_7d_change: avgWeek ? (current.last_7d_units-avgWeek)/avgWeek : null,
+    },
   };
 }
 
