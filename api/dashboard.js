@@ -14,7 +14,7 @@ export default async function handler(req, res) {
              snapshot_date::text AS snapshot_date, generated_at, contract_version, payload
       FROM public.dashboard_company_snapshot_v01
       WHERE published = true
-      ORDER BY snapshot_date DESC, generated_at DESC
+      ORDER BY generated_at DESC, snapshot_id DESC
       LIMIT 1
     `);
     if (!companyRows.length) {
