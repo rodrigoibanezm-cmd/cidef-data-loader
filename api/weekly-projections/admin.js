@@ -27,6 +27,20 @@ function buildSalesMtd(universe, targetMonth, cutoffDate) {
     grouped.get(key).units += 1;
   }
 
+  const details = events.map((event) => ({
+    vin: event.vin ?? null,
+    fecha_venta: String(event.fecha_venta_iso || '').slice(0, 10) || null,
+    sucursal_id: event.certified_store_id == null ? null : String(event.certified_store_id),
+    sucursal: event.certified_store_name || 'Sin tienda',
+    vendedor: event.vendedor || null,
+    marca: event.marca_nombre || 'Sin marca',
+    modelo: event.modelo_nombre || event.producto || 'Sin modelo',
+    factura: event.nro_factura || event.factura || null,
+  })).sort((a, b) =>
+    String(a.sucursal).localeCompare(String(b.sucursal))
+    || String(a.fecha_venta).localeCompare(String(b.fecha_venta))
+    || String(a.vin).localeCompare(String(b.vin)));
+
   return {
     month: targetMonth,
     date_from: salesFrom,
@@ -35,6 +49,7 @@ function buildSalesMtd(universe, targetMonth, cutoffDate) {
     total_units: events.length,
     rows: [...grouped.values()].sort((a, b) =>
       String(a.sucursal).localeCompare(String(b.sucursal)) || String(a.marca).localeCompare(String(b.marca))),
+    details,
     universe: universe?.universe ?? null,
     universe_version: universe?.version ?? null,
     commercial_universe: universe?.commercial_universe ?? null,
