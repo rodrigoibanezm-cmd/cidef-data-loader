@@ -30,6 +30,14 @@ function buildSalesMtd(universe, targetMonth, cutoffDate) {
   return { month: targetMonth, date_from: salesFrom, date_to: cutoffDate, cutoff_date: cutoffDate, total_units: events.length, rows: [...grouped.values()].sort((a,b)=>String(a.sucursal).localeCompare(String(b.sucursal))||String(a.marca).localeCompare(String(b.marca))), details, universe: universe?.universe ?? null, universe_version: universe?.version ?? null, commercial_universe: universe?.commercial_universe ?? null, validation: universe?.validation ?? null };
 }
 
+function filterSalesByStore(sales, sucursalId) {
+  if (!sucursalId) return sales;
+  const id = String(sucursalId);
+  const rows = (sales.rows || []).filter((row) => String(row.sucursal_id) === id);
+  const details = (sales.details || []).filter((row) => String(row.sucursal_id) === id);
+  return { ...sales, rows, details, total_units: details.length };
+}
+
 function byStoreSales(sales) {
   const map = new Map();
   for (const row of sales?.rows || []) {
@@ -64,6 +72,63 @@ function buildEvolution(previousCut, currentCut, previousProjectionRows, previou
   return { previous_cut:previousCut, current_cut:currentCut, previous_sales_mtd:previousSold, previous_projection:previousProjection, expected_current:expected, current_sales_mtd:currentSold, new_sales:newSales, projection_fulfillment:ratio(newSales,previousProjection), expected_fulfillment:ratio(currentSold,expected), stores };
 }
 
+function dateParts(value) {
+  const [year, month, day] = String(value).slice(0,10).split('-').map(Number);
+  return { year, month, day };
+}
+function monthShiftSameDay(value, offsetMonths) {
+  const { year, month, day } = dateParts(value);
+  const first = new Date(Date.UTC(year, month - 1 + offsetMonths, 1));
+  const y = first.getUTCFullYear(), m = first.getUTCMonth();
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const d = Math.min(day, lastDay);
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function minusDays(value, days) {
+  const { year, month, day } = dateParts(value);
+  const d = new Date(Date.UTC(year, month - 1, day));
+  d.setUTCDate(d.getUTCDate() - days);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+}
+function periodSnapshot(universe, cutoffDate, sucursalId, label) {
+  const month = cutoffDate.slice(0,7), salesFrom = `${month}-02`, weekFrom = minusDays(cutoffDate, 6), id = sucursalId ? String(sucursalId) : null;
+  const events = (universe?.analytical_events || []).filter((event) => {
+    if (event.canonical_commercial_universe !== 'OWN_STORES') return false;
+    if (id && String(event.certified_store_id) !== id) return false;
+    return true;
+  });
+  const dated = events.map((event) => ({ event, date:String(event.fecha_venta_iso||'').slice(0,10) }));
+  const mtd = dated.filter(({event,date}) => event.mes_venta === month && date >= salesFrom && date <= cutoffDate).length;
+  const last7 = dated.filter(({date}) => date >= weekFrom && date <= cutoffDate).length;
+  return { label, month, cutoff_date:cutoffDate, effective_cutoff_date:universe?.period?.cutoff_date ?? cutoffDate, mtd_units:mtd, last_7d_units:last7 };
+}
+
+async function buildHistoricalContext(currentUniverse, weekStart, sucursalId) {
+  const refs = [
+    { label:'CURRENT', date:weekStart, universe:currentUniverse },
+    { label:'M-1', date:monthShiftSameDay(weekStart,-1) },
+    { label:'M-2', date:monthShiftSameDay(weekStart,-2) },
+    { label:'M-3', date:monthShiftSameDay(weekStart,-3) },
+    { label:'YOY', date:monthShiftSameDay(weekStart,-12) },
+  ];
+  const historical = refs.slice(1);
+  const universes = await Promise.all(historical.map((ref)=>buildVentasUniverse({ commercial_universe:'OWN_STORES', cutoff_date:ref.date })));
+  historical.forEach((ref,index)=>{ref.universe=universes[index];});
+  const periods = refs.map((ref)=>periodSnapshot(ref.universe,ref.date,sucursalId,ref.label));
+  const current=periods[0], yoy=periods.find((p)=>p.label==='YOY');
+  return {
+    periods,
+    yoy: yoy ? {
+      mtd_change: yoy.mtd_units ? (current.mtd_units-yoy.mtd_units)/yoy.mtd_units : null,
+      last_7d_change: yoy.last_7d_units ? (current.last_7d_units-yoy.last_7d_units)/yoy.last_7d_units : null,
+      current_mtd: current.mtd_units,
+      yoy_mtd: yoy.mtd_units,
+      current_last_7d: current.last_7d_units,
+      yoy_last_7d: yoy.last_7d_units,
+    } : null,
+  };
+}
+
 export default async function handler(req, res) {
   try {
     if (req.method !== 'GET') { res.setHeader('Allow','GET'); return res.status(405).json({ ok:false,error:'GET required' }); }
@@ -74,15 +139,16 @@ export default async function handler(req, res) {
       sql.query(`SELECT MAX(week_start)::text AS previous_cut FROM public.weekly_sales_projection WHERE week_start < $1::date AND to_char(week_start,'YYYY-MM')=$2`,[weekStart,targetMonth]),
     ]);
     const summary=rows.reduce((acc,row)=>{const units=Number(row.projected_units||0);acc.total_units+=units;acc.rows+=1;if(row.crm_opportunity_id)acc.crm_units+=units;else acc.no_crm_units+=units;return acc;},{total_units:0,crm_units:0,no_crm_units:0,rows:0});
-    const salesMtd=buildSalesMtd(ventasUniverse,targetMonth,weekStart);
+    const rawSalesMtd=buildSalesMtd(ventasUniverse,targetMonth,weekStart);
+    const salesMtd=filterSalesByStore(rawSalesMtd,sucursalId);
     const previousCut=previousCutResult?.[0]?.previous_cut?String(previousCutResult[0].previous_cut).slice(0,10):null;
     let evolution=null;
     if(previousCut){
       const previousProjectionRows=await sql.query(`SELECT wsp.sucursal_id::text AS sucursal_id,s.nombre_canonico AS sucursal,wsp.projected_units FROM public.weekly_sales_projection wsp JOIN public.sucursales_master s ON s.sucursal_id=wsp.sucursal_id WHERE wsp.week_start=$1::date AND ($2::bigint IS NULL OR wsp.sucursal_id=$2::bigint)`,[previousCut,sucursalId]);
-      let previousSales=buildSalesMtd(ventasUniverse,targetMonth,previousCut), currentSales=salesMtd;
-      if(sucursalId){const id=String(sucursalId);const filter=(sales)=>{const filteredRows=sales.rows.filter(r=>String(r.sucursal_id)===id),filteredDetails=sales.details.filter(r=>String(r.sucursal_id)===id);return{...sales,rows:filteredRows,details:filteredDetails,total_units:filteredDetails.length};};previousSales=filter(previousSales);currentSales=filter(currentSales);}
-      evolution=buildEvolution(previousCut,weekStart,previousProjectionRows,previousSales,currentSales);
+      const previousSales=filterSalesByStore(buildSalesMtd(ventasUniverse,targetMonth,previousCut),sucursalId);
+      evolution=buildEvolution(previousCut,weekStart,previousProjectionRows,previousSales,salesMtd);
     }
-    return res.status(200).json({ok:true,week_start:weekStart,sucursal_id:sucursalId,summary,sales_mtd:salesMtd,evolution,projections:rows});
+    const historical_context=await buildHistoricalContext(ventasUniverse,weekStart,sucursalId);
+    return res.status(200).json({ok:true,week_start:weekStart,sucursal_id:sucursalId,summary,sales_mtd:salesMtd,evolution,historical_context,projections:rows});
   } catch(error){return handleApiError(res,error);}
 }
