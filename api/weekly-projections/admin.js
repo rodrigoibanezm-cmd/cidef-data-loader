@@ -5,6 +5,7 @@ function buildSalesMtd(universe, targetMonth, cutoffDate) {
   const salesFrom = `${targetMonth}-02`;
   const events = (universe?.analytical_events || [])
     .filter((event) => {
+      if (event.canonical_commercial_universe !== 'OWN_STORES') return false;
       if (event.mes_venta !== targetMonth) return false;
       const date = String(event.fecha_venta_iso || '').slice(0, 10);
       return date >= salesFrom && date <= cutoffDate;
@@ -91,7 +92,7 @@ export default async function handler(req, res) {
           AND ($2::bigint IS NULL OR wsp.sucursal_id = $2::bigint)
         ORDER BY s.nombre_canonico, vendedor, wsp.expected_close_date, marca, modelo
       `, [weekStart, sucursalId]),
-      buildVentasUniverse({ commercial_universe: 'OWN_STORES', cutoff_month: targetMonth }),
+      buildVentasUniverse({ commercial_universe: 'OWN_STORES', cutoff_date: weekStart }),
     ]);
 
     const summary = rows.reduce((acc, row) => {
