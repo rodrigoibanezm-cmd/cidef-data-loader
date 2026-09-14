@@ -67,9 +67,6 @@ function byStoreProjection(rows) {
 const ratio = (n,d) => d ? n/d : null;
 function buildEvolution(previousCut, currentCut, previousProjectionRows, previousSales, currentSales) {
   if (!previousCut) return null;
-  const previousProjection = previousProjectionRows.reduce((s,r)=>s+Number(r.projected_units||0),0);
-  const previousSold = Number(previousSales.total_units || 0), currentSold = Number(currentSales.total_units || 0);
-  const expected = previousSold + previousProjection, newSales = currentSold - previousSold;
   const pm=byStoreProjection(previousProjectionRows), ps=byStoreSales(previousSales), cs=byStoreSales(currentSales);
   const keys=new Set([...pm.keys(),...ps.keys(),...cs.keys()]);
   const stores=[...keys].map((key)=>{
